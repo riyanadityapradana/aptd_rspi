@@ -1,3 +1,4 @@
+<?php require_once('../config/koneksi.php'); ?>
 <br>
 <div class="row text-left">
 	<div class="col">
@@ -206,3 +207,4 @@
 	});
 	</script>
 </div>
+

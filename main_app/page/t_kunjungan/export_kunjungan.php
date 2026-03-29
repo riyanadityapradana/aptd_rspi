@@ -1,3 +1,4 @@
+<?php require_once('../config/koneksi.php'); ?>
 <?php
 // start buffering and suppress on-screen errors to avoid corrupting output
 ob_start();
@@ -169,3 +170,4 @@ $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
 $writer->save('php://output');
 exit();
 ?>
+

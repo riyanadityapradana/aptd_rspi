@@ -1,15 +1,7 @@
 <?php
 // Koneksi ke database sik9
-//$host = '192.168.1.4';
-$host = 'localhost';
-$user = 'root';
-$pass = '';
-$db   = 'sik9';
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die('<div class="alert alert-danger">Koneksi gagal: ' . $conn->connect_error . '</div>');
-}
-$conn->set_charset('utf8');
+require_once('../config/koneksi.php');
+$conn = $mysqli;
 
 // Ambil input tanggal awal dan akhir dari POST, default tanggal hari ini
 $tgl_awal = isset($_POST['tgl_awal']) ? $_POST['tgl_awal'] : date('Y-m-01');
@@ -221,3 +213,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+

@@ -16,16 +16,8 @@ if (file_exists($localVendor)) {
 // Clear any buffered output from autoload/etc.
 if (ob_get_length()) ob_end_clean();
 
-//$host = '192.168.1.4';
-$host = 'localhost';
-$user = 'root';
-$pass = '';
-$db   = 'sik9';
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die('Koneksi gagal: ' . $conn->connect_error);
-}
-$conn->set_charset('utf8');
+require_once('../config/koneksi.php');
+$conn = $mysqli;
 
 // Comprehensive poli mapping
 $mapping_poli = [
@@ -291,3 +283,4 @@ $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
 $writer->save('php://output');
 exit();
 ?>
+

@@ -1,14 +1,6 @@
 <?php
-//$host = '192.168.1.4';
-$host = 'localhost';
-$user = 'root';
-$pass = '';
-$db   = 'sik9';
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die('Koneksi gagal: ' . $conn->connect_error);
-}
-$conn->set_charset('utf8');
+require_once('../config/koneksi.php');
+$conn = $mysqli;
 
 // Read filter values from POST
 $filter_tgl_awal = isset($_POST['tgl_awal']) ? trim($_POST['tgl_awal']) : date('Y-m-01');
@@ -216,3 +208,4 @@ $(document).ready(function(){
     });
 });
 </script>
+

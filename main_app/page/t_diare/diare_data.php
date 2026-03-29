@@ -1,3 +1,4 @@
+<?php require_once('../config/koneksi.php'); ?>
      <div class="row text-left">
 		<div class="col">
 			<br><h3 class="text-lef" style="color: #666666">DATA PASIEN DIARE</h3>
