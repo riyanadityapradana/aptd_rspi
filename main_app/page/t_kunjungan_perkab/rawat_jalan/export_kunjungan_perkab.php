@@ -4,7 +4,7 @@ require '../../assets/autoload.php';
 // Clear output buffer
 if (ob_get_length()) ob_end_clean();
 
-require_once('../config/koneksi.php');
+require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
 $conn = $mysqli;
 
 $bulan = isset($_POST['bulan']) ? $_POST['bulan'] : date('m');

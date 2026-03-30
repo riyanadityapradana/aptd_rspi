@@ -1,6 +1,6 @@
 <?php
 // Koneksi ke database sik9
-require_once('../config/koneksi.php');
+require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
 $conn = $mysqli;
 
 // Ambil input tanggal awal dan akhir dari POST, default tanggal hari ini
@@ -11,31 +11,27 @@ $tgl_akhir = isset($_POST['tgl_akhir']) ? $_POST['tgl_akhir'] : date('Y-m-d');
 $tgl_awal = !empty($tgl_awal) ? $tgl_awal : date('Y-m-01');
 $tgl_akhir = !empty($tgl_akhir) ? $tgl_akhir : date('Y-m-d');
 
-// Query untuk mengambil 10 besar penyakit bedah rawat jalan berdasarkan filter
-$query_bedah_ralan = "
-SELECT
-    d.kd_penyakit,
+// Query untuk mengambil 10 besar penyakit non-bedah rawat inap berdasarkan filter
+$query_non_bedah_ranap = "
+SELECT 
+    p.kd_penyakit,
     p.nm_penyakit,
-    COUNT(*) AS jumlah_kasus
-FROM diagnosa_pasien d
-JOIN reg_periksa r ON d.no_rawat = r.no_rawat
-JOIN pasien p2 ON r.no_rkm_medis = p2.no_rkm_medis
-JOIN penyakit p ON d.kd_penyakit = p.kd_penyakit
-JOIN poliklinik pl ON r.kd_poli = pl.kd_poli
-WHERE r.status_lanjut = 'Ralan'
-  AND pl.nm_poli LIKE '%Bedah%'
-  AND p2.nm_pasien NOT LIKE '%TEST%'
-  AND p2.nm_pasien NOT LIKE '%Tes%'
-  AND p2.nm_pasien NOT LIKE '%Coba%'
-  AND DATE(r.tgl_registrasi) BETWEEN '$tgl_awal' AND '$tgl_akhir'
-GROUP BY d.kd_penyakit, p.nm_penyakit
+    COUNT(DISTINCT rp.no_rawat) AS jumlah_kasus
+FROM reg_periksa rp
+JOIN diagnosa_pasien dp ON rp.no_rawat = dp.no_rawat
+JOIN penyakit p ON dp.kd_penyakit = p.kd_penyakit
+JOIN kamar_inap ri ON rp.no_rawat = ri.no_rawat
+WHERE rp.status_lanjut = 'Ranap'
+  AND dp.prioritas = '1'
+  AND ri.tgl_masuk BETWEEN '$tgl_awal' AND '$tgl_akhir'
+GROUP BY p.kd_penyakit, p.nm_penyakit
 ORDER BY jumlah_kasus DESC
 LIMIT 10";
 
-$result_bedah_ralan = $conn->query($query_bedah_ralan);
+$result_non_bedah_ranap = $conn->query($query_non_bedah_ranap);
 
 // Error handling untuk query
-if (!$result_bedah_ralan) {
+if (!$result_non_bedah_ranap) {
     die('<div class="alert alert-danger">Query error: ' . $conn->error . '</div>');
 }
 
@@ -44,8 +40,8 @@ $data_grafik = [];
 $labels_grafik = [];
 $total_kasus = 0;
 
-if ($result_bedah_ralan->num_rows > 0) {
-    while($row = $result_bedah_ralan->fetch_assoc()) {
+if ($result_non_bedah_ranap->num_rows > 0) {
+    while($row = $result_non_bedah_ranap->fetch_assoc()) {
         $labels_grafik[] = strlen($row['nm_penyakit']) > 25 ?
                           substr($row['nm_penyakit'], 0, 25) . '...' :
                           $row['nm_penyakit'];
@@ -65,12 +61,12 @@ if (empty($labels_grafik)) {
     <div class="container-fluid">
         <div class="row mb-2">
             <div class="col-sm-6">
-                <h1>10 BESAR PENYAKIT BEDAH RAWAT JALAN</h1>
+                <h1>10 BESAR PENYAKIT NON-BEDAH RAWAT INAP</h1>
             </div>
             <div class="col-sm-6">
                 <ol class="breadcrumb float-sm-right">
                     <li class="breadcrumb-item"><a href="main_app.php?page=beranda">Home</a></li>
-                    <li class="breadcrumb-item active">10 Besar Penyakit Bedah Rawat Jalan</li>
+                    <li class="breadcrumb-item active">10 Besar Penyakit Non-Bedah Rawat Inap</li>
                 </ol>
             </div>
         </div>
@@ -114,9 +110,9 @@ if (empty($labels_grafik)) {
                                             if (empty($data_grafik) || $total_kasus == 0) {
                                                 echo '<tr><td colspan="5" class="text-center">Tidak ada data untuk periode yang dipilih.</td></tr>';
                                             } else {
-                                                $result_bedah_ralan->data_seek(0); // Reset pointer hasil query
+                                                $result_non_bedah_ranap->data_seek(0); // Reset pointer hasil query
                                                 $no = 1;
-                                                while($row = $result_bedah_ralan->fetch_assoc()):
+                                                while($row = $result_non_bedah_ranap->fetch_assoc()):
                                                     $persentase = $total_kasus > 0 ? round(($row['jumlah_kasus'] / $total_kasus) * 100, 1) : 0;
                                             ?>
                                             <tr>
@@ -136,13 +132,13 @@ if (empty($labels_grafik)) {
                             <div class="col-md-6">
                                 <div class="card">
                                     <div class="card-header">
-                                        <h4 class="card-title">Grafik 10 Besar Penyakit Bedah Rawat Jalan</h4>
+                                        <h4 class="card-title">Grafik 10 Besar Penyakit Non-Bedah Rawat Inap</h4>
                                         <div class="card-tools">
                                             <small class="text-muted"><?php echo date('d M Y', strtotime($tgl_awal)) . ' s/d ' . date('d M Y', strtotime($tgl_akhir)); ?></small>
                                         </div>
                                     </div>
                                     <div class="card-body">
-                                        <canvas id="chartPenyakitBedahRalan" width="400" height="300"></canvas>
+                                        <canvas id="chartPenyakitNonBedahRalan" width="400" height="300"></canvas>
                                     </div>
                                 </div>
                             </div>
@@ -158,21 +154,21 @@ if (empty($labels_grafik)) {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize chart dengan data dari PHP - Line Chart
-    const ctxBedahRalan = document.getElementById('chartPenyakitBedahRalan').getContext('2d');
-    new Chart(ctxBedahRalan, {
+    const ctxNonBedahRanap = document.getElementById('chartPenyakitNonBedahRalan').getContext('2d');
+    new Chart(ctxNonBedahRanap, {
         type: 'line',
         data: {
             labels: <?php echo json_encode($labels_grafik); ?>,
             datasets: [{
                 label: 'Jumlah Kasus',
                 data: <?php echo json_encode($data_grafik); ?>,
-                borderColor: 'rgba(255, 107, 107, 1)',
-                backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
                 borderWidth: 2,
                 fill: true,
                 tension: 0.4,
                 pointRadius: 5,
-                pointBackgroundColor: 'rgba(255, 107, 107, 1)',
+                pointBackgroundColor: 'rgba(75, 192, 192, 1)',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
                 pointHoverRadius: 7,

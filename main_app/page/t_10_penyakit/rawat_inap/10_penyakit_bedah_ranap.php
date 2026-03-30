@@ -1,6 +1,6 @@
 <?php
 // Koneksi ke database sik9
-require_once('../config/koneksi.php');
+require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
 $conn = $mysqli;
 
 // Ambil input tanggal awal dan akhir dari POST, default tanggal hari ini

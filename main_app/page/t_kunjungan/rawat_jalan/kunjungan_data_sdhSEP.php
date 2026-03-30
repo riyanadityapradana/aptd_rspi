@@ -1,5 +1,5 @@
 <?php
-require_once('../config/koneksi.php');
+require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
 $conn = $mysqli;
 
 // Read filter values from POST

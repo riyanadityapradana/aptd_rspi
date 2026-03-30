@@ -97,7 +97,7 @@ $menuKunjunganRalan = [
         ['page' => 'kunjungan_data_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan'],
         ['page' => 'kunjungan_data_perpoli', 'label' => 'Kunjungan Pasien Rawat Jalan Perpoli'],
         ['page' => 'kunjungan_data_perkab_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Perkab'],
-        ['page' => 'kunjungan_data_per_minggu', 'label' => 'Kunjungan Pasien Per Minggu'],
+                ['page' => 'top_10_poli_ralan', 'label' => 'Top 10 Poliklinik Pasien Tertinggi'],
     ],
     [
         ['page' => 'kunjungan_data_blmSEP', 'label' => 'Kunjungan Pasien Rawat Jalan Belum SEP'],
@@ -111,6 +111,8 @@ $menuKunjunganRalan = [
 $menuKunjunganRanap = [
     [
         ['page' => 'kunjungan_data_perkamar_ranap', 'label' => 'Kunjungan Pasien Rawat Inap Perkamar'],
+        ['page' => 'kunjungan_data_harian_ranap', 'label' => 'Kunjungan Pasien Rawat Inap Harian'],
+        ['page' => 'top_10_kamar_ranap', 'label' => 'Top 10 Kamar Pasien Tertinggi'],
     ],
     [
         ['page' => 'kunjungan_data_blmSEP', 'label' => 'Kunjungan Pasien Rawat Inap Belum SEP'],
@@ -131,6 +133,12 @@ $menuPenyakit = [
         ['page' => '10_penyakit_ranap', 'label' => '10 Penyakit Tertinggi Rawat Inap'],
         ['page' => '10_penyakit_bedah_ranap', 'label' => '10 Penyakit Bedah Tertinggi Rawat Inap'],
         ['page' => '10_penyakit_non_bedah_ranap', 'label' => '10 Penyakit Non Bedah Tertinggi Rawat Inap'],
+    ],
+    [
+        ['page' => 'data_pasien_kode_penyakit_bedah_ralan', 'label' => 'Data Pasien Kode Penyakit Bedah Ralan'],
+        ['page' => 'data_pasien_kode_penyakit_non_bedah_ralan', 'label' => 'Data Pasien Kode Penyakit Non Bedah Ralan'],
+        ['page' => 'data_pasien_kode_penyakit_bedah_ranap', 'label' => 'Data Pasien Kode Penyakit Bedah Ranap'],
+        ['page' => 'data_pasien_kode_penyakit_non_bedah_ranap', 'label' => 'Data Pasien Kode Penyakit Non Bedah Ranap'],
     ],
 ];
 ?>
@@ -335,3 +343,9 @@ $menuPenyakit = [
         </script>
     </body>
 </html>
+
+
+
+
+
+

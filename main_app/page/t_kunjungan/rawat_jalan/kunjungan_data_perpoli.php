@@ -1,4 +1,4 @@
-<?php require_once('../config/koneksi.php'); ?>
+<?php require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php'; ?>
 <br>
 <div class="row text-left">
 	<div class="col">

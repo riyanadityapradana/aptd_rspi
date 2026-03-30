@@ -1,4 +1,4 @@
-<?php require_once('../config/koneksi.php'); ?>
+<?php require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php'; ?>
 <?php
 // start buffering and suppress on-screen errors to avoid corrupting output
 ob_start();
@@ -6,7 +6,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
 // Try to load Composer autoloader (local first, then rl_app fallback)
-$localVendor = __DIR__ . '/../../../assets/vendor/autoload.php';
+$localVendor = dirname(dirname(dirname(dirname(__DIR__)))) . '/assets/vendor/autoload.php';
 $externalVendor = 'C:\\xampp\\htdocs\\rl_app\\assets\\vendor\\autoload.php';
 if (file_exists($localVendor)) {
 	require $localVendor;

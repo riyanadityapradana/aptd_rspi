@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
 // Try to load Composer autoloader (local first, then rl_app fallback)
-$localVendor = __DIR__ . '/../../../assets/vendor/autoload.php';
+$localVendor = dirname(dirname(dirname(dirname(__DIR__)))) . '/assets/vendor/autoload.php';
 $externalVendor = 'C:\\xampp\\htdocs\\rl_app\\assets\\vendor\\autoload.php';
 if (file_exists($localVendor)) {
     require $localVendor;
@@ -16,7 +16,7 @@ if (file_exists($localVendor)) {
 // Clear any buffered output from autoload/etc.
 if (ob_get_length()) ob_end_clean();
 
-require_once('../config/koneksi.php');
+require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
 $conn = $mysqli;
 
 // Comprehensive poli mapping
@@ -53,6 +53,7 @@ function generateWeeksFromTuesday($year, $month) {
     $last_day = strtotime(date('Y-m-t', $first_day));
     
     $weeks = [];
+    $current = $first_day;
     
     // Find the first Tuesday of the month
     $first_tuesday = $first_day;
@@ -69,7 +70,6 @@ function generateWeeksFromTuesday($year, $month) {
         $week_start = $current;
         $week_end = strtotime("+6 days", $week_start);
         
-        // If week_end goes beyond last day, still use last day (but range is still valid)
         if ($week_end > $last_day) {
             $week_end = $last_day;
         }
@@ -80,13 +80,7 @@ function generateWeeksFromTuesday($year, $month) {
             'label' => date('d', $week_start) . ' - ' . date('d M Y', $week_end)
         ];
         
-        // Move to next Tuesday (7 days from current)
-        $current = strtotime("+7 days", $week_start);
-        
-        // Stop if next Tuesday is beyond the month
-        if ($current > $last_day) {
-            break;
-        }
+        $current = strtotime("+1 day", $week_end);
     }
     
     return $weeks;
@@ -117,10 +111,8 @@ foreach ($mapping_poli as $poli_name => $poli_codes) {
             $sql = "SELECT COUNT(*) as jml FROM reg_periksa rp
                     WHERE rp.kd_poli IN ($poli_codes_str)
                     AND rp.kd_pj = '$kd_pj'
-                    AND rp.stts = 'Sudah'
-                    AND rp.status_bayar = 'Sudah Bayar'
-                    AND rp.no_rkm_medis NOT IN (SELECT no_rkm_medis FROM pasien WHERE LOWER(nm_pasien) LIKE '%test%')
-                    AND DAYOFWEEK(rp.tgl_registrasi) <> 1
+                    AND rp.status_lanjut = 'Ralan'
+                    AND rp.stts <> 'Batal'
                     AND rp.tgl_registrasi BETWEEN '" . $week['start'] . "' AND '" . $week['end'] . "'";
             
             $result = $conn->query($sql);
@@ -222,13 +214,11 @@ foreach ($mapping_poli as $poli_name => $codes) {
 $current_row++;
 
 // Jumlah per jenis bayar row
-$sheet->mergeCells('A' . $current_row . ':B' . $current_row);
+$sheet->mergeCells('A' . $current_row . ':A' . ($current_row + 1));
 $sheet->setCellValue('A' . $current_row, 'JUMLAH PER JENIS BAYAR');
 $sheet->getStyle('A' . $current_row)->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_WHITE));
 $sheet->getStyle('A' . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
 $sheet->getStyle('A' . $current_row)->getFill()->getStartColor()->setARGB('FFFF6B6B');
-$sheet->getStyle('B' . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-$sheet->getStyle('B' . $current_row)->getFill()->getStartColor()->setARGB('FFFF6B6B');
 
 $col_idx = 2;
 foreach ($weeks as $week_idx => $week) {
@@ -240,7 +230,7 @@ foreach ($weeks as $week_idx => $week) {
     $sheet->setCellValue(chr(64 + $col_idx + 1) . $current_row, $bpjs);
     $sheet->setCellValue(chr(64 + $col_idx + 2) . $current_row, $asuransi);
     
-    for ($i = 0; $i < 4; $i++) {
+    for ($i = 0; $i < 3; $i++) {
         $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
         $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFill()->getStartColor()->setARGB('FFFF6B6B');
         $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_WHITE));
@@ -252,13 +242,11 @@ foreach ($weeks as $week_idx => $week) {
 $current_row++;
 
 // Jumlah pasien per minggu row
-$sheet->mergeCells('A' . $current_row . ':B' . $current_row);
+$sheet->mergeCells('A' . $current_row . ':A' . $current_row);
 $sheet->setCellValue('A' . $current_row, 'JUMLAH PX PER MINGGU');
 $sheet->getStyle('A' . $current_row)->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_WHITE));
 $sheet->getStyle('A' . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
 $sheet->getStyle('A' . $current_row)->getFill()->getStartColor()->setARGB('FFFF6B6B');
-$sheet->getStyle('B' . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-$sheet->getStyle('B' . $current_row)->getFill()->getStartColor()->setARGB('FFFF6B6B');
 
 $col_idx = 2;
 foreach ($weeks as $week_idx => $week) {
@@ -285,7 +273,7 @@ for ($col_idx = 2; $col_idx <= (count($weeks) * 4 + 1); $col_idx++) {
 }
 
 // Output
-$filename = 'rekap_kunjungan_ralan_' . date('Ymd_His') . '.xlsx';
+$filename = 'rekap_kunjungan_per_minggu_' . date('Ymd_His') . '.xlsx';
 if (ob_get_length()) ob_end_clean();
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment;filename="'.$filename.'"');
