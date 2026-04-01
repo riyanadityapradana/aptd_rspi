@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once('../config/koneksi.php');
 require_once('../config/akses.php');
@@ -113,6 +113,7 @@ $menuKunjunganRanap = [
     [
         ['page' => 'kunjungan_data_perkamar_ranap', 'label' => 'Kunjungan Pasien Rawat Inap Perkamar'],
         ['page' => 'kunjungan_data_harian_ranap', 'label' => 'Kunjungan Pasien Rawat Inap Harian'],
+        ['page' => 'kunjungan_data_perkelas_bayar_ranap', 'label' => 'Tarikan Rawat Inap Per Jenis Kelas'],
         ['page' => 'top_10_kamar_ranap', 'label' => 'Top 10 Kamar Pasien Tertinggi'],
     ],
     [
@@ -240,3 +241,4 @@ $menuAnalitik = [
         </script>
     </body>
 </html>
+
