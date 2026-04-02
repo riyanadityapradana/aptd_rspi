@@ -21,7 +21,11 @@ $sql = "SELECT b.kd_bangsal, b.nm_bangsal,
         INNER JOIN reg_periksa rp ON ki.no_rawat = rp.no_rawat
         WHERE ki.tgl_masuk BETWEEN ? AND ?
           AND rp.status_lanjut = 'Ranap'
-          AND (ki.stts_pulang IS NULL OR ki.stts_pulang <> 'Pindah Kamar')
+          AND (
+                ki.stts_pulang IS NULL 
+                OR ki.stts_pulang = '-' 
+                OR ki.stts_pulang <> 'Pindah Kamar'
+            )
           $whereExtra
         GROUP BY b.kd_bangsal, b.nm_bangsal
         ORDER BY avg_los DESC, jumlah_pasien DESC";

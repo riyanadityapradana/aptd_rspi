@@ -17,7 +17,11 @@ if ($viewMode === 'bangsal') {
             FROM bangsal b
             INNER JOIN kamar k ON b.kd_bangsal = k.kd_bangsal
             LEFT JOIN kamar_inap ki ON k.kd_kamar = ki.kd_kamar
-                AND (ki.stts_pulang IS NULL OR ki.stts_pulang <> 'Pindah Kamar')
+                AND (
+                    ki.stts_pulang IS NULL 
+                    OR ki.stts_pulang = '-' 
+                    OR ki.stts_pulang <> 'Pindah Kamar'
+                )
             GROUP BY b.kd_bangsal, b.nm_bangsal
             ORDER BY b.nm_bangsal ASC";
 } else {
@@ -32,7 +36,11 @@ if ($viewMode === 'bangsal') {
             FROM kamar k
             INNER JOIN bangsal b ON k.kd_bangsal = b.kd_bangsal
             LEFT JOIN kamar_inap ki ON k.kd_kamar = ki.kd_kamar
-                AND (ki.stts_pulang IS NULL OR ki.stts_pulang <> 'Pindah Kamar')
+                AND (
+                    ki.stts_pulang IS NULL 
+                    OR ki.stts_pulang = '-' 
+                    OR ki.stts_pulang <> 'Pindah Kamar'
+                )
             GROUP BY k.kd_kamar, b.nm_bangsal
             ORDER BY b.nm_bangsal ASC, k.kd_kamar ASC";
 }
