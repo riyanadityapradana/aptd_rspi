@@ -1,25 +1,8 @@
-<?php
-// start buffering and suppress on-screen errors to avoid corrupting output
-ob_start();
-error_reporting(E_ALL);
-ini_set('display_errors', '0');
-
-// Try to load Composer autoloader (local first, then rl_app fallback)
-$localVendor = dirname(dirname(dirname(dirname(__DIR__)))) . '/assets/vendor/autoload.php';
-$externalVendor = 'C:\\xampp\\htdocs\\rl_app\\assets\\vendor\\autoload.php';
-if (file_exists($localVendor)) {
-    require $localVendor;
-} elseif (file_exists($externalVendor)) {
-    require $externalVendor;
-}
-
-// Clear any buffered output from autoload/etc.
-if (ob_get_length()) ob_end_clean();
-
+﻿<?php
+require_once dirname(dirname(__DIR__)) . '/export_excel_helper.php';
 require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
 $conn = $mysqli;
 
-// Comprehensive poli mapping
 $mapping_poli = [
     'GIGI' => ['U0008', 'U0025', 'U0042', 'U0043', 'U0052', 'U0057', 'U0065'],
     'BEDAH' => ['U0002', 'U0004', 'U0015', 'U0054', 'U0066'],
@@ -34,253 +17,131 @@ $mapping_poli = [
     'JANTUNG' => ['U0012', 'U0032'],
     'JIWA' => ['U0013', 'U0018'],
     'ORTHOPEDI' => ['U0014', 'U0016'],
+    'VAKSIN' => ['U0053'],
+    'MCU' => ['U0071'],
+    'HEMODIALISA' => ['U0023'],
+    'IGD' => ['IGDK', 'U0009', 'U0013'],
 ];
 
-// Mapping jenis pembayar
-$penjamin = [
-    'A09' => 'UMUM',
-    'BPJ' => 'BPJS',
-    'A92' => 'ASURANSI',
-];
+$penjamin = ['A09' => 'UMUM', 'BPJ' => 'BPJS', 'A92' => 'ASURANSI'];
+$filter_month = isset($_POST['bulan']) ? (int) $_POST['bulan'] : (int) date('n');
+$filter_year = isset($_POST['tahun']) ? (int) $_POST['tahun'] : (int) date('Y');
+$monthNames = [1=>'Januari',2=>'Februari',3=>'Maret',4=>'April',5=>'Mei',6=>'Juni',7=>'Juli',8=>'Agustus',9=>'September',10=>'Oktober',11=>'November',12=>'Desember'];
 
-// Read filter values from POST
-$filter_month = isset($_POST['bulan']) ? intval($_POST['bulan']) : date('n');
-$filter_year = isset($_POST['tahun']) ? intval($_POST['tahun']) : date('Y');
-
-// Generate weeks for the month (Tuesday to Tuesday)
-function generateWeeksFromTuesday($year, $month) {
-    $first_day = strtotime("$year-$month-01");
+function generateWeeksFromTuesdayExport($year, $month)
+{
+    $first_day = strtotime($year . '-' . $month . '-01');
     $last_day = strtotime(date('Y-m-t', $first_day));
-    
     $weeks = [];
-    $current = $first_day;
-    
-    // Find the first Tuesday of the month
     $first_tuesday = $first_day;
-    $day_of_week = date('w', $first_tuesday); // 0=Sunday, 2=Tuesday
-    
+    $day_of_week = date('w', $first_tuesday);
     if ($day_of_week != 2) {
-        // If not Tuesday, find the next Tuesday
         $days_until_tuesday = ($day_of_week <= 2) ? (2 - $day_of_week) : (9 - $day_of_week);
-        $first_tuesday = strtotime("+$days_until_tuesday days", $first_tuesday);
+        $first_tuesday = strtotime('+' . $days_until_tuesday . ' days', $first_tuesday);
     }
-    
     $current = $first_tuesday;
     while ($current <= $last_day) {
         $week_start = $current;
-        $week_end = strtotime("+6 days", $week_start);
-        
+        $week_end = strtotime('+6 days', $week_start);
         if ($week_end > $last_day) {
             $week_end = $last_day;
         }
-        
         $weeks[] = [
             'start' => date('Y-m-d', $week_start),
             'end' => date('Y-m-d', $week_end),
-            'label' => date('d', $week_start) . ' - ' . date('d M Y', $week_end)
+            'label' => date('d', $week_start) . ' - ' . date('d M Y', $week_end),
         ];
-        
-        $current = strtotime("+1 day", $week_end);
+        $current = strtotime('+7 days', $week_start);
+        if ($current > $last_day) {
+            break;
+        }
     }
-    
     return $weeks;
 }
 
-$weeks = generateWeeksFromTuesday($filter_year, $filter_month);
-
-// Query data untuk semua minggu dan semua poli
-$data_by_poli = [];
-$totals_by_penjamin = ['A09' => 0, 'BPJ' => 0, 'A92' => 0];
-$totals_by_week = [];
+$weeks = generateWeeksFromTuesdayExport($filter_year, $filter_month);
+$dataRows = [];
+$weeklyLabels = [];
+$weeklyTotals = [];
+$weeklyUmum = [];
+$weeklyBpjs = [];
+$weeklyAsuransi = [];
 
 foreach ($mapping_poli as $poli_name => $poli_codes) {
-    $data_by_poli[$poli_name] = [];
-    
+    $row = ['Poliklinik' => $poli_name];
     foreach ($weeks as $week_idx => $week) {
-        if (!isset($totals_by_week[$week_idx])) {
-            $totals_by_week[$week_idx] = ['A09' => 0, 'BPJ' => 0, 'A92' => 0];
-        }
-        
-        $poli_codes_str = "'" . implode("','", array_map(function($v) use ($conn) {
+        $poli_codes_str = "'" . implode("','", array_map(function ($v) use ($conn) {
             return $conn->real_escape_string($v);
         }, $poli_codes)) . "'";
-        
-        $data_by_poli[$poli_name][$week_idx] = [];
-        
+        $umum = 0;
+        $bpjs = 0;
+        $asuransi = 0;
         foreach ($penjamin as $kd_pj => $label) {
-            $sql = "SELECT COUNT(*) as jml FROM reg_periksa rp
-                    WHERE rp.kd_poli IN ($poli_codes_str)
-                    AND rp.kd_pj = '$kd_pj'
-                    AND rp.status_lanjut = 'Ralan'
-                    AND rp.stts <> 'Batal'
-                    AND rp.tgl_registrasi BETWEEN '" . $week['start'] . "' AND '" . $week['end'] . "'";
-            
+            $sql = "SELECT COUNT(*) AS jml FROM reg_periksa rp
+                WHERE rp.kd_poli IN ($poli_codes_str)
+                  AND rp.kd_pj = '$kd_pj'
+                  AND rp.stts = 'Sudah'
+                  AND rp.status_bayar = 'Sudah Bayar'
+                  AND rp.no_rkm_medis NOT IN (SELECT no_rkm_medis FROM pasien WHERE LOWER(nm_pasien) LIKE '%test%')
+                  AND DAYOFWEEK(rp.tgl_registrasi) <> 1
+                  AND rp.tgl_registrasi BETWEEN '" . $week['start'] . "' AND '" . $week['end'] . "'";
             $result = $conn->query($sql);
-            $row = $result->fetch_assoc();
-            $jml = isset($row['jml']) ? (int)$row['jml'] : 0;
-            
-            $data_by_poli[$poli_name][$week_idx][$kd_pj] = $jml;
-            $totals_by_penjamin[$kd_pj] += $jml;
-            $totals_by_week[$week_idx][$kd_pj] += $jml;
+            $count = 0;
+            if ($result) {
+                $item = $result->fetch_assoc();
+                $count = isset($item['jml']) ? (int) $item['jml'] : 0;
+            }
+            if ($kd_pj === 'A09') { $umum = $count; }
+            if ($kd_pj === 'BPJ') { $bpjs = $count; }
+            if ($kd_pj === 'A92') { $asuransi = $count; }
         }
+        $row[$week['label'] . ' UMUM'] = $umum;
+        $row[$week['label'] . ' BPJS'] = $bpjs;
+        $row[$week['label'] . ' ASURANSI'] = $asuransi;
+        $row[$week['label'] . ' JLH'] = $umum + $bpjs + $asuransi;
     }
+    $dataRows[] = array_values($row);
 }
 
-// Create spreadsheet
-$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-$sheet = $spreadsheet->getActiveSheet();
-
-// Title
-$title_col_end = chr(64 + (count($weeks) * 4 + 1));
-$sheet->mergeCells('A1:' . $title_col_end . '1');
-$sheet->setCellValue('A1', 'REKAP KUNJUNGAN PASIEN HARIAN RAWAT JALAN');
-$sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-$sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-
-// Period info
-$sheet->mergeCells('A2:' . $title_col_end . '2');
-$months = [1=>"Januari",2=>"Februari",3=>"Maret",4=>"April",5=>"Mei",6=>"Juni",7=>"Juli",8=>"Agustus",9=>"September",10=>"Oktober",11=>"November",12=>"Desember"];
-$period_text = $months[$filter_month] . ' ' . $filter_year;
-$sheet->setCellValue('A2', 'Bulan: ' . $period_text);
-$sheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-
-// Header rows
-$current_row = 4;
-$sheet->setCellValue('A' . $current_row, 'POLIKLINIK');
-
-$col_idx = 2;
-$col_letter = 'B';
+$headers = ['Poliklinik'];
 foreach ($weeks as $week) {
-    $sheet->mergeCells($col_letter . $current_row . ':' . chr(64 + $col_idx + 3) . $current_row);
-    $sheet->setCellValue($col_letter . $current_row, $week['label']);
-    $sheet->getStyle($col_letter . $current_row)->getFont()->setBold(true);
-    $sheet->getStyle($col_letter . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-    $sheet->getStyle($col_letter . $current_row)->getFill()->getStartColor()->setARGB('FFFFFF00');
-    
-    $col_idx += 4;
-    $col_letter = chr(64 + $col_idx + 1);
+    $headers[] = $week['label'] . ' UMUM';
+    $headers[] = $week['label'] . ' BPJS';
+    $headers[] = $week['label'] . ' ASURANSI';
+    $headers[] = $week['label'] . ' JLH';
+
+    $sql = "SELECT 
+        SUM(CASE WHEN rp.kd_pj='A09' THEN 1 ELSE 0 END) AS umum,
+        SUM(CASE WHEN rp.kd_pj='BPJ' THEN 1 ELSE 0 END) AS bpjs,
+        SUM(CASE WHEN rp.kd_pj='A92' THEN 1 ELSE 0 END) AS asuransi
+        FROM reg_periksa rp
+        WHERE rp.stts = 'Sudah'
+          AND rp.status_bayar = 'Sudah Bayar'
+          AND rp.no_rkm_medis NOT IN (SELECT no_rkm_medis FROM pasien WHERE LOWER(nm_pasien) LIKE '%test%')
+          AND DAYOFWEEK(rp.tgl_registrasi) <> 1
+          AND rp.tgl_registrasi BETWEEN '" . $week['start'] . "' AND '" . $week['end'] . "'";
+    $result = $conn->query($sql);
+    $summary = $result ? $result->fetch_assoc() : ['umum' => 0, 'bpjs' => 0, 'asuransi' => 0];
+    $weeklyLabels[] = $week['label'];
+    $weeklyUmum[] = (int) $summary['umum'];
+    $weeklyBpjs[] = (int) $summary['bpjs'];
+    $weeklyAsuransi[] = (int) $summary['asuransi'];
+    $weeklyTotals[] = (int) $summary['umum'] + (int) $summary['bpjs'] + (int) $summary['asuransi'];
 }
 
-// Sub-header row
-$current_row++;
-$sheet->setCellValue('A' . $current_row, '');
+list($spreadsheet, $sheet) = aptd_excel_create(
+    'REKAP KUNJUNGAN PASIEN HARIAN RAWAT JALAN',
+    'Periode: ' . $monthNames[$filter_month] . ' ' . $filter_year,
+    'Data'
+);
+aptd_excel_render_table($sheet, $headers, $dataRows, 4);
 
-$col_idx = 2;
-foreach ($weeks as $week) {
-    $sheet->setCellValue(chr(64 + $col_idx) . $current_row, 'UMUM');
-    $sheet->setCellValue(chr(64 + $col_idx + 1) . $current_row, 'BPJS');
-    $sheet->setCellValue(chr(64 + $col_idx + 2) . $current_row, 'ASURANSI');
-    $sheet->setCellValue(chr(64 + $col_idx + 3) . $current_row, 'JLH');
-    
-    for ($i = 0; $i < 4; $i++) {
-        $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFont()->setBold(true);
-        $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-        $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFill()->getStartColor()->setARGB('FFFFFF00');
-    }
-    
-    $col_idx += 4;
+$summaryRows = [];
+for ($i = 0; $i < count($weeklyLabels); $i++) {
+    $summaryRows[] = [$weeklyLabels[$i], $weeklyUmum[$i], $weeklyBpjs[$i], $weeklyAsuransi[$i], $weeklyTotals[$i]];
 }
+aptd_excel_add_sheet($spreadsheet, 'Ringkasan Minggu', 'Ringkasan Per Minggu', ['Minggu', 'UMUM', 'BPJS', 'ASURANSI', 'TOTAL'], $summaryRows, 'Sumber grafik mingguan');
+aptd_excel_add_bar_chart_sheet($spreadsheet, 'Grafik Minggu', 'Total Pasien Per Minggu', 'Minggu', $weeklyLabels, ['Total Pasien' => $weeklyTotals], false);
+aptd_excel_add_bar_chart_sheet($spreadsheet, 'Grafik Bayar', 'Komposisi Pembayaran Per Minggu', 'Minggu', $weeklyLabels, ['UMUM' => $weeklyUmum, 'BPJS' => $weeklyBpjs, 'ASURANSI' => $weeklyAsuransi], false);
 
-// Data rows
-$current_row++;
-foreach ($mapping_poli as $poli_name => $codes) {
-    $sheet->setCellValue('A' . $current_row, $poli_name);
-    $sheet->getStyle('A' . $current_row)->getFont()->setBold(true);
-    
-    $col_idx = 2;
-    foreach ($weeks as $week_idx => $week) {
-        $umum = isset($data_by_poli[$poli_name][$week_idx]['A09']) ? $data_by_poli[$poli_name][$week_idx]['A09'] : 0;
-        $bpjs = isset($data_by_poli[$poli_name][$week_idx]['BPJ']) ? $data_by_poli[$poli_name][$week_idx]['BPJ'] : 0;
-        $asuransi = isset($data_by_poli[$poli_name][$week_idx]['A92']) ? $data_by_poli[$poli_name][$week_idx]['A92'] : 0;
-        $total = $umum + $bpjs + $asuransi;
-        
-        $sheet->setCellValue(chr(64 + $col_idx) . $current_row, $umum);
-        $sheet->setCellValue(chr(64 + $col_idx + 1) . $current_row, $bpjs);
-        $sheet->setCellValue(chr(64 + $col_idx + 2) . $current_row, $asuransi);
-        $sheet->setCellValue(chr(64 + $col_idx + 3) . $current_row, $total);
-        
-        // Style total cell
-        $sheet->getStyle(chr(64 + $col_idx + 3) . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-        $sheet->getStyle(chr(64 + $col_idx + 3) . $current_row)->getFill()->getStartColor()->setARGB('FFFFFF99');
-        $sheet->getStyle(chr(64 + $col_idx + 3) . $current_row)->getFont()->setBold(true);
-        
-        $col_idx += 4;
-    }
-    
-    $current_row++;
-}
-
-// Summary rows
-$current_row++;
-
-// Jumlah per jenis bayar row
-$sheet->mergeCells('A' . $current_row . ':A' . ($current_row + 1));
-$sheet->setCellValue('A' . $current_row, 'JUMLAH PER JENIS BAYAR');
-$sheet->getStyle('A' . $current_row)->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_WHITE));
-$sheet->getStyle('A' . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-$sheet->getStyle('A' . $current_row)->getFill()->getStartColor()->setARGB('FFFF6B6B');
-
-$col_idx = 2;
-foreach ($weeks as $week_idx => $week) {
-    $umum = isset($totals_by_week[$week_idx]['A09']) ? $totals_by_week[$week_idx]['A09'] : 0;
-    $bpjs = isset($totals_by_week[$week_idx]['BPJ']) ? $totals_by_week[$week_idx]['BPJ'] : 0;
-    $asuransi = isset($totals_by_week[$week_idx]['A92']) ? $totals_by_week[$week_idx]['A92'] : 0;
-    
-    $sheet->setCellValue(chr(64 + $col_idx) . $current_row, $umum);
-    $sheet->setCellValue(chr(64 + $col_idx + 1) . $current_row, $bpjs);
-    $sheet->setCellValue(chr(64 + $col_idx + 2) . $current_row, $asuransi);
-    
-    for ($i = 0; $i < 3; $i++) {
-        $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-        $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFill()->getStartColor()->setARGB('FFFF6B6B');
-        $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_WHITE));
-    }
-    
-    $col_idx += 4;
-}
-
-$current_row++;
-
-// Jumlah pasien per minggu row
-$sheet->mergeCells('A' . $current_row . ':A' . $current_row);
-$sheet->setCellValue('A' . $current_row, 'JUMLAH PX PER MINGGU');
-$sheet->getStyle('A' . $current_row)->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_WHITE));
-$sheet->getStyle('A' . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-$sheet->getStyle('A' . $current_row)->getFill()->getStartColor()->setARGB('FFFF6B6B');
-
-$col_idx = 2;
-foreach ($weeks as $week_idx => $week) {
-    $total_minggu = (isset($totals_by_week[$week_idx]['A09']) ? $totals_by_week[$week_idx]['A09'] : 0) +
-                   (isset($totals_by_week[$week_idx]['BPJ']) ? $totals_by_week[$week_idx]['BPJ'] : 0) +
-                   (isset($totals_by_week[$week_idx]['A92']) ? $totals_by_week[$week_idx]['A92'] : 0);
-    
-    $sheet->mergeCells(chr(64 + $col_idx) . $current_row . ':' . chr(64 + $col_idx + 3) . $current_row);
-    $sheet->setCellValue(chr(64 + $col_idx) . $current_row, $total_minggu);
-    
-    for ($i = 0; $i < 4; $i++) {
-        $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-        $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFill()->getStartColor()->setARGB('FFFF6B6B');
-        $sheet->getStyle(chr(64 + $col_idx + $i) . $current_row)->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_WHITE));
-    }
-    
-    $col_idx += 4;
-}
-
-// Set column widths
-$sheet->getColumnDimension('A')->setWidth(20);
-for ($col_idx = 2; $col_idx <= (count($weeks) * 4 + 1); $col_idx++) {
-    $sheet->getColumnDimension(chr(64 + $col_idx))->setWidth(12);
-}
-
-// Output
-$filename = 'rekap_kunjungan_per_minggu_' . date('Ymd_His') . '.xlsx';
-if (ob_get_length()) ob_end_clean();
-header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-header('Content-Disposition: attachment;filename="'.$filename.'"');
-header('Cache-Control: max-age=0');
-
-$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-$writer->save('php://output');
-exit();
-?>
-
+aptd_excel_output($spreadsheet, 'rekap_kunjungan_per_minggu_' . date('Ymd_His') . '.xlsx');

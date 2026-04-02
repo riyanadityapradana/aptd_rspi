@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 function aptd_get_routes()
 {
     return [
@@ -10,6 +10,8 @@ function aptd_get_routes()
         'kunjungan_data_perpoli' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_perpoli.php',
         'kunjungan_data_per_minggu' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_per_minggu.php',
         'top_10_poli_ralan' => 'page/t_kunjungan/rawat_jalan/top_10_poli_ralan.php',
+        'waktu_tunggu_poli_ralan' => 'page/t_kunjungan/rawat_jalan/waktu_tunggu_poli_ralan.php',
+        'waktu_tunggu_registrasi_perawat_ralan' => 'page/t_kunjungan/rawat_jalan/waktu_tunggu_registrasi_perawat_ralan.php',
         'export_kunjungan' => 'page/t_kunjungan/rawat_jalan/export_kunjungan.php',
         'export_kunjungan_ralan' => 'page/t_kunjungan/rawat_jalan/export_kunjungan_ralan.php',
         'export_kunjungan_per_minggu' => 'page/t_kunjungan/rawat_jalan/export_kunjungan_per_minggu.php',
@@ -55,6 +57,8 @@ function aptd_get_access_map()
         'admin' => ['*'],
         'manajemen' => [
             'beranda', 'kunjungan_data_ralan', 'kunjungan_data_perpoli', 'kunjungan_data_per_minggu', 'top_10_poli_ralan',
+            'waktu_tunggu_poli_ralan',
+            'waktu_tunggu_registrasi_perawat_ralan',
             'kunjungan_data_perkab_ralan', 'kunjungan_data_blmSEP', 'kunjungan_data_sdhSEP', 'kunjungan_data_berdasarkanusia_ralan',
             'kunjungan_data_perkamar_ranap', 'kunjungan_data_harian_ranap', 'kunjungan_data_perkelas_bayar_ranap', 'top_10_kamar_ranap', 'kunjungan_data_berdasarkanusia_ranap',
             'export_kunjungan', 'export_kunjungan_ralan', 'export_kunjungan_per_minggu', 'export_kunjungan_perkab', 'export_blmSEP', 'export_sdhSEP', 'export_top_10_poli_ralan', 'export_kunjungan_perkamar_usia_ranap', 'export_kunjungan_harian_ranap', 'export_kunjungan_perkelas_bayar_ranap', 'export_top_10_kamar_ranap',
@@ -65,6 +69,8 @@ function aptd_get_access_map()
         ],
         'kepegawaian' => [
             'beranda', 'kunjungan_data_ralan', 'kunjungan_data_perpoli', 'kunjungan_data_per_minggu', 'top_10_poli_ralan',
+            'waktu_tunggu_poli_ralan',
+            'waktu_tunggu_registrasi_perawat_ralan',
             'kunjungan_data_berdasarkanusia_ralan', 'kunjungan_data_perkamar_ranap', 'kunjungan_data_harian_ranap', 'kunjungan_data_perkelas_bayar_ranap', 'top_10_kamar_ranap',
             'kunjungan_data_berdasarkanusia_ranap', 'export_kunjungan', 'export_kunjungan_ralan', 'export_kunjungan_per_minggu', 'export_blmSEP', 'export_sdhSEP', 'export_top_10_poli_ralan', 'export_kunjungan_perkamar_usia_ranap', 'export_kunjungan_harian_ranap', 'export_kunjungan_perkelas_bayar_ranap', 'export_top_10_kamar_ranap',
             'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'los_rawat_inap', 'bor_sederhana', 'kunjungan_wilayah_visual',
@@ -72,6 +78,8 @@ function aptd_get_access_map()
         'medis' => ['beranda', 'diare_data', 'export_diare'],
         'non medis' => [
             'beranda', 'diare_data', 'kunjungan_data_ralan', 'kunjungan_data_perpoli', 'kunjungan_data_per_minggu', 'top_10_poli_ralan',
+            'waktu_tunggu_poli_ralan',
+            'waktu_tunggu_registrasi_perawat_ralan',
             'kunjungan_data_perkab_ralan', 'kunjungan_data_berdasarkanusia_ralan', 'export_diare', 'export_kunjungan',
             'export_kunjungan_ralan', 'export_kunjungan_per_minggu', 'export_kunjungan_perkab',
             'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'kunjungan_wilayah_visual', 'pasien_rujukan_masuk_keluar',
@@ -91,6 +99,9 @@ function aptd_can_access($level, $page)
 
     return in_array('*', $accessMap[$level], true) || in_array($page, $accessMap[$level], true);
 }
+
+
+
 
 
 
