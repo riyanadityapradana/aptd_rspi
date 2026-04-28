@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 if (isset($_SESSION['login_aptd_rspi']) && $_SESSION['login_aptd_rspi'] === true) {
@@ -392,7 +392,7 @@ unset(
                             <button type="submit" class="btn btn-login">Masuk ke Aplikasi</button>
                         </form>
                         <div class="login-actions">
-                            <button type="button" class="btn-link-action" data-toggle="modal" data-target="#modalBuatAkun">Buat Account</button>
+                            <button type="button" class="btn-link-action" data-toggle="modal" data-target="#modalBuatAkun">Buat Account</button> -->
                         </div>
                         <div class="login-footer">RSPI | Sistem Tarikan Data Pelayanan</div>
                     </div>
@@ -439,7 +439,7 @@ unset(
                             <label for="register_level">Level</label>
                             <select class="form-control" id="register_level" name="level" required>
                                 <?php
-                                $opsiLevel = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users'];
+                                $opsiLevel = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis'];
                                 foreach ($opsiLevel as $opsi):
                                     $selected = $registerOld['level'] === $opsi ? 'selected' : '';
                                 ?>
@@ -471,3 +471,5 @@ unset(
     </script>
 </body>
 </html>
+
+

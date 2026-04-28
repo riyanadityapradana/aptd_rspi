@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 function aptd_get_routes()
 {
     return [
@@ -48,6 +48,7 @@ function aptd_get_routes()
         'bor_sederhana' => 'page/t_analitik/rawat_inap/bor_sederhana.php',
         'pasien_rujukan_masuk_keluar' => 'page/t_analitik/umum/pasien_rujukan_masuk_keluar.php',
         'kunjungan_wilayah_visual' => 'page/t_analitik/wilayah/kunjungan_wilayah_visual.php',
+        'rl32_ranap' => 'page/t_rl_32/rl_32_ranap.php',
     ];
 }
 
@@ -85,6 +86,7 @@ function aptd_get_access_map()
             'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'kunjungan_wilayah_visual', 'pasien_rujukan_masuk_keluar',
         ],
         'users' => ['beranda'],
+        'rekammedis' => ['beranda', 'rl32_ranap'],
     ];
 }
 
@@ -99,6 +101,7 @@ function aptd_can_access($level, $page)
 
     return in_array('*', $accessMap[$level], true) || in_array($page, $accessMap[$level], true);
 }
+
 
 
 

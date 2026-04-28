@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once('../config/koneksi.php');
 
@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users'];
+$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis'];
 
 $namaLengkap = isset($_POST['nama_lengkap']) ? trim($_POST['nama_lengkap']) : '';
 $username = isset($_POST['username']) ? trim($_POST['username']) : '';
@@ -86,3 +86,5 @@ $_SESSION['register_success'] = 'Account berhasil dibuat. Silakan login mengguna
 header('Location: login.php');
 exit;
 ?>
+
+

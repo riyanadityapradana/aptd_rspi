@@ -10,6 +10,9 @@ Aplikasi ini memakai alur sederhana seperti berikut:
    Menampilkan form login dan form buat account.
 3. `login/proses_login.php`
    Mengecek username dan password, lalu menyimpan data user ke `$_SESSION`.
+   Untuk username dan password admin :
+   username : admin
+   password : admin123
 4. `main_app/main_app.php`
    Menampilkan layout utama aplikasi dan menu navigasi.
 5. `main_app/content.php`

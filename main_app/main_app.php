@@ -125,6 +125,9 @@ $menuKunjunganRanap = [
     [
         ['page' => 'kunjungan_data_berdasarkanusia_ranap', 'label' => 'Kunjungan Pasien Rawat Inap Berdasarkan Usia'],
     ],
+    [
+        ['page' => 'rl32_ranap', 'label' => 'RL 3.2 Ranap'],
+    ],
 ];
 
 $menuPenyakit = [
@@ -243,6 +246,8 @@ $menuAnalitik = [
         </script>
     </body>
 </html>
+
+
 
 
 
