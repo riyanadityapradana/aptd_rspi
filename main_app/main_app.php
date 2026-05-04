@@ -108,6 +108,7 @@ $menuKunjunganRalan = [
     ],
     [
         ['page' => 'kunjungan_data_berdasarkanusia_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Berdasarkan Usia'],
+        ['page' => 'kunjungan_data_kecamatan_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Berdasarkan Kecamatan'],
     ],
 ];
 
@@ -124,6 +125,7 @@ $menuKunjunganRanap = [
     ],
     [
         ['page' => 'kunjungan_data_berdasarkanusia_ranap', 'label' => 'Kunjungan Pasien Rawat Inap Berdasarkan Usia'],
+        ['page' => 'kunjungan_data_kecamatan_ranap', 'label' => 'Kunjungan Pasien Rawat Inap Berdasarkan Kecamatan'],
     ],
     [
         ['page' => 'rl32_ranap', 'label' => 'RL 3.2 Ranap'],
@@ -246,8 +248,3 @@ $menuAnalitik = [
         </script>
     </body>
 </html>
-
-
-
-
-
