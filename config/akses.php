@@ -45,6 +45,8 @@ function aptd_get_routes()
         'export_kode_penyakit' => 'page/t_kode_penyakit/export_kode_penyakit.php',
         'data_pasien_kode_penyakit_bedah_ranap' => 'page/t_kode_penyakit/rawat_inap/data_pasien_kode_penyakit_bedah_ranap.php',
         'data_pasien_kode_penyakit_non_bedah_ranap' => 'page/t_kode_penyakit/rawat_inap/data_pasien_kode_penyakit_non_bedah_ranap.php',
+        'kode_penyakit_ab_ranap' => 'page/t_kode_penyakit/rawat_inap/kode_penyakit_ab_ranap.php',
+        'export_kode_penyakit_ab_ranap' => 'page/t_kode_penyakit/rawat_inap/export_kode_penyakit_ab_ranap.php',
 
         'rekap_pasien_baru_lama' => 'page/t_analitik/umum/rekap_pasien_baru_lama.php',
         'top_10_dokter_pasien' => 'page/t_analitik/umum/top_10_dokter_pasien.php',
@@ -80,7 +82,7 @@ function aptd_get_access_map()
             'kunjungan_data_berdasarkanusia_ranap', 'kunjungan_data_kecamatan_ranap', 'export_kunjungan_kecamatan_ranap', 'export_kunjungan', 'export_kunjungan_ralan', 'export_kunjungan_per_minggu', 'export_blmSEP', 'export_sdhSEP', 'export_top_10_poli_ralan', 'export_kunjungan_perkamar_usia_ranap', 'export_kunjungan_harian_ranap', 'export_kunjungan_perkelas_bayar_ranap', 'export_top_10_kamar_ranap',
             'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'los_rawat_inap', 'bor_sederhana', 'kunjungan_wilayah_visual',
         ],
-        'medis' => ['beranda', 'diare_data', 'export_diare'],
+        'medis' => ['beranda', 'diare_data', 'export_diare', 'kode_penyakit_ab_ranap', 'export_kode_penyakit_ab_ranap'],
         'non medis' => [
             'beranda', 'diare_data', 'kunjungan_data_ralan', 'kunjungan_data_perpoli', 'kunjungan_data_per_minggu', 'top_10_poli_ralan',
             //'waktu_tunggu_poli_ralan',
@@ -105,3 +107,4 @@ function aptd_can_access($level, $page)
 
     return in_array('*', $accessMap[$level], true) || in_array($page, $accessMap[$level], true);
 }
+

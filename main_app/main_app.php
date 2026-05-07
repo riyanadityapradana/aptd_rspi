@@ -148,6 +148,7 @@ $menuPenyakit = [
         ['page' => 'data_pasien_kode_penyakit_non_bedah_ralan', 'label' => 'Data Pasien Kode Penyakit Non Bedah Ralan'],
         ['page' => 'data_pasien_kode_penyakit_bedah_ranap', 'label' => 'Data Pasien Kode Penyakit Bedah Ranap'],
         ['page' => 'data_pasien_kode_penyakit_non_bedah_ranap', 'label' => 'Data Pasien Kode Penyakit Non Bedah Ranap'],
+        ['page' => 'kode_penyakit_ab_ranap', 'label' => 'Rekap Kode Penyakit A/B Rawat Inap'],
     ],
 ];
 
@@ -248,3 +249,4 @@ $menuAnalitik = [
         </script>
     </body>
 </html>
+
