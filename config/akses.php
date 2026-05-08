@@ -71,7 +71,7 @@ function aptd_get_access_map()
             'export_kunjungan', 'export_kunjungan_ralan', 'export_kunjungan_per_minggu', 'export_kunjungan_perkab', 'export_blmSEP', 'export_sdhSEP', 'export_top_10_poli_ralan', 'export_kunjungan_perkamar_usia_ranap', 'export_kunjungan_harian_ranap', 'export_kunjungan_perkelas_bayar_ranap', 'export_top_10_kamar_ranap',
             '10_penyakit_ralan', '10_penyakit_bedah_ralan', '10_penyakit_non_bedah_ralan',
             '10_penyakit_ranap', '10_penyakit_bedah_ranap', '10_penyakit_non_bedah_ranap',
-            'data_pasien_kode_penyakit_bedah_ralan', 'data_pasien_kode_penyakit_non_bedah_ralan', 'data_pasien_kode_penyakit_bedah_ranap', 'data_pasien_kode_penyakit_non_bedah_ranap', 'export_kode_penyakit',
+            'data_pasien_kode_penyakit_bedah_ralan', 'data_pasien_kode_penyakit_non_bedah_ralan', 'data_pasien_kode_penyakit_bedah_ranap', 'data_pasien_kode_penyakit_non_bedah_ranap', 'kode_penyakit_ab_ranap', 'export_kode_penyakit_ab_ranap', 'export_kode_penyakit',
             'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'los_rawat_inap', 'bor_sederhana', 'pasien_rujukan_masuk_keluar', 'kunjungan_wilayah_visual',
         ],
         'kepegawaian' => [
@@ -107,4 +107,3 @@ function aptd_can_access($level, $page)
 
     return in_array('*', $accessMap[$level], true) || in_array($page, $accessMap[$level], true);
 }
-
