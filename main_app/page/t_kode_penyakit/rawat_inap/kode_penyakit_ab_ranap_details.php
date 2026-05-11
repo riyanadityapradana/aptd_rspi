@@ -5,6 +5,15 @@ header('Content-Type: application/json; charset=UTF-8');
 require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
 require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/akses.php';
 
+function kode_penyakit_ab_bind_params($stmt, $types, array $params)
+{
+    $bind = array($types);
+    foreach ($params as $key => $value) {
+        $bind[] = &$params[$key];
+    }
+    return call_user_func_array(array($stmt, 'bind_param'), $bind);
+}
+
 if (!isset($_SESSION['login_aptd_rspi']) || $_SESSION['login_aptd_rspi'] !== true) {
     http_response_code(403);
     echo json_encode(array('status' => 'error', 'message' => 'Akses ditolak. Silakan login terlebih dahulu.'));
@@ -23,7 +32,7 @@ $kodePenyakit = isset($_GET['kd_penyakit']) ? strtoupper(trim((string) $_GET['kd
 $tglAwal = isset($_GET['tgl_awal']) ? trim((string) $_GET['tgl_awal']) : '';
 $tglAkhir = isset($_GET['tgl_akhir']) ? trim((string) $_GET['tgl_akhir']) : '';
 
-if (($kategori !== 'ANAK' && $kategori !== 'DEWASA') || $kodePenyakit === '' || $tglAwal === '' || $tglAkhir === '') {
+if (($kategori !== 'ANAK' && $kategori !== 'DEWASA') || $tglAwal === '' || $tglAkhir === '') {
     echo json_encode(array('status' => 'error', 'message' => 'Parameter rincian tidak lengkap.'));
     exit;
 }
@@ -51,7 +60,6 @@ $sql = "SELECT DISTINCT
             GROUP BY no_rawat
         ) ki_info ON rp.no_rawat = ki_info.no_rawat
         WHERE dp.prioritas = '1'
-          AND dp.kd_penyakit = ?
           AND DATE(rp.tgl_registrasi) BETWEEN ? AND ?
           AND rp.status_lanjut = 'Ranap'
           AND LOWER(ps.nm_pasien) NOT LIKE '%test%'
@@ -60,13 +68,21 @@ $sql = "SELECT DISTINCT
           AND TIMESTAMPDIFF(YEAR, ps.tgl_lahir, rp.tgl_registrasi) " . ($kategori === 'ANAK' ? "< 18" : ">= 18") . "
         ORDER BY ps.nm_pasien ASC, rp.no_rawat ASC";
 
+$params = array($tglAwal, $tglAkhir);
+$types = 'ss';
+if ($kodePenyakit !== '') {
+    $sql = str_replace('AND DATE(rp.tgl_registrasi) BETWEEN ? AND ?', 'AND dp.kd_penyakit = ? AND DATE(rp.tgl_registrasi) BETWEEN ? AND ?', $sql);
+    array_unshift($params, $kodePenyakit);
+    $types = 'sss';
+}
+
 $stmt = $mysqli->prepare($sql);
 if (!$stmt) {
     echo json_encode(array('status' => 'error', 'message' => 'Gagal menyiapkan query rincian: ' . $mysqli->error));
     exit;
 }
 
-$stmt->bind_param('sss', $kodePenyakit, $tglAwal, $tglAkhir);
+kode_penyakit_ab_bind_params($stmt, $types, $params);
 if (!$stmt->execute()) {
     echo json_encode(array('status' => 'error', 'message' => 'Gagal mengeksekusi query rincian: ' . $stmt->error));
     $stmt->close();

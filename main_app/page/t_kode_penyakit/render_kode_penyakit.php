@@ -136,7 +136,7 @@ $chart_values = array_slice(array_values($unit_summary), 0, 8);
 ?>
 <br>
 <style>
-.kode-wrap{display:grid;gap:18px}.kode-hero,.kode-card,.kode-panel{background:#fff;border:1px solid rgba(120,155,220,.16);box-shadow:0 18px 36px rgba(74,101,145,.10);border-radius:22px}.kode-hero{padding:24px;background:linear-gradient(135deg,#eef7ff,#ffffff 46%,#f3fbf4)}.kode-title{margin:0 0 8px;font-size:34px;font-weight:800;color:#21406c}.kode-sub{margin:0;color:#587192;font-size:14px;max-width:780px}.kode-filter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end;margin-top:18px}.kode-filter .form-control,.kode-filter .btn{border-radius:12px}.kode-filter .btn-primary{background:linear-gradient(135deg,#2e86de,#1f5fae);border:none;height:38px}.kode-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}.kode-card{padding:18px}.kode-card:nth-child(1){background:linear-gradient(135deg,#edf6ff,#fff)}.kode-card:nth-child(2){background:linear-gradient(135deg,#eefcf5,#fff)}.kode-card:nth-child(3){background:linear-gradient(135deg,#fff6ea,#fff)}.kode-card:nth-child(4){background:linear-gradient(135deg,#f5f1ff,#fff)}.kode-k{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#6f84a4}.kode-v{font-size:28px;font-weight:800;color:#1f3f6d;line-height:1.1}.kode-s{margin-top:8px;font-size:12px;color:#60789d}.kode-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,1fr);gap:18px}.kode-panel{padding:20px}.kode-head{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:14px}.kode-h{margin:0;font-size:20px;font-weight:800;color:#1e3d6a}.kode-d{margin:4px 0 0;color:#6f84a4;font-size:13px}.kode-pill{display:inline-flex;padding:8px 12px;border-radius:999px;background:#eaf4ff;color:#2d6ab0;font-size:12px;font-weight:700}.kode-chart{position:relative;min-height:320px}.kode-note{padding:14px 16px;border-radius:16px;background:#fff8e8;border:1px solid #f5db9a;color:#8a6816}.kode-empty{padding:26px;text-align:center;color:#6682a7}@media(max-width:991px){.kode-grid{grid-template-columns:1fr}.kode-filter{grid-template-columns:1fr 1fr}}@media(max-width:576px){.kode-title{font-size:28px}.kode-filter{grid-template-columns:1fr}}
+.kode-wrap{display:grid;gap:18px}.kode-hero,.kode-card,.kode-panel{background:#fff;border:1px solid rgba(120,155,220,.16);box-shadow:0 18px 36px rgba(74,101,145,.10);border-radius:22px}.kode-hero{padding:24px;background:linear-gradient(135deg,#eef7ff,#ffffff 46%,#f3fbf4)}.kode-title{margin:0 0 8px;font-size:34px;font-weight:800;color:#21406c}.kode-sub{margin:0;color:#587192;font-size:14px;max-width:780px}.kode-filter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end;margin-top:18px}.kode-filter .form-control,.kode-filter .btn{border-radius:12px}.kode-filter .btn-primary{background:linear-gradient(135deg,#2e86de,#1f5fae);border:none;height:38px}.kode-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}.kode-card{padding:18px}.kode-card:nth-child(1){background:linear-gradient(135deg,#edf6ff,#fff)}.kode-card:nth-child(2){background:linear-gradient(135deg,#eefcf5,#fff)}.kode-card:nth-child(3){background:linear-gradient(135deg,#fff6ea,#fff)}.kode-card:nth-child(4){background:linear-gradient(135deg,#f5f1ff,#fff)}.kode-k{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#6f84a4}.kode-v{font-size:28px;font-weight:800;color:#1f3f6d;line-height:1.1}.kode-s{margin-top:8px;font-size:12px;color:#60789d}.kode-link{color:#1f5fae;text-decoration:none;cursor:pointer}.kode-link:hover{color:#184b88;text-decoration:underline}.kode-small-link{font-weight:700;color:#1f5fae;text-decoration:none;cursor:pointer}.kode-small-link:hover{text-decoration:underline}.kode-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,1fr);gap:18px}.kode-panel{padding:20px}.kode-head{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:14px}.kode-h{margin:0;font-size:20px;font-weight:800;color:#1e3d6a}.kode-d{margin:4px 0 0;color:#6f84a4;font-size:13px}.kode-pill{display:inline-flex;padding:8px 12px;border-radius:999px;background:#eaf4ff;color:#2d6ab0;font-size:12px;font-weight:700}.kode-chart{position:relative;min-height:320px}.kode-note{padding:14px 16px;border-radius:16px;background:#fff8e8;border:1px solid #f5db9a;color:#8a6816}.kode-empty{padding:26px;text-align:center;color:#6682a7}.kode-modal-head{background:#eef7ff;border-bottom:1px solid rgba(120,155,220,.22)}.kode-modal-table th,.kode-modal-table td{font-size:12px;vertical-align:middle}@media(max-width:991px){.kode-grid{grid-template-columns:1fr}.kode-filter{grid-template-columns:1fr 1fr}}@media(max-width:576px){.kode-title{font-size:28px}.kode-filter{grid-template-columns:1fr}}
 </style>
 <div class="kode-wrap">
     <section class="kode-hero">
@@ -167,9 +167,9 @@ $chart_values = array_slice(array_values($unit_summary), 0, 8);
 
     <section class="kode-cards">
         <div class="kode-card"><div class="kode-k">Kode Penyakit</div><div class="kode-v"><?php echo $kode_penyakit !== '' ? htmlspecialchars($kode_penyakit, ENT_QUOTES, 'UTF-8') : '-'; ?></div><div class="kode-s"><?php echo htmlspecialchars($selectedDiseaseName, ENT_QUOTES, 'UTF-8'); ?></div></div>
-        <div class="kode-card"><div class="kode-k">Total Pasien</div><div class="kode-v"><?php echo number_format($total_pasien, 0, ',', '.'); ?></div><div class="kode-s"><?php echo htmlspecialchars($serviceLabel . ' / ' . $categoryLabel, ENT_QUOTES, 'UTF-8'); ?></div></div>
-        <div class="kode-card"><div class="kode-k">Laki-laki</div><div class="kode-v"><?php echo number_format($total_laki, 0, ',', '.'); ?></div><div class="kode-s">Perempuan: <?php echo number_format($total_perempuan, 0, ',', '.'); ?></div></div>
-        <div class="kode-card"><div class="kode-k">Unit Dominan</div><div class="kode-v"><?php echo !empty($chart_values) ? number_format($chart_values[0], 0, ',', '.') . ' px' : '-'; ?></div><div class="kode-s"><?php echo !empty($chart_labels) ? htmlspecialchars($chart_labels[0], ENT_QUOTES, 'UTF-8') : 'Belum ada data'; ?></div></div>
+        <div class="kode-card"><div class="kode-k">Total Pasien</div><div class="kode-v"><?php if ($total_pasien > 0): ?><a href="#" class="kode-link kode-detail-trigger" data-filter="total" data-title="Total Pasien"><?php echo number_format($total_pasien, 0, ',', '.'); ?></a><?php else: ?>0<?php endif; ?></div><div class="kode-s"><?php echo htmlspecialchars($serviceLabel . ' / ' . $categoryLabel, ENT_QUOTES, 'UTF-8'); ?></div></div>
+        <div class="kode-card"><div class="kode-k">Laki-laki</div><div class="kode-v"><?php if ($total_laki > 0): ?><a href="#" class="kode-link kode-detail-trigger" data-filter="gender" data-gender="L" data-title="Pasien Laki-laki"><?php echo number_format($total_laki, 0, ',', '.'); ?></a><?php else: ?>0<?php endif; ?></div><div class="kode-s">Perempuan: <?php if ($total_perempuan > 0): ?><a href="#" class="kode-small-link kode-detail-trigger" data-filter="gender" data-gender="P" data-title="Pasien Perempuan"><?php echo number_format($total_perempuan, 0, ',', '.'); ?></a><?php else: ?>0<?php endif; ?></div></div>
+        <div class="kode-card"><div class="kode-k">Unit Dominan</div><div class="kode-v"><?php if (!empty($chart_values) && $chart_values[0] > 0): ?><a href="#" class="kode-link kode-detail-trigger" data-filter="unit" data-unit="<?php echo htmlspecialchars($chart_labels[0], ENT_QUOTES, 'UTF-8'); ?>" data-title="Unit Dominan"><?php echo number_format($chart_values[0], 0, ',', '.'); ?> px</a><?php else: ?>-<?php endif; ?></div><div class="kode-s"><?php echo !empty($chart_labels) ? htmlspecialchars($chart_labels[0], ENT_QUOTES, 'UTF-8') : 'Belum ada data'; ?></div></div>
     </section>
 
     <section class="kode-grid">
@@ -245,8 +245,109 @@ $chart_values = array_slice(array_values($unit_summary), 0, 8);
         <?php endif; ?>
     </section>
 </div>
+<div class="modal fade" id="detailModalKodePenyakit" tabindex="-1" role="dialog" aria-labelledby="detailModalKodePenyakitLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header kode-modal-head">
+                <h5 class="modal-title" id="detailModalKodePenyakitLabel">Rincian Data Pasien</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Tutup">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="detailModalKodePenyakitBody">Loading...</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+(function () {
+    const mode = <?php echo json_encode($mode); ?>;
+    const kodePenyakit = <?php echo json_encode($kode_penyakit); ?>;
+    const tglAwal = <?php echo json_encode($tgl_awal); ?>;
+    const tglAkhir = <?php echo json_encode($tgl_akhir); ?>;
+
+    function escapeHtml(value) {
+        return String(value === null || value === undefined ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('click', function (event) {
+        const trigger = event.target.closest('.kode-detail-trigger');
+        if (!trigger) {
+            return;
+        }
+        event.preventDefault();
+
+        const modalLabel = document.getElementById('detailModalKodePenyakitLabel');
+        const modalBody = document.getElementById('detailModalKodePenyakitBody');
+        const title = trigger.getAttribute('data-title') || 'Rincian Data Pasien';
+        if (modalLabel) {
+            modalLabel.textContent = title + ' - ' + kodePenyakit;
+        }
+        if (modalBody) {
+            modalBody.innerHTML = '<div class="text-center p-5">Loading...</div>';
+        }
+        if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+            window.jQuery('#detailModalKodePenyakit').modal('show');
+        }
+
+        const params = new URLSearchParams({
+            mode: mode,
+            kode_penyakit: kodePenyakit,
+            tgl_awal: tglAwal,
+            tgl_akhir: tglAkhir,
+            filter: trigger.getAttribute('data-filter') || 'total',
+            gender: trigger.getAttribute('data-gender') || '',
+            unit: trigger.getAttribute('data-unit') || ''
+        });
+
+        fetch('page/t_kode_penyakit/kode_penyakit_details.php?' + params.toString(), {
+            headers: { 'Accept': 'application/json' }
+        })
+            .then(response => response.json())
+            .then(response => {
+                if (!modalBody) {
+                    return;
+                }
+                if (response.status !== 'success') {
+                    modalBody.innerHTML = '<div class="alert alert-danger">' + escapeHtml(response.message || 'Gagal mengambil data rincian.') + '</div>';
+                    return;
+                }
+                if (!response.data || response.data.length === 0) {
+                    modalBody.innerHTML = '<div class="kode-empty">Tidak ada rincian pasien untuk filter ini.</div>';
+                    return;
+                }
+                let html = '<p class="mb-2"><strong>Total Data Ditemukan: ' + response.data.length + '</strong></p>';
+                html += '<div class="table-responsive"><table class="table table-sm table-bordered table-striped kode-modal-table"><thead><tr>';
+                Object.keys(response.data[0]).forEach(key => {
+                    html += '<th>' + escapeHtml(key) + '</th>';
+                });
+                html += '</tr></thead><tbody>';
+                response.data.forEach(row => {
+                    html += '<tr>';
+                    Object.keys(response.data[0]).forEach(key => {
+                        html += '<td>' + escapeHtml(row[key]) + '</td>';
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div>';
+                modalBody.innerHTML = html;
+            })
+            .catch(error => {
+                if (modalBody) {
+                    modalBody.innerHTML = '<div class="alert alert-danger">Gagal mengambil data rincian. ' + escapeHtml(error.message || '') + '</div>';
+                }
+            });
+    });
+})();
+
 (function () {
     const labels = <?php echo json_encode($chart_labels); ?>;
     const values = <?php echo json_encode($chart_values); ?>;

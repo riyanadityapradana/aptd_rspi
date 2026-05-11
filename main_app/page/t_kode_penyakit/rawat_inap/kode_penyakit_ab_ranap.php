@@ -20,8 +20,8 @@ $dewasa_rows = array();
 $error_message = '';
 $total_anak = 0;
 $total_dewasa = 0;
-$top_anak = array('nama' => '-', 'jumlah' => 0);
-$top_dewasa = array('nama' => '-', 'jumlah' => 0);
+$top_anak = array('kode' => '', 'nama' => '-', 'jumlah' => 0);
+$top_dewasa = array('kode' => '', 'nama' => '-', 'jumlah' => 0);
 $chart_anak_labels = array();
 $chart_anak_values = array();
 $chart_dewasa_labels = array();
@@ -71,10 +71,12 @@ if ($stmt) {
 }
 
 if (!empty($anak_rows)) {
+    $top_anak['kode'] = $anak_rows[0]['kd_penyakit'];
     $top_anak['nama'] = $anak_rows[0]['nm_penyakit'];
     $top_anak['jumlah'] = $anak_rows[0]['jumlah_kasus'];
 }
 if (!empty($dewasa_rows)) {
+    $top_dewasa['kode'] = $dewasa_rows[0]['kd_penyakit'];
     $top_dewasa['nama'] = $dewasa_rows[0]['nm_penyakit'];
     $top_dewasa['jumlah'] = $dewasa_rows[0]['jumlah_kasus'];
 }
@@ -119,10 +121,10 @@ foreach (array_slice($dewasa_rows, 0, 10) as $row) {
     <?php endif; ?>
 
     <section class="ab-cards">
-        <div class="ab-card"><div class="ab-k">Kategori Anak</div><div class="ab-v"><?php echo number_format($total_anak, 0, ',', '.'); ?></div><div class="ab-s">Usia pasien kurang dari 18 tahun saat tanggal registrasi.</div></div>
-        <div class="ab-card"><div class="ab-k">Kategori Dewasa</div><div class="ab-v"><?php echo number_format($total_dewasa, 0, ',', '.'); ?></div><div class="ab-s">Usia pasien 18 tahun atau lebih saat tanggal registrasi.</div></div>
-        <div class="ab-card"><div class="ab-k">Top Anak</div><div class="ab-v"><?php echo $top_anak['jumlah'] > 0 ? number_format($top_anak['jumlah'], 0, ',', '.') . ' kasus' : '-'; ?></div><div class="ab-s"><?php echo htmlspecialchars($top_anak['nama'], ENT_QUOTES, 'UTF-8'); ?></div></div>
-        <div class="ab-card"><div class="ab-k">Top Dewasa</div><div class="ab-v"><?php echo $top_dewasa['jumlah'] > 0 ? number_format($top_dewasa['jumlah'], 0, ',', '.') . ' kasus' : '-'; ?></div><div class="ab-s"><?php echo htmlspecialchars($top_dewasa['nama'], ENT_QUOTES, 'UTF-8'); ?></div></div>
+        <div class="ab-card"><div class="ab-k">Kategori Anak</div><div class="ab-v"><?php if ($total_anak > 0): ?><a href="#" class="ab-link detail-trigger" data-kategori="ANAK" data-kd="" data-penyakit="Semua Penyakit"><?php echo number_format($total_anak, 0, ',', '.'); ?></a><?php else: ?>0<?php endif; ?></div><div class="ab-s">Usia pasien kurang dari 18 tahun saat tanggal registrasi.</div></div>
+        <div class="ab-card"><div class="ab-k">Kategori Dewasa</div><div class="ab-v"><?php if ($total_dewasa > 0): ?><a href="#" class="ab-link detail-trigger" data-kategori="DEWASA" data-kd="" data-penyakit="Semua Penyakit"><?php echo number_format($total_dewasa, 0, ',', '.'); ?></a><?php else: ?>0<?php endif; ?></div><div class="ab-s">Usia pasien 18 tahun atau lebih saat tanggal registrasi.</div></div>
+        <div class="ab-card"><div class="ab-k">Top Anak</div><div class="ab-v"><?php if ($top_anak['jumlah'] > 0): ?><a href="#" class="ab-link detail-trigger" data-kategori="ANAK" data-kd="<?php echo htmlspecialchars($top_anak['kode'], ENT_QUOTES, 'UTF-8'); ?>" data-penyakit="<?php echo htmlspecialchars($top_anak['nama'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo number_format($top_anak['jumlah'], 0, ',', '.'); ?> kasus</a><?php else: ?>-<?php endif; ?></div><div class="ab-s"><?php echo htmlspecialchars($top_anak['nama'], ENT_QUOTES, 'UTF-8'); ?></div></div>
+        <div class="ab-card"><div class="ab-k">Top Dewasa</div><div class="ab-v"><?php if ($top_dewasa['jumlah'] > 0): ?><a href="#" class="ab-link detail-trigger" data-kategori="DEWASA" data-kd="<?php echo htmlspecialchars($top_dewasa['kode'], ENT_QUOTES, 'UTF-8'); ?>" data-penyakit="<?php echo htmlspecialchars($top_dewasa['nama'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo number_format($top_dewasa['jumlah'], 0, ',', '.'); ?> kasus</a><?php else: ?>-<?php endif; ?></div><div class="ab-s"><?php echo htmlspecialchars($top_dewasa['nama'], ENT_QUOTES, 'UTF-8'); ?></div></div>
     </section>
 
     <section class="ab-grid-2">
@@ -292,7 +294,7 @@ foreach (array_slice($dewasa_rows, 0, 10) as $row) {
 
         const kategori = trigger.getAttribute('data-kategori');
         const kd = trigger.getAttribute('data-kd');
-        const penyakit = trigger.getAttribute('data-penyakit');
+        const penyakit = trigger.getAttribute('data-penyakit') || 'Semua Penyakit';
         const tglAwal = document.getElementById('tgl_awal') ? document.getElementById('tgl_awal').value : '';
         const tglAkhir = document.getElementById('tgl_akhir') ? document.getElementById('tgl_akhir').value : '';
         const kategoriLabel = kategori === 'ANAK' ? 'Anak' : 'Dewasa';

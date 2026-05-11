@@ -10,6 +10,7 @@ $tgl_akhir = isset($_POST['tgl_akhir']) ? $_POST['tgl_akhir'] : date('Y-m-d');
 // Validasi input tanggal
 $tgl_awal = !empty($tgl_awal) ? $tgl_awal : date('Y-m-01');
 $tgl_akhir = !empty($tgl_akhir) ? $tgl_akhir : date('Y-m-d');
+$detailMode = 'ralan_bedah';
 
 // Query untuk mengambil 10 besar penyakit bedah rawat jalan berdasarkan filter
 $query_bedah_ralan = "
@@ -123,8 +124,8 @@ if (empty($labels_grafik)) {
                                                 <td><?php echo $no++; ?></td>
                                                 <td><?php echo htmlspecialchars($row['kd_penyakit']); ?></td>
                                                 <td><?php echo htmlspecialchars($row['nm_penyakit']); ?></td>
-                                                <td><?php echo number_format($row['jumlah_kasus']); ?></td>
-                                                <td><?php echo $persentase; ?>%</td>
+                                                <td><a href="#" class="penyakit-detail-link penyakit-detail-trigger" data-mode="<?php echo htmlspecialchars($detailMode, ENT_QUOTES, 'UTF-8'); ?>" data-kd="<?php echo htmlspecialchars($row['kd_penyakit'], ENT_QUOTES, 'UTF-8'); ?>" data-penyakit="<?php echo htmlspecialchars($row['nm_penyakit'], ENT_QUOTES, 'UTF-8'); ?>" data-tgl-awal="<?php echo htmlspecialchars($tgl_awal, ENT_QUOTES, 'UTF-8'); ?>" data-tgl-akhir="<?php echo htmlspecialchars($tgl_akhir, ENT_QUOTES, 'UTF-8'); ?>"><?php echo number_format($row['jumlah_kasus']); ?></a></td>
+                                                <td><a href="#" class="penyakit-detail-link penyakit-detail-trigger" data-mode="<?php echo htmlspecialchars($detailMode, ENT_QUOTES, 'UTF-8'); ?>" data-kd="<?php echo htmlspecialchars($row['kd_penyakit'], ENT_QUOTES, 'UTF-8'); ?>" data-penyakit="<?php echo htmlspecialchars($row['nm_penyakit'], ENT_QUOTES, 'UTF-8'); ?>" data-tgl-awal="<?php echo htmlspecialchars($tgl_awal, ENT_QUOTES, 'UTF-8'); ?>" data-tgl-akhir="<?php echo htmlspecialchars($tgl_akhir, ENT_QUOTES, 'UTF-8'); ?>"><?php echo $persentase; ?>%</a></td>
                                             </tr>
                                             <?php endwhile; } ?>
                                         </tbody>
@@ -153,6 +154,8 @@ if (empty($labels_grafik)) {
         </div>
     </div>
 </section>
+
+<?php require dirname(__DIR__) . '/detail_modal.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
