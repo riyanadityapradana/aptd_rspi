@@ -154,6 +154,7 @@ $menuPenyakit = [
 
 $menuAnalitik = [
     [
+        ['page' => 'diare_data', 'label' => 'Data Pasien Diagnosa Diare'],
         ['page' => 'rekap_pasien_baru_lama', 'label' => 'Rekap Pasien Baru vs Lama'],
         ['page' => 'top_10_dokter_pasien', 'label' => 'Top 10 Dokter Paling Banyak Pasien'],
         ['page' => 'pasien_rujukan_masuk_keluar', 'label' => 'Pasien Rujukan Masuk / Keluar'],
@@ -164,6 +165,12 @@ $menuAnalitik = [
     ],
     [
         ['page' => 'kunjungan_wilayah_visual', 'label' => 'Kunjungan Berdasarkan Kecamatan/Kabupaten'],
+    ],
+];
+
+$menuGizi = [
+    [
+        ['page' => 'adime_gizi', 'label' => 'Monitoring ADIME Gizi Rawat Inap'],
     ],
 ];
 ?>
@@ -189,24 +196,31 @@ $menuAnalitik = [
         <style type="text/css">
         body { margin-top: 58px; margin-bottom: 0; background: url(../assets/assets-admin/img/colores_claros.jpeg); background-repeat: no-repeat; background-attachment: fixed; background-size: 100% 100%; }
         .container { max-width: 100%; padding-left: 10px; padding-right: 10px; }
-        .nav-user-badge { display: inline-flex; align-items: center; padding: 8px 14px; margin-right: 6px; border-radius: 999px; background: rgba(255,255,255,0.18); color: #f4fbff; font-size: 13px; }
+        .navbar { min-height: 58px; }
+        .navbar-brand { display: inline-flex; align-items: center; white-space: nowrap; font-size: 16px; }
+        .navbar-nav { align-items: center; }
+        .navbar-nav .nav-link { white-space: nowrap; font-size: 13px; padding-left: 8px; padding-right: 8px; }
+        .dropdown-menu { font-size: 13px; }
+        .nav-user-badge { display: inline-flex; align-items: center; padding: 8px 12px; margin-right: 6px; border-radius: 999px; background: rgba(255,255,255,0.18); color: #f4fbff; font-size: 12px; white-space: nowrap; }
         .nav-logout-link { font-weight: 600; color: #fff6b3 !important; }
-        @media (max-width: 768px) { .container { padding-left: 2px; padding-right: 2px; } .main-footer marquee { font-size: 13px !important; } .navbar-brand img { height: 28px !important; } .nav-user-badge { display: block; margin: 10px 0 4px 0; } }
+        @media (min-width: 992px) and (max-width: 1280px) { .navbar-brand { font-size: 14px; } .navbar-nav .nav-link { font-size: 12px; padding-left: 6px; padding-right: 6px; } .nav-user-badge { max-width: 230px; overflow: hidden; text-overflow: ellipsis; } }
+        @media (max-width: 991.98px) { .navbar-nav { align-items: stretch; } .navbar-nav .nav-link { font-size: 14px; padding: 8px 10px; } .dropdown-menu { max-height: 70vh; overflow-y: auto; } }
+        @media (max-width: 768px) { .container { padding-left: 2px; padding-right: 2px; } .main-footer marquee { font-size: 13px !important; } .navbar-brand img { height: 28px !important; } .nav-user-badge { display: block; margin: 10px 0 4px 0; white-space: normal; } }
         @media (max-width: 480px) { .main-footer marquee { font-size: 11px !important; } .navbar-brand img { height: 22px !important; } }
         .dataTables_wrapper .wrapper { max-height: 550px; overflow-y: auto; }
         </style>
     </head>
     <body>
-        <nav class="navbar navbar-expand-sm fixed-top navbar-dark" style="background-color:rgba(109,156,227,1)">
+        <nav class="navbar navbar-expand-lg fixed-top navbar-dark" style="background-color:rgba(109,156,227,1)">
             <a class="navbar-brand page-scroll" href="main_app.php?page=beranda"><img src="../assets/assets-admin/img/logo1.png" height="35" class="d-inline-block align-top" color="white" alt="" style="padding-top: 0">&nbsp;&nbsp;Beranda</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#myNavbar" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
             <div class="collapse navbar-collapse" id="myNavbar">
                 <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
-                    <?php renderMenuLink('diare_data', 'Data Pasien Diagnosa Diare', $page); ?>
                     <?php renderDropdownMenu('navbarDropdownRalan', 'Master Kunjungan Ralan', $menuKunjunganRalan, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownRanap', 'Master Kunjungan Ranap', $menuKunjunganRanap, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownPenyakit', 'Master Penyakit', $menuPenyakit, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownAnalitik', 'Analitik', $menuAnalitik, $page); ?>
+                    <?php renderDropdownMenu('navbarDropdownGizi', 'Master Gizi', $menuGizi, $page); ?>
                 </ul>
                 <div class="form-inline my-2 my-lg-0">
                     <span class="nav-user-badge"><span class="glyphicon glyphicon-user" style="color:#ffffff"></span>&nbsp;&nbsp;<?php echo htmlspecialchars($namaLogin, ENT_QUOTES, 'UTF-8'); ?> (<?php echo htmlspecialchars($levelLogin, ENT_QUOTES, 'UTF-8'); ?>)</span>

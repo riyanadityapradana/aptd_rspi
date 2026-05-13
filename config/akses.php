@@ -5,6 +5,8 @@ function aptd_get_routes()
         'beranda' => 'page/beranda.php',
         'diare_data' => 'page/t_diare/diare_data.php',
         'export_diare' => 'page/t_diare/export_diare.php',
+        'adime_gizi' => 'page/t_gizi/adime_gizi.php',
+        'export_adime_gizi' => 'page/t_gizi/export_adime_gizi.php',
 
         'kunjungan_data_ralan' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_ralan.php',
         'kunjungan_data_perpoli' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_perpoli.php',
@@ -93,6 +95,7 @@ function aptd_get_access_map()
         ],
         'users' => ['beranda'],
         'rekammedis' => ['beranda', 'rl32_ranap'],
+        'gizi' => ['beranda', 'adime_gizi', 'export_adime_gizi'],
     ];
 }
 
