@@ -392,7 +392,7 @@ unset(
                             <button type="submit" class="btn btn-login">Masuk ke Aplikasi</button>
                         </form>
                         <div class="login-actions">
-                            <button type="button" class="btn-link-action" data-toggle="modal" data-target="#modalBuatAkun">Buat Account</button> -->
+                            <!-- <button type="button" class="btn-link-action" data-toggle="modal" data-target="#modalBuatAkun">Buat Account</button> -->
                         </div>
                         <div class="login-footer">RSPI | Sistem Tarikan Data Pelayanan</div>
                     </div>
