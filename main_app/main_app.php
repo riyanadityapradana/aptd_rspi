@@ -162,6 +162,7 @@ $menuAnalitik = [
     [
         ['page' => 'los_rawat_inap', 'label' => 'LOS Rawat Inap'],
         ['page' => 'bor_sederhana', 'label' => 'BOR Sederhana Per Bangsal/Kamar'],
+        ['page' => 'laporan_keuangan_ranap', 'label' => 'Laporan Keuangan Rawat Inap'],
     ],
     [
         ['page' => 'kunjungan_wilayah_visual', 'label' => 'Kunjungan Berdasarkan Kecamatan/Kabupaten'],

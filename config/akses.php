@@ -56,6 +56,8 @@ function aptd_get_routes()
         'bor_sederhana' => 'page/t_analitik/rawat_inap/bor_sederhana.php',
         'pasien_rujukan_masuk_keluar' => 'page/t_analitik/umum/pasien_rujukan_masuk_keluar.php',
         'kunjungan_wilayah_visual' => 'page/t_analitik/wilayah/kunjungan_wilayah_visual.php',
+        'laporan_keuangan_ranap' => 'page/t_analitik/keuangan/laporan_keuangan_ranap.php',
+        'export_laporan_keuangan_ranap' => 'page/t_analitik/keuangan/export_laporan_keuangan_ranap.php',
         'rl32_ranap' => 'page/t_rl_32/rl_32_ranap.php',
     ];
 }
@@ -74,7 +76,7 @@ function aptd_get_access_map()
             '10_penyakit_ralan', '10_penyakit_bedah_ralan', '10_penyakit_non_bedah_ralan',
             '10_penyakit_ranap', '10_penyakit_bedah_ranap', '10_penyakit_non_bedah_ranap',
             'data_pasien_kode_penyakit_bedah_ralan', 'data_pasien_kode_penyakit_non_bedah_ralan', 'data_pasien_kode_penyakit_bedah_ranap', 'data_pasien_kode_penyakit_non_bedah_ranap', 'kode_penyakit_ab_ranap', 'export_kode_penyakit_ab_ranap', 'export_kode_penyakit',
-            'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'los_rawat_inap', 'bor_sederhana', 'pasien_rujukan_masuk_keluar', 'kunjungan_wilayah_visual',
+            'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'los_rawat_inap', 'bor_sederhana', 'pasien_rujukan_masuk_keluar', 'kunjungan_wilayah_visual', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap',
         ],
         'kepegawaian' => [
             'beranda', 'kunjungan_data_ralan', 'kunjungan_data_perpoli', 'kunjungan_data_per_minggu', 'top_10_poli_ralan',

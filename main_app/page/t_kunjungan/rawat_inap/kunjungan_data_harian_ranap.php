@@ -9,7 +9,28 @@ $start_date = sprintf('%04d-%02d-01', $filter_year, $filter_month);
 $end_date = date('Y-m-t', strtotime($start_date));
 $days_in_month = (int) date('t', strtotime($start_date));
 $month_labels = [1=>'Januari',2=>'Februari',3=>'Maret',4=>'April',5=>'Mei',6=>'Juni',7=>'Juli',8=>'Agustus',9=>'September',10=>'Oktober',11=>'November',12=>'Desember'];
-$sql = "SELECT ki.tgl_masuk,rp.no_rawat,p.nm_pasien,p.jk,CONCAT(IFNULL(k.kd_kamar,'-'),' / ',IFNULL(b.nm_bangsal,'-')) AS kamar,IFNULL(ki.lama,0) AS lama_dirawat,IFNULL(ki.stts_pulang,'-') AS status_pulang,CASE WHEN rp.kd_pj='A09' THEN 'Umum' WHEN rp.kd_pj='BPJ' THEN 'BPJS' WHEN rp.kd_pj='A92' THEN 'Asuransi' ELSE IFNULL(pj.png_jawab,'-') END AS jenis_pembayaran,COALESCE(bill.total_tagihan,ki.ttl_biaya,0) AS total_biaya FROM kamar_inap ki INNER JOIN reg_periksa rp ON ki.no_rawat=rp.no_rawat INNER JOIN pasien p ON rp.no_rkm_medis=p.no_rkm_medis LEFT JOIN kamar k ON ki.kd_kamar=k.kd_kamar LEFT JOIN bangsal b ON k.kd_bangsal=b.kd_bangsal LEFT JOIN penjab pj ON rp.kd_pj=pj.kd_pj LEFT JOIN (SELECT no_rawat,MAX(totalbiaya) AS total_tagihan FROM billing WHERE status='Tagihan' GROUP BY no_rawat) bill ON bill.no_rawat=rp.no_rawat WHERE ki.tgl_masuk BETWEEN ? AND ? AND rp.status_lanjut='Ranap' AND (ki.stts_pulang IS NULL OR ki.stts_pulang<>'Pindah Kamar') ORDER BY ki.tgl_masuk ASC,rp.no_rawat ASC";
+$sql = "SELECT ki.tgl_masuk,
+						rp.no_rawat,
+						p.nm_pasien,
+						p.jk,
+						CONCAT(IFNULL(k.kd_kamar,'-'),' / ',IFNULL(b.nm_bangsal,'-')) AS kamar,
+						IFNULL(ki.lama,0) AS lama_dirawat,
+						-- status_adime: cek apakah ada catatan di tabel catatan_adime_gizi
+						CASE WHEN EXISTS (SELECT 1 FROM catatan_adime_gizi ag WHERE ag.no_rawat = rp.no_rawat) THEN 'SUDAH ADIME' ELSE 'BELUM ADIME' END AS status_adime,
+						IFNULL(ki.stts_pulang,'-') AS status_pulang,
+						CASE WHEN rp.kd_pj='A09' THEN 'Umum' WHEN rp.kd_pj='BPJ' THEN 'BPJS' WHEN rp.kd_pj='A92' THEN 'Asuransi' ELSE IFNULL(pj.png_jawab,'-') END AS jenis_pembayaran,
+						COALESCE(bill.total_tagihan,ki.ttl_biaya,0) AS total_biaya
+				FROM kamar_inap ki
+				INNER JOIN reg_periksa rp ON ki.no_rawat=rp.no_rawat
+				INNER JOIN pasien p ON rp.no_rkm_medis=p.no_rkm_medis
+				LEFT JOIN kamar k ON ki.kd_kamar=k.kd_kamar
+				LEFT JOIN bangsal b ON k.kd_bangsal=b.kd_bangsal
+				LEFT JOIN penjab pj ON rp.kd_pj=pj.kd_pj
+				LEFT JOIN (SELECT no_rawat,MAX(totalbiaya) AS total_tagihan FROM billing WHERE status='Tagihan' GROUP BY no_rawat) bill ON bill.no_rawat=rp.no_rawat
+				WHERE ki.tgl_masuk BETWEEN ? AND ?
+					AND rp.status_lanjut='Ranap'
+					AND (ki.stts_pulang IS NULL OR ki.stts_pulang<>'Pindah Kamar')
+				ORDER BY ki.tgl_masuk ASC,rp.no_rawat ASC";
 $stmt = $conn->prepare($sql); if (!$stmt) die('Query prepare gagal: '.$conn->error); $stmt->bind_param('ss',$start_date,$end_date); $stmt->execute(); $result = $stmt->get_result();
 $data_rows=[]; $total_biaya_keseluruhan=0; $total_lama_dirawat=0; $pasien_harian=[]; $biaya_harian=[]; $jenis_bayar_summary=['Umum'=>0,'BPJS'=>0,'Asuransi'=>0,'Lainnya'=>0];
 for ($day=1;$day<=$days_in_month;$day++) { $key=sprintf('%04d-%02d-%02d',$filter_year,$filter_month,$day); $pasien_harian[$key]=0; $biaya_harian[$key]=0; }
