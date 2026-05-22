@@ -39,7 +39,7 @@ ob_start(); ?>
 <?php $cards = ob_get_clean();
 
 ob_start(); ?>
-<section class="analytics-panel">
+<section class="analytics-panel keu-ranap-panel">
     <div class="analytics-head">
         <div>
             <h2 class="analytics-h">Catatan Query</h2>
@@ -60,112 +60,147 @@ ob_start(); ?>
         </div>
     </div>
     <style>
-        .keu-ranap-scroll{width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:8px}
-        .keu-ranap-table{min-width:3600px;white-space:nowrap}
-        .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle}
+        .keu-ranap-panel{overflow:hidden}
+        .keu-ranap-scroll{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:8px;background:#fff}
+        .keu-ranap-scroll::-webkit-scrollbar{height:12px}
+        .keu-ranap-scroll::-webkit-scrollbar-thumb{background:#8b97aa;border-radius:999px;border:2px solid #eef2f7}
+        .keu-ranap-scroll .dataTables_wrapper{width:100%;min-width:0}
+        .keu-ranap-scroll .dataTables_wrapper>.row{margin-left:0;margin-right:0}
+        .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"],.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]{padding-left:0;padding-right:0}
+        .keu-ranap-scroll .dataTables_filter{padding-bottom:8px}
+        .keu-ranap-scroll .dataTables_info{padding-top:8px}
+        .keu-ranap-scroll .dataTables_paginate{padding-top:6px}
+        .keu-ranap-table{min-width:4780px;width:max-content!important;margin:0!important;white-space:nowrap;border-collapse:collapse!important;background:#fff;color:#000}
+        .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle!important;border:1px solid #111!important;padding:2px 5px!important;line-height:1.15}
+        .keu-ranap-table thead th{position:sticky;top:0;z-index:2;background:#d9e2f3!important;color:#000!important;text-align:center;font-weight:700}
+        .keu-ranap-table thead tr:first-child th{background:#cfd8e8!important}
+        .keu-ranap-table tbody td{font-size:11px}
+        .keu-ranap-table .col-rawat{width:118px}
+        .keu-ranap-table .col-rm{width:70px}
+        .keu-ranap-table .col-name{width:180px}
+        .keu-ranap-table .col-diagnosa{width:170px;max-width:170px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-date{width:82px;text-align:center}
+        .keu-ranap-table .col-status{width:110px}
+        .keu-ranap-table .col-dpjp{width:170px}
+        .keu-ranap-table .col-ket-dpjp{width:190px;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-ket-anestesi{width:210px;max-width:210px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-ket-anak{width:210px;max-width:210px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-kamar{width:105px}
+        .keu-ranap-table .num{width:76px;text-align:right}
+        .keu-ranap-table .flag{width:58px;text-align:center}
     </style>
     <div class="keu-ranap-scroll">
         <table class="table table-sm table-bordered table-hover analytics-table keu-ranap-table" id="table4" style="width:100%;font-size:11px;">
-            <thead class="thead-dark">
+            <thead>
                 <tr>
-                    <th>No</th>
-                    <th>No Rawat</th>
-                    <th>No RM</th>
-                    <th>Nama Pasien</th>
-                    <th>Diagnosa Awal</th>
-                    <th>Diagnosa Akhir</th>
-                    <th>Tanggal Masuk</th>
-                    <th>Tanggal Keluar</th>
-                    <th>Status Pulang</th>
-                    <th>DPJP</th>
-                    <th>Kamar</th>
-                    <th>Claim</th>
-                    <th>Dokter UGD</th>
-                    <th>JD DPJP</th>
-                    <th>JD Operator</th>
-                    <th>JD Anestesi</th>
-                    <th>JD Anak</th>
-                    <th>JD Visit</th>
-                    <th>JD Telpon</th>
-                    <th>JD USG</th>
-                    <th>JD Rontgen</th>
-                    <th>JD Lab</th>
-                    <th>JD PA</th>
-                    <th>HD</th>
-                    <th>JK</th>
-                    <th>BHP</th>
-                    <th>OBAT</th>
-                    <th>LAB PK</th>
-                    <th>LAB PA</th>
-                    <th>RAD USG</th>
-                    <th>Rontgen</th>
-                    <th>Fisio</th>
-                    <th>EKG</th>
-                    <th>Darah</th>
-                    <th>Makan Jumlah</th>
-                    <th>Makan Harga</th>
-                    <th>Makan Kali</th>
-                    <th>Phototherapy</th>
-                    <th>Oksigen</th>
-                    <th>Spirometri</th>
-                    <th>Total</th>
-                    <th>Margin</th>
-                    <th>Darah</th>
-                    <th>Albumin</th>
-                    <th>Tindakan</th>
-                    <th>SEP</th>
+                    <th rowspan="2" class="col-rawat">No Rawat</th>
+                    <th rowspan="2" class="col-rm">No RM</th>
+                    <th rowspan="2" class="col-name">Nama Pasien</th>
+                    <th rowspan="2" class="col-diagnosa">Diagnosa Awal</th>
+                    <th rowspan="2" class="col-diagnosa">Diagnosa Akhir</th>
+                    <th rowspan="2" class="col-date">Tanggal Masuk</th>
+                    <th rowspan="2" class="col-date">Tanggal Keluar</th>
+                    <th rowspan="2" class="col-status">Status Pulang</th>
+                    <th rowspan="2" class="col-dpjp">DPJP</th>
+                    <th rowspan="2" class="col-kamar">Kamar</th>
+                    <th rowspan="2" class="num">CLAIM</th>
+                    <th colspan="15">Jasa Dokter</th>
+                    <th rowspan="2" class="num">JK</th>
+                    <th rowspan="2" class="num">BHP</th>
+                    <th rowspan="2" class="num">OBAT</th>
+                    <th colspan="7">Penunjang</th>
+                    <th colspan="3">MAKAN</th>
+                    <th rowspan="2" class="num">Phototherapy</th>
+                    <th rowspan="2" class="num">Oksigen</th>
+                    <th rowspan="2" class="num">Spirometri</th>
+                    <th rowspan="2" class="num">TOTAL</th>
+                    <th rowspan="2" class="num">MARGIN</th>
+                    <th colspan="4">Keterangan</th>
+                </tr>
+                <tr>
+                    <th class="num">Dokter UGD</th>
+                    <th class="num">JD DPJP</th>
+                    <th class="col-ket-dpjp">Ket. JD DPJP</th>
+                    <th class="num">JD Operator</th>
+                    <th class="num">JD Anestesi</th>
+                    <th class="col-ket-anestesi">Ket. JD Anestesi</th>
+                    <th class="num">JD Anak</th>
+                    <th class="col-ket-anak">Ket. JD Anak</th>
+                    <th class="num">JD Visite</th>
+                    <th class="num">JD Telp</th>
+                    <th class="num">JD USG</th>
+                    <th class="num">JD Rontgen</th>
+                    <th class="num">JD Lab</th>
+                    <th class="num">JD PA</th>
+                    <th class="num">HD</th>
+                    <th class="num">LAB PK</th>
+                    <th class="num">LAB PA</th>
+                    <th class="num">Rad USG</th>
+                    <th class="num">Rontgen</th>
+                    <th class="num">Fisio</th>
+                    <th class="num">EKG</th>
+                    <th class="num">Darah</th>
+                    <th class="num">Jumlah</th>
+                    <th class="num">Harga</th>
+                    <th class="flag">Kali</th>
+                    <th class="flag">DARAH</th>
+                    <th class="flag">ALBU</th>
+                    <th class="flag">TINDA</th>
+                    <th class="col-status">SEP</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($rows)): ?>
-                    <tr><td colspan="46" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
-                <?php else: $no = 1; foreach ($rows as $row): ?>
+                    <tr><td colspan="48" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
+                <?php else: foreach ($rows as $row): ?>
                     <tr>
-                        <td style="text-align:center;"><?php echo $no++; ?></td>
-                        <td><?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['no_rkm_medis'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['nama_pasien_umur'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['diagnosa_awal'] ?: $row['diagnosa_sep'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['diagnosa_akhir'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['tanggal_masuk'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['tanggal_keluar'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-rawat"><?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-rm"><?php echo htmlspecialchars($row['no_rkm_medis'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-name"><?php echo htmlspecialchars($row['nama_pasien_umur'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-diagnosa"><?php echo htmlspecialchars($row['diagnosa_awal'] ?: $row['diagnosa_sep'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-diagnosa"><?php echo htmlspecialchars($row['diagnosa_akhir'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-date"><?php echo htmlspecialchars($row['tanggal_masuk'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-date"><?php echo htmlspecialchars($row['tanggal_keluar'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars($row['status_pulang'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars($row['dpjp'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars($row['kamar'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['claim']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['dokter_ugd']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_dpjp']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_operator']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_anestesi']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_anak']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_visit']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_telpon']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_usg']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_rontgen']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_lab']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jd_pa']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['hd']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['jk']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['bhp']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['obat']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['lab_pk']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['lab_pa']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['rad_usg']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['rontgen']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['fisio']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['ekg']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['darah']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['makan_jumlah']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['makan_harga']); ?></td>
-                        <td style="text-align:center;"><?php echo aptd_number($row['makan_kali']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['phototherapy']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['oksigen']); ?></td>
-                        <td style="text-align:right;"><?php echo aptd_currency($row['spirometri']); ?></td>
-                        <td style="text-align:right;font-weight:bold;"><?php echo aptd_currency($row['total_biaya_laporan']); ?></td>
-                        <td style="text-align:right;font-weight:bold;"><?php echo aptd_currency($row['margin']); ?></td>
-                        <td style="text-align:center;"><?php echo htmlspecialchars($row['ket_darah'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td style="text-align:center;"><?php echo htmlspecialchars($row['ket_albumin'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td style="text-align:center;"><?php echo htmlspecialchars($row['ket_tindakan'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['claim']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['dokter_ugd']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_dpjp']); ?></td>
+                        <td class="col-ket-dpjp" title="<?php echo htmlspecialchars($row['ket_dpjp'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_dpjp'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_operator']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_anestesi']); ?></td>
+                        <td class="col-ket-anestesi" title="<?php echo htmlspecialchars($row['ket_anestesi'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_anestesi'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_anak']); ?></td>
+                        <td class="col-ket-anak" title="<?php echo htmlspecialchars($row['ket_anak'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_anak'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_visit']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_telpon']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_usg']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_rontgen']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_lab']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_pa']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['hd']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jk']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['bhp']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['obat']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['lab_pk']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['lab_pa']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['rad_usg']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['rontgen']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['fisio']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['ekg']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['darah']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['makan_jumlah']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['makan_harga']); ?></td>
+                        <td class="flag"><?php echo aptd_number($row['makan_kali']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['phototherapy']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['oksigen']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['spirometri']); ?></td>
+                        <td class="num" style="font-weight:bold;"><?php echo aptd_currency($row['total_biaya_laporan']); ?></td>
+                        <td class="num" style="font-weight:bold;"><?php echo aptd_currency($row['margin']); ?></td>
+                        <td class="flag"><?php echo htmlspecialchars($row['ket_darah'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="flag"><?php echo htmlspecialchars($row['ket_albumin'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="flag"><?php echo htmlspecialchars($row['ket_tindakan'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars($row['no_sep'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                     </tr>
                 <?php endforeach; endif; ?>

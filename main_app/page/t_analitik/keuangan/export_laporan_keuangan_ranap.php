@@ -20,24 +20,46 @@ header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-echo '<table border="1">';
-echo '<thead><tr>';
+echo '<table border="1" style="border-collapse:collapse;font-size:11px;">';
+echo '<thead>';
+echo '<tr style="background:#cfd8e8;font-weight:bold;text-align:center;">';
+echo '<th rowspan="2">No Rawat</th>';
+echo '<th rowspan="2">No RM</th>';
+echo '<th rowspan="2">Nama Pasien</th>';
+echo '<th rowspan="2">Diagnosa Awal</th>';
+echo '<th rowspan="2">Diagnosa Akhir</th>';
+echo '<th rowspan="2">Tanggal Masuk</th>';
+echo '<th rowspan="2">Tanggal Keluar</th>';
+echo '<th rowspan="2">Status Pulang</th>';
+echo '<th rowspan="2">DPJP</th>';
+echo '<th rowspan="2">Kamar</th>';
+echo '<th rowspan="2">CLAIM</th>';
+echo '<th colspan="15">Jasa Dokter</th>';
+echo '<th rowspan="2">JK</th>';
+echo '<th rowspan="2">BHP</th>';
+echo '<th rowspan="2">OBAT</th>';
+echo '<th colspan="7">Penunjang</th>';
+echo '<th colspan="3">MAKAN</th>';
+echo '<th rowspan="2">Phototherapy</th>';
+echo '<th rowspan="2">Oksigen</th>';
+echo '<th rowspan="2">Spirometri</th>';
+echo '<th rowspan="2">TOTAL</th>';
+echo '<th rowspan="2">MARGIN</th>';
+echo '<th colspan="4">Keterangan</th>';
+echo '</tr>';
+echo '<tr style="background:#d9e2f3;font-weight:bold;text-align:center;">';
 $headers = [
-    'No', 'No Rawat', 'No RM', 'Nama Pasien', 'Diagnosa Awal', 'Diagnosa Akhir', 'Tanggal Masuk', 'Tanggal Keluar',
-    'Status Pulang', 'DPJP', 'Kamar', 'CLAIM', 'Dokter UGD', 'JD DPJP', 'JD Operator', 'JD Anestesi', 'JD Anak',
-    'JD Visit', 'JD Telpon', 'JD USG', 'JD Rontgen', 'JD Lab', 'JD PA', 'HD', 'JK', 'BHP', 'OBAT', 'LAB PK',
-    'LAB PA', 'RAD USG', 'Rontgen', 'Fisio', 'EKG', 'Darah', 'Makan Jumlah', 'Makan Harga', 'Makan Kali',
-    'Phototherapy', 'Oksigen', 'Spirometri', 'TOTAL', 'MARGIN', 'DARAH', 'ALBUMIN', 'TINDAKAN', 'SEP'
+    'Dokter UGD', 'JD DPJP', 'Ket. JD DPJP', 'JD Operator', 'JD Anestesi', 'Ket. JD Anestesi', 'JD Anak', 'Ket. JD Anak', 'JD Visite', 'JD Telp', 'JD USG',
+    'JD Rontgen', 'JD Lab', 'JD PA', 'HD', 'LAB PK', 'LAB PA', 'Rad USG', 'Rontgen', 'Fisio', 'EKG',
+    'Darah', 'Jumlah', 'Harga', 'Kali', 'DARAH', 'ALBU', 'TINDA', 'SEP'
 ];
 foreach ($headers as $header) {
     echo '<th>' . htmlspecialchars($header, ENT_QUOTES, 'UTF-8') . '</th>';
 }
 echo '</tr></thead><tbody>';
 
-$no = 1;
 foreach ($rows as $row) {
     $values = [
-        $no++,
         $row['no_rawat'],
         $row['no_rkm_medis'],
         $row['nama_pasien_umur'],
@@ -51,9 +73,12 @@ foreach ($rows as $row) {
         $row['claim'],
         $row['dokter_ugd'],
         $row['jd_dpjp'],
+        $row['ket_dpjp'],
         $row['jd_operator'],
         $row['jd_anestesi'],
+        $row['ket_anestesi'],
         $row['jd_anak'],
+        $row['ket_anak'],
         $row['jd_visit'],
         $row['jd_telpon'],
         $row['jd_usg'],
