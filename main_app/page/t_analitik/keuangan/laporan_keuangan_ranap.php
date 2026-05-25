@@ -3,6 +3,24 @@ require_once __DIR__ . '/laporan_keuangan_ranap_helper.php';
 
 list($month, $year, $startDate, $endDate) = aptd_keu_ranap_date_filter();
 $monthLabels = aptd_month_labels_local();
+$saveMessage = null;
+if (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1') {
+    $saveMessage = aptd_keu_ranap_save_manual(
+        $mysqli,
+        isset($_POST['manual_no_rawat']) ? $_POST['manual_no_rawat'] : '',
+        isset($_POST['manual_claim']) ? $_POST['manual_claim'] : 0,
+        isset($_POST['manual_jd_operator']) ? $_POST['manual_jd_operator'] : 0
+    );
+    $_SESSION['keu_ranap_flash'] = $saveMessage;
+    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year);
+    echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
+    echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '"></noscript>';
+    return;
+}
+if (isset($_SESSION['keu_ranap_flash'])) {
+    $saveMessage = $_SESSION['keu_ranap_flash'];
+    unset($_SESSION['keu_ranap_flash']);
+}
 $rows = aptd_keu_ranap_fetch_rows($mysqli, $startDate, $endDate);
 $summary = aptd_keu_ranap_summary($rows);
 
@@ -40,6 +58,11 @@ ob_start(); ?>
 
 ob_start(); ?>
 <section class="analytics-panel keu-ranap-panel">
+    <?php if ($saveMessage): ?>
+        <div class="alert <?php echo $saveMessage['success'] ? 'alert-success' : 'alert-danger'; ?> mb-3" id="info">
+            <?php echo htmlspecialchars($saveMessage['message'], ENT_QUOTES, 'UTF-8'); ?>
+        </div>
+    <?php endif; ?>
     <div class="analytics-head">
         <div>
             <h2 class="analytics-h">Catatan Query</h2>
@@ -85,9 +108,12 @@ ob_start(); ?>
         .keu-ranap-table .col-ket-dpjp{width:190px;max-width:190px;overflow:hidden;text-overflow:ellipsis}
         .keu-ranap-table .col-ket-anestesi{width:210px;max-width:210px;overflow:hidden;text-overflow:ellipsis}
         .keu-ranap-table .col-ket-anak{width:210px;max-width:210px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-ket-visite{width:240px;max-width:240px;overflow:hidden;text-overflow:ellipsis}
         .keu-ranap-table .col-kamar{width:105px}
         .keu-ranap-table .num{width:76px;text-align:right}
         .keu-ranap-table .flag{width:58px;text-align:center}
+        .keu-rawat-btn{display:inline-flex;align-items:center;gap:4px;border:0;border-radius:4px;background:#256ec7;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;cursor:pointer}
+        .keu-rawat-btn:hover{background:#174f94;color:#fff}
     </style>
     <div class="keu-ranap-scroll">
         <table class="table table-sm table-bordered table-hover analytics-table keu-ranap-table" id="table4" style="width:100%;font-size:11px;">
@@ -104,7 +130,7 @@ ob_start(); ?>
                     <th rowspan="2" class="col-dpjp">DPJP</th>
                     <th rowspan="2" class="col-kamar">Kamar</th>
                     <th rowspan="2" class="num">CLAIM</th>
-                    <th colspan="15">Jasa Dokter</th>
+                    <th colspan="16">Jasa Dokter</th>
                     <th rowspan="2" class="num">JK</th>
                     <th rowspan="2" class="num">BHP</th>
                     <th rowspan="2" class="num">OBAT</th>
@@ -127,6 +153,7 @@ ob_start(); ?>
                     <th class="num">JD Anak</th>
                     <th class="col-ket-anak">Ket. JD Anak</th>
                     <th class="num">JD Visite</th>
+                    <th class="col-ket-visite">Ket. JD Visite</th>
                     <th class="num">JD Telp</th>
                     <th class="num">JD USG</th>
                     <th class="num">JD Rontgen</th>
@@ -151,10 +178,20 @@ ob_start(); ?>
             </thead>
             <tbody>
                 <?php if (empty($rows)): ?>
-                    <tr><td colspan="48" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
+                    <tr><td colspan="49" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
                 <?php else: foreach ($rows as $row): ?>
                     <tr>
-                        <td class="col-rawat"><?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-rawat">
+                            <button type="button"
+                                    class="keu-rawat-btn"
+                                    data-toggle="modal"
+                                    data-target="#modalKeuManual"
+                                    data-no-rawat="<?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-claim="<?php echo htmlspecialchars((string) $row['claim'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-jd-operator="<?php echo htmlspecialchars((string) $row['jd_operator'], ENT_QUOTES, 'UTF-8'); ?>">
+                                <?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?>
+                            </button>
+                        </td>
                         <td class="col-rm"><?php echo htmlspecialchars($row['no_rkm_medis'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="col-name"><?php echo htmlspecialchars($row['nama_pasien_umur'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="col-diagnosa"><?php echo htmlspecialchars($row['diagnosa_awal'] ?: $row['diagnosa_sep'], ENT_QUOTES, 'UTF-8'); ?></td>
@@ -174,6 +211,7 @@ ob_start(); ?>
                         <td class="num"><?php echo aptd_currency($row['jd_anak']); ?></td>
                         <td class="col-ket-anak" title="<?php echo htmlspecialchars($row['ket_anak'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_anak'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_visit']); ?></td>
+                        <td class="col-ket-visite" title="<?php echo htmlspecialchars($row['ket_visit'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_visit'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_telpon']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_usg']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_rontgen']); ?></td>
@@ -207,6 +245,52 @@ ob_start(); ?>
             </tbody>
         </table>
     </div>
+    <div class="modal fade" id="modalKeuManual" tabindex="-1" role="dialog" aria-labelledby="modalKeuManualLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <form method="post" class="modal-content">
+                <input type="hidden" name="save_keu_manual" value="1">
+                <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
+                <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalKeuManualLabel">Input Data Keuangan BPJS</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="manual_no_rawat"><strong>No Rawat</strong></label>
+                        <input type="text" class="form-control" name="manual_no_rawat" id="manual_no_rawat" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_claim"><strong>Nilai / Jumlah Claim</strong></label>
+                        <input type="number" class="form-control" name="manual_claim" id="manual_claim" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label for="manual_jd_operator"><strong>Nilai / Jumlah JD Operator</strong></label>
+                        <input type="number" class="form-control" name="manual_jd_operator" id="manual_jd_operator" min="0" step="0.01" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        (function(){
+            document.addEventListener('DOMContentLoaded', function() {
+                if (!window.jQuery) { return; }
+                $('#modalKeuManual').on('show.bs.modal', function(event) {
+                    var button = $(event.relatedTarget);
+                    $('#manual_no_rawat').val(button.data('no-rawat') || '');
+                    $('#manual_claim').val(button.data('claim') || 0);
+                    $('#manual_jd_operator').val(button.data('jd-operator') || 0);
+                });
+            });
+        })();
+    </script>
 </section>
 <?php $table = ob_get_clean();
 
