@@ -130,7 +130,7 @@ ob_start(); ?>
                     <th rowspan="2" class="col-dpjp">DPJP</th>
                     <th rowspan="2" class="col-kamar">Kamar</th>
                     <th rowspan="2" class="num">CLAIM</th>
-                    <th colspan="16">Jasa Dokter</th>
+                    <th colspan="18">Jasa Dokter</th>
                     <th rowspan="2" class="num">JK</th>
                     <th rowspan="2" class="num">BHP</th>
                     <th rowspan="2" class="num">OBAT</th>
@@ -153,6 +153,8 @@ ob_start(); ?>
                     <th class="num">JD Anak</th>
                     <th class="col-ket-anak">Ket. JD Anak</th>
                     <th class="num">JD Visite</th>
+                    <th class="num">JD Visite Umum</th>
+                    <th class="num">JD Visite Spesialis</th>
                     <th class="col-ket-visite">Ket. JD Visite</th>
                     <th class="num">JD Telp</th>
                     <th class="num">JD USG</th>
@@ -178,7 +180,7 @@ ob_start(); ?>
             </thead>
             <tbody>
                 <?php if (empty($rows)): ?>
-                    <tr><td colspan="49" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
+                    <tr><td colspan="51" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
                 <?php else: foreach ($rows as $row): ?>
                     <tr>
                         <td class="col-rawat">
@@ -211,6 +213,8 @@ ob_start(); ?>
                         <td class="num"><?php echo aptd_currency($row['jd_anak']); ?></td>
                         <td class="col-ket-anak" title="<?php echo htmlspecialchars($row['ket_anak'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_anak'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_visit']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_visit_umum']); ?></td>
+                        <td class="num"><?php echo aptd_currency($row['jd_visit_spesialis']); ?></td>
                         <td class="col-ket-visite" title="<?php echo htmlspecialchars($row['ket_visit'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_visit'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_telpon']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_usg']); ?></td>
