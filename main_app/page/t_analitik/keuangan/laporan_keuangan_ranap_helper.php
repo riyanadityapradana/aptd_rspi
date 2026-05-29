@@ -48,13 +48,15 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
                 MAX(NULLIF(bs.nmdpdjp, '')),
                 MAX(NULLIF(reg_dpjp.nm_dokter, ''))
             ) AS dpjp,
-            COALESCE(MAX(NULLIF(sep_dokter.kd_dokter, '')), MAX(NULLIF(sd.kd_dokter, ''))) AS kd_dokter_dpjp_status,
-            MAX(NULLIF(mdpjp.kd_dokter_bpjs, '')) AS kd_dokter_bpjs_dpjp,
+            COALESCE(MAX(NULLIF(sep_dokter.kd_dokter, '')), MAX(NULLIF(sd_dokter.kd_dokter, ''))) AS kd_dokter_dpjp_status,
+            COALESCE(MAX(NULLIF(mdpjp.kd_dokter_bpjs, '')), MAX(NULLIF(bs.kddpjp, ''))) AS kd_dokter_bpjs_dpjp,
+            MAX(NULLIF(mdpjp.kd_dokter, '')) AS kd_dokter_mapping_dpjp,
+            MAX(sep_dokter_all.status) AS status_dokter_dpjp_sep,
             COALESCE(MAX(NULLIF(sep_dokter.kd_sps, '')), MAX(NULLIF(sd_dokter.kd_sps, ''))) AS kd_sps_dpjp,
             COALESCE(MAX(NULLIF(sep_sps.nm_sps, '')), MAX(NULLIF(sps_dpjp.nm_sps, ''))) AS nm_sps_dpjp,
             CASE
                 WHEN MAX(NULLIF(sep_dokter.kd_dokter, '')) IS NOT NULL THEN 'bridging_sep'
-                WHEN MAX(NULLIF(sd.kd_dokter, '')) IS NOT NULL THEN 'status_dpjp'
+                WHEN MAX(NULLIF(sd_dokter.kd_dokter, '')) IS NOT NULL THEN 'status_dpjp'
                 ELSE ''
             END AS dpjp_source,
             GROUP_CONCAT(DISTINCT ki.kd_kamar ORDER BY ki.tgl_masuk, ki.jam_masuk SEPARATOR ', ') AS kamar,
@@ -109,12 +111,13 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
         INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
         INNER JOIN pasien p ON p.no_rkm_medis = rp.no_rkm_medis
         LEFT JOIN status_dpjp sd ON sd.no_rawat = rp.no_rawat
-        LEFT JOIN dokter sd_dokter ON sd_dokter.kd_dokter = sd.kd_dokter
+        LEFT JOIN dokter sd_dokter ON sd_dokter.kd_dokter = sd.kd_dokter AND sd_dokter.status = '1'
         LEFT JOIN spesialis sps_dpjp ON sps_dpjp.kd_sps = sd_dokter.kd_sps
         LEFT JOIN dokter reg_dpjp ON reg_dpjp.kd_dokter = rp.kd_dokter
         LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
-        LEFT JOIN maping_dokter_dpjpvclaim mdpjp ON mdpjp.kd_dokter_bpjs = COALESCE(NULLIF(bs.kddpjp, ''), NULLIF(bs.kddpjplayanan, ''))
-        LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter
+        LEFT JOIN maping_dokter_dpjpvclaim mdpjp ON mdpjp.kd_dokter_bpjs = NULLIF(bs.kddpjp, '')
+        LEFT JOIN dokter sep_dokter_all ON sep_dokter_all.kd_dokter = mdpjp.kd_dokter
+        LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
         LEFT JOIN spesialis sep_sps ON sep_sps.kd_sps = sep_dokter.kd_sps
         LEFT JOIN (
             SELECT no_rawat, MAX(totalbiaya) AS total_claim
@@ -433,6 +436,11 @@ function aptd_keu_ranap_dpjp_condition(array $row)
 {
     if (empty($row['kd_dokter_dpjp_status'])) {
         if (!empty($row['kd_dokter_bpjs_dpjp'])) {
+            if (!empty($row['kd_dokter_mapping_dpjp'])) {
+                $status = isset($row['status_dokter_dpjp_sep']) && $row['status_dokter_dpjp_sep'] !== '' ? $row['status_dokter_dpjp_sep'] : '-';
+                return 'Dokter DPJP SEP tidak aktif: ' . $row['kd_dokter_mapping_dpjp'] . ' (status ' . $status . ')';
+            }
+
             return 'DPJP SEP belum termapping: ' . $row['kd_dokter_bpjs_dpjp'];
         }
 
@@ -440,7 +448,7 @@ function aptd_keu_ranap_dpjp_condition(array $row)
     }
 
     if (empty($row['kd_sps_dpjp'])) {
-        return 'Dokter status_dpjp tanpa kd_sps';
+        return 'Dokter DPJP aktif tanpa kd_sps';
     }
 
     $specialist = !empty($row['nm_sps_dpjp']) ? $row['nm_sps_dpjp'] : 'Spesialis';

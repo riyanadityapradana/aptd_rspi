@@ -75,7 +75,7 @@ ob_start(); ?>
 <?php $panels = ob_get_clean();
 
 ob_start(); ?>
-<section class="analytics-panel">
+<section class="analytics-panel keu-ranap-table-panel">
     <div class="analytics-head">
         <div>
             <h2 class="analytics-h">Laporan Keuangan Rawat Inap</h2>
@@ -83,40 +83,94 @@ ob_start(); ?>
         </div>
     </div>
     <style>
-        .keu-ranap-panel{overflow:hidden}
-        .keu-ranap-scroll{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:8px;background:#fff}
-        .keu-ranap-scroll::-webkit-scrollbar{height:12px}
+        .keu-ranap-table-panel{overflow:hidden;max-width:100%}
+        .keu-ranap-scroll{display:block;width:100%;max-width:100%;overflow-x:scroll;overflow-y:hidden;padding-bottom:12px;background:#fff}
+        .keu-ranap-scroll::-webkit-scrollbar{height:14px}
         .keu-ranap-scroll::-webkit-scrollbar-thumb{background:#8b97aa;border-radius:999px;border:2px solid #eef2f7}
-        .keu-ranap-scroll .dataTables_wrapper{width:100%;min-width:0}
+        .keu-ranap-scroll .dataTables_wrapper{width:max-content;min-width:100%;max-width:none}
         .keu-ranap-scroll .dataTables_wrapper>.row{margin-left:0;margin-right:0}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"],.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]{padding-left:0;padding-right:0}
-        .keu-ranap-scroll .dataTables_filter{padding-bottom:8px}
-        .keu-ranap-scroll .dataTables_info{padding-top:8px}
-        .keu-ranap-scroll .dataTables_paginate{padding-top:6px}
-        .keu-ranap-table{min-width:4780px;width:max-content!important;margin:0!important;white-space:nowrap;border-collapse:collapse!important;background:#fff;color:#000}
-        .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle!important;border:1px solid #111!important;padding:2px 5px!important;line-height:1.15}
-        .keu-ranap-table thead th{position:sticky;top:0;z-index:2;background:#d9e2f3!important;color:#000!important;text-align:center;font-weight:700}
+        .keu-ranap-scroll .dataTables_filter{padding-bottom:10px;font-size:13px}
+        .keu-ranap-scroll .dataTables_filter input{height:34px;font-size:13px}
+        .keu-ranap-scroll .dataTables_info{padding-top:12px;font-size:13px}
+        .keu-ranap-scroll .dataTables_paginate{padding-top:8px;font-size:13px}
+        .keu-ranap-table{min-width:6529px;width:6529px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
+        .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle!important;border:1px solid #111!important;padding:6px 8px!important;line-height:1.25}
+        .keu-ranap-table thead th{background:#d9e2f3!important;color:#000!important;text-align:center;font-size:13px;font-weight:800}
         .keu-ranap-table thead tr:first-child th{background:#cfd8e8!important}
-        .keu-ranap-table tbody td{font-size:11px}
-        .keu-ranap-table .col-rawat{width:118px}
-        .keu-ranap-table .col-rm{width:70px}
-        .keu-ranap-table .col-name{width:180px}
-        .keu-ranap-table .col-diagnosa{width:170px;max-width:170px;overflow:hidden;text-overflow:ellipsis}
-        .keu-ranap-table .col-date{width:82px;text-align:center}
-        .keu-ranap-table .col-status{width:110px}
-        .keu-ranap-table .col-dpjp{width:170px}
-        .keu-ranap-table .col-ket-dpjp{width:190px;max-width:190px;overflow:hidden;text-overflow:ellipsis}
-        .keu-ranap-table .col-ket-anestesi{width:210px;max-width:210px;overflow:hidden;text-overflow:ellipsis}
-        .keu-ranap-table .col-ket-anak{width:210px;max-width:210px;overflow:hidden;text-overflow:ellipsis}
-        .keu-ranap-table .col-ket-visite{width:240px;max-width:240px;overflow:hidden;text-overflow:ellipsis}
-        .keu-ranap-table .col-kamar{width:105px}
-        .keu-ranap-table .num{width:76px;text-align:right}
-        .keu-ranap-table .flag{width:58px;text-align:center}
-        .keu-rawat-btn{display:inline-flex;align-items:center;gap:4px;border:0;border-radius:4px;background:#256ec7;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;cursor:pointer}
+        .keu-ranap-table tbody td{font-size:13px;background:#fff}
+        .keu-ranap-table .col-rawat{width:155px;min-width:155px;max-width:155px}
+        .keu-ranap-table .col-rm{width:88px;min-width:88px;max-width:88px}
+        .keu-ranap-table .col-name{width:260px;min-width:260px;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-diagnosa{width:230px;min-width:230px;max-width:230px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-date{width:104px;min-width:104px;text-align:center}
+        .keu-ranap-table .col-status{width:128px;min-width:128px}
+        .keu-ranap-table .col-dpjp{width:230px;min-width:230px;max-width:230px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-ket-dpjp{width:230px;min-width:230px;max-width:230px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-ket-anestesi{width:250px;min-width:250px;max-width:250px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-ket-anak{width:250px;min-width:250px;max-width:250px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-ket-visite{width:280px;min-width:280px;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-kamar{width:132px;min-width:132px;max-width:132px}
+        .keu-ranap-table .col-sep{width:190px;min-width:190px;max-width:190px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+        .keu-ranap-table .num{width:104px;min-width:104px;text-align:right}
+        .keu-ranap-table .flag{width:72px;min-width:72px;text-align:center}
+        .keu-ranap-table thead tr:first-child th:nth-child(1),.keu-ranap-table tbody td:nth-child(1){position:sticky;left:0;z-index:5;background:#fff!important}
+        .keu-ranap-table thead tr:first-child th:nth-child(2),.keu-ranap-table tbody td:nth-child(2){position:sticky;left:155px;z-index:5;background:#fff!important}
+        .keu-ranap-table thead tr:first-child th:nth-child(3),.keu-ranap-table tbody td:nth-child(3){position:sticky;left:243px;z-index:5;background:#fff!important;box-shadow:8px 0 12px -10px rgba(15,23,42,.8)}
+        .keu-ranap-table thead tr:first-child th:nth-child(1),.keu-ranap-table thead tr:first-child th:nth-child(2),.keu-ranap-table thead tr:first-child th:nth-child(3){z-index:8;background:#cfd8e8!important}
+        .keu-rawat-btn{display:inline-flex;align-items:center;gap:4px;border:0;border-radius:4px;background:#256ec7;color:#fff;font-size:12px;font-weight:800;padding:4px 8px;cursor:pointer}
         .keu-rawat-btn:hover{background:#174f94;color:#fff}
+        @media (max-width: 991.98px){
+            .keu-ranap-scroll{margin-left:-8px;margin-right:-8px;width:calc(100% + 16px);max-width:calc(100% + 16px)}
+            .keu-ranap-table{min-width:6529px;width:6529px!important}
+            .keu-ranap-table th,.keu-ranap-table td{padding:5px 7px!important}
+            .keu-ranap-table thead th,.keu-ranap-table tbody td{font-size:12px}
+            .keu-rawat-btn{font-size:11px;padding:3px 7px}
+        }
     </style>
     <div class="keu-ranap-scroll">
-        <table class="table table-sm table-bordered table-hover analytics-table keu-ranap-table" id="table4" style="width:100%;font-size:11px;">
+        <table class="table table-sm table-bordered table-hover analytics-table keu-ranap-table" id="table4" style="width:100%;font-size:13px;">
+            <colgroup>
+                <col style="width:155px">
+                <col style="width:88px">
+                <col style="width:260px">
+                <col style="width:230px">
+                <col style="width:230px">
+                <col style="width:104px">
+                <col style="width:104px">
+                <col style="width:190px">
+                <col style="width:230px">
+                <col style="width:132px">
+                <col style="width:104px">
+                <col style="width:104px">
+                <col style="width:104px">
+                <col style="width:230px">
+                <col style="width:104px">
+                <col style="width:104px">
+                <col style="width:250px">
+                <col style="width:104px">
+                <col style="width:250px">
+                <col style="width:104px">
+                <col style="width:120px">
+                <col style="width:140px">
+                <col style="width:280px">
+                <?php for ($i = 0; $i < 6; $i++): ?>
+                    <col style="width:104px">
+                <?php endfor; ?>
+                <?php for ($i = 0; $i < 10; $i++): ?>
+                    <col style="width:104px">
+                <?php endfor; ?>
+                <col style="width:104px">
+                <col style="width:104px">
+                <col style="width:72px">
+                <?php for ($i = 0; $i < 5; $i++): ?>
+                    <col style="width:104px">
+                <?php endfor; ?>
+                <col style="width:72px">
+                <col style="width:72px">
+                <col style="width:72px">
+                <col style="width:128px">
+            </colgroup>
             <thead>
                 <tr>
                     <th rowspan="2" class="col-rawat">No Rawat</th>
@@ -175,7 +229,7 @@ ob_start(); ?>
                     <th class="flag">DARAH</th>
                     <th class="flag">ALBU</th>
                     <th class="flag">TINDA</th>
-                    <th class="col-status">SEP</th>
+                    <th class="col-sep">SEP</th>
                 </tr>
             </thead>
             <tbody>
@@ -201,7 +255,7 @@ ob_start(); ?>
                         <td class="col-date"><?php echo htmlspecialchars($row['tanggal_masuk'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="col-date"><?php echo htmlspecialchars($row['tanggal_keluar'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars($row['status_pulang'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['dpjp'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-dpjp" title="<?php echo htmlspecialchars($row['dpjp'] ?: '-', ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['dpjp'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars($row['kamar'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="num"><?php echo aptd_currency($row['claim']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['dokter_ugd']); ?></td>
@@ -243,7 +297,7 @@ ob_start(); ?>
                         <td class="flag"><?php echo htmlspecialchars($row['ket_darah'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="flag"><?php echo htmlspecialchars($row['ket_albumin'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="flag"><?php echo htmlspecialchars($row['ket_tindakan'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['no_sep'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-sep" title="<?php echo htmlspecialchars($row['no_sep'] ?: '-', ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['no_sep'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                     </tr>
                 <?php endforeach; endif; ?>
             </tbody>
