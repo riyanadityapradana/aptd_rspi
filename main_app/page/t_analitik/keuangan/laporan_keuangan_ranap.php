@@ -88,12 +88,17 @@ ob_start(); ?>
         .keu-ranap-scroll::-webkit-scrollbar{height:14px}
         .keu-ranap-scroll::-webkit-scrollbar-thumb{background:#8b97aa;border-radius:999px;border:2px solid #eef2f7}
         .keu-ranap-scroll .dataTables_wrapper{width:max-content;min-width:100%;max-width:none}
-        .keu-ranap-scroll .dataTables_wrapper>.row{margin-left:0;margin-right:0}
-        .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"],.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]{padding-left:0;padding-right:0}
-        .keu-ranap-scroll .dataTables_filter{padding-bottom:10px;font-size:13px}
+        .keu-ranap-scroll .dataTables_wrapper>.row{width:100%;min-width:6809px;max-width:none;margin-left:0;margin-right:0;position:relative;z-index:12;background:#fff;padding:6px 0;display:flex;align-items:center;flex-wrap:nowrap}
+        .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"],.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]{padding-left:0;padding-right:0;max-width:none}
+        .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:first-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:first-child{flex:1 0 auto}
+        .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{position:sticky;right:0;z-index:16;flex:0 0 auto;width:auto!important;max-width:calc(100vw - 96px);background:#fff;padding-left:12px!important;box-shadow:-14px 0 18px -18px rgba(15,23,42,.85)}
+        .keu-ranap-scroll .dataTables_wrapper>.row:first-child{top:0;border-bottom:1px solid #e5e7eb}
+        .keu-ranap-scroll .dataTables_wrapper>.row:last-child{bottom:0;border-top:1px solid #e5e7eb}
+        .keu-ranap-scroll .dataTables_filter{padding-bottom:0;font-size:13px;text-align:right!important}
         .keu-ranap-scroll .dataTables_filter input{height:34px;font-size:13px}
-        .keu-ranap-scroll .dataTables_info{padding-top:12px;font-size:13px}
-        .keu-ranap-scroll .dataTables_paginate{padding-top:8px;font-size:13px}
+        .keu-ranap-scroll .dataTables_info{padding-top:8px;font-size:13px;white-space:normal}
+        .keu-ranap-scroll .dataTables_paginate{padding-top:4px;font-size:13px;text-align:right!important}
+        .keu-ranap-scroll .dataTables_paginate .pagination{justify-content:flex-end!important;flex-wrap:wrap}
         .keu-ranap-table{min-width:6809px;width:6809px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
         .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle!important;border:1px solid #111!important;padding:6px 8px!important;line-height:1.25}
         .keu-ranap-table thead th{background:#d9e2f3!important;color:#000!important;text-align:center;font-size:13px;font-weight:800}
@@ -123,6 +128,8 @@ ob_start(); ?>
         .keu-rawat-btn:hover{background:#174f94;color:#fff}
         @media (max-width: 991.98px){
             .keu-ranap-scroll{margin-left:-8px;margin-right:-8px;width:calc(100% + 16px);max-width:calc(100% + 16px)}
+            .keu-ranap-scroll .dataTables_wrapper>.row{min-width:6809px;padding-left:8px;padding-right:8px}
+            .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{max-width:calc(100vw - 24px);padding-right:8px!important}
             .keu-ranap-table{min-width:6809px;width:6809px!important}
             .keu-ranap-table th,.keu-ranap-table td{padding:5px 7px!important}
             .keu-ranap-table thead th,.keu-ranap-table tbody td{font-size:12px}
