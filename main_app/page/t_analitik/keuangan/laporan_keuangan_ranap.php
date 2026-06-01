@@ -94,7 +94,7 @@ ob_start(); ?>
         .keu-ranap-scroll .dataTables_filter input{height:34px;font-size:13px}
         .keu-ranap-scroll .dataTables_info{padding-top:12px;font-size:13px}
         .keu-ranap-scroll .dataTables_paginate{padding-top:8px;font-size:13px}
-        .keu-ranap-table{min-width:6529px;width:6529px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
+        .keu-ranap-table{min-width:6809px;width:6809px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
         .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle!important;border:1px solid #111!important;padding:6px 8px!important;line-height:1.25}
         .keu-ranap-table thead th{background:#d9e2f3!important;color:#000!important;text-align:center;font-size:13px;font-weight:800}
         .keu-ranap-table thead tr:first-child th{background:#cfd8e8!important}
@@ -110,6 +110,7 @@ ob_start(); ?>
         .keu-ranap-table .col-ket-anestesi{width:250px;min-width:250px;max-width:250px;overflow:hidden;text-overflow:ellipsis}
         .keu-ranap-table .col-ket-anak{width:250px;min-width:250px;max-width:250px;overflow:hidden;text-overflow:ellipsis}
         .keu-ranap-table .col-ket-visite{width:280px;min-width:280px;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+        .keu-ranap-table .col-ket-telp{width:280px;min-width:280px;max-width:280px;overflow:hidden;text-overflow:ellipsis}
         .keu-ranap-table .col-kamar{width:132px;min-width:132px;max-width:132px}
         .keu-ranap-table .col-sep{width:190px;min-width:190px;max-width:190px;overflow:hidden;text-overflow:ellipsis;text-align:left}
         .keu-ranap-table .num{width:104px;min-width:104px;text-align:right}
@@ -122,7 +123,7 @@ ob_start(); ?>
         .keu-rawat-btn:hover{background:#174f94;color:#fff}
         @media (max-width: 991.98px){
             .keu-ranap-scroll{margin-left:-8px;margin-right:-8px;width:calc(100% + 16px);max-width:calc(100% + 16px)}
-            .keu-ranap-table{min-width:6529px;width:6529px!important}
+            .keu-ranap-table{min-width:6809px;width:6809px!important}
             .keu-ranap-table th,.keu-ranap-table td{padding:5px 7px!important}
             .keu-ranap-table thead th,.keu-ranap-table tbody td{font-size:12px}
             .keu-rawat-btn{font-size:11px;padding:3px 7px}
@@ -154,7 +155,9 @@ ob_start(); ?>
                 <col style="width:120px">
                 <col style="width:140px">
                 <col style="width:280px">
-                <?php for ($i = 0; $i < 6; $i++): ?>
+                <col style="width:104px">
+                <col style="width:280px">
+                <?php for ($i = 0; $i < 5; $i++): ?>
                     <col style="width:104px">
                 <?php endfor; ?>
                 <?php for ($i = 0; $i < 10; $i++): ?>
@@ -184,7 +187,7 @@ ob_start(); ?>
                     <th rowspan="2" class="col-dpjp">DPJP</th>
                     <th rowspan="2" class="col-kamar">Kamar</th>
                     <th rowspan="2" class="num">CLAIM</th>
-                    <th colspan="18">Jasa Dokter</th>
+                    <th colspan="19">Jasa Dokter</th>
                     <th rowspan="2" class="num">JK</th>
                     <th rowspan="2" class="num">BHP</th>
                     <th rowspan="2" class="num">OBAT</th>
@@ -211,6 +214,7 @@ ob_start(); ?>
                     <th class="num">JD Visite Spesialis</th>
                     <th class="col-ket-visite">Ket. JD Visite</th>
                     <th class="num">JD Telp</th>
+                    <th class="col-ket-telp">Ket. JD Telp</th>
                     <th class="num">JD USG</th>
                     <th class="num">JD Rontgen</th>
                     <th class="num">JD Lab</th>
@@ -234,7 +238,7 @@ ob_start(); ?>
             </thead>
             <tbody>
                 <?php if (empty($rows)): ?>
-                    <tr><td colspan="51" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
+                    <tr><td colspan="52" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
                 <?php else: foreach ($rows as $row): ?>
                     <tr>
                         <td class="col-rawat">
@@ -271,6 +275,7 @@ ob_start(); ?>
                         <td class="num"><?php echo aptd_currency($row['jd_visit_spesialis']); ?></td>
                         <td class="col-ket-visite" title="<?php echo htmlspecialchars($row['ket_visit'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_visit'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_telpon']); ?></td>
+                        <td class="col-ket-telp" title="<?php echo htmlspecialchars($row['ket_telpon'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_telpon'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_usg']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_rontgen']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['jd_lab']); ?></td>
