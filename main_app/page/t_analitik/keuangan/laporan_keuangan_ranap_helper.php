@@ -200,12 +200,21 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             GROUP BY pr.no_rawat
         ) rad ON rad.no_rawat = rp.no_rawat
         LEFT JOIN (
-            SELECT pl.no_rawat,
-                   SUM(pl.tarif_tindakan_dokter) AS jd_lab,
-                   SUM(pl.biaya) AS lab_pk
-            FROM periksa_lab pl
-            INNER JOIN ($filterSql) f ON f.no_rawat = pl.no_rawat
-            GROUP BY pl.no_rawat
+            SELECT lab_total.no_rawat,
+                   SUM(lab_total.total_lab_pk) * 0.07 AS jd_lab,
+                   SUM(lab_total.total_lab_pk) AS lab_pk
+            FROM (
+                SELECT pl.no_rawat, SUM(pl.biaya) AS total_lab_pk
+                FROM periksa_lab pl
+                INNER JOIN ($filterSql) f ON f.no_rawat = pl.no_rawat
+                GROUP BY pl.no_rawat
+                UNION ALL
+                SELECT dpl.no_rawat, SUM(dpl.biaya_item) AS total_lab_pk
+                FROM detail_periksa_lab dpl
+                INNER JOIN ($filterSql) f ON f.no_rawat = dpl.no_rawat
+                GROUP BY dpl.no_rawat
+            ) lab_total
+            GROUP BY lab_total.no_rawat
         ) lab ON lab.no_rawat = rp.no_rawat
         LEFT JOIN (
             SELECT no_rawat, SUM(total) AS obat
