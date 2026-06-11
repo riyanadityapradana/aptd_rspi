@@ -38,6 +38,9 @@ echo '<th colspan="19">Jasa Dokter</th>';
 echo '<th rowspan="2">JK</th>';
 echo '<th rowspan="2">BHP</th>';
 echo '<th rowspan="2">OBAT</th>';
+echo '<th rowspan="2">Ttl Obat</th>';
+echo '<th rowspan="2">Ttl Retur</th>';
+echo '<th rowspan="2">15% Dasar</th>';
 echo '<th colspan="7">Penunjang</th>';
 echo '<th colspan="3">MAKAN</th>';
 echo '<th rowspan="2">Phototherapy</th>';
@@ -93,6 +96,9 @@ foreach ($rows as $row) {
         $row['jk'],
         $row['bhp'],
         $row['obat'],
+        $row['ttl_obat'],
+        $row['ttl_retur'],
+        $row['markup_obat_bhp'],
         $row['lab_pk'],
         $row['lab_pa'],
         $row['rad_usg'],

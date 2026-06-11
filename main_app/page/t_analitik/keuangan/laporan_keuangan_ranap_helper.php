@@ -74,14 +74,18 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             COALESCE(extra.jd_pa, 0) AS jd_pa,
             COALESCE(extra.hd, 0) AS hd,
             COALESCE(extra.jk, 0) AS jk,
-            COALESCE(extra.bhp, 0) AS bhp,
+            COALESCE(bhp.bhp, 0) AS bhp,
+            COALESCE(obat.ttl_obat, 0) AS ttl_obat,
+            COALESCE(obat.ttl_retur, 0) AS ttl_retur,
+            COALESCE(obat.markup_obat_bhp, 0) AS markup_obat_bhp,
             COALESCE(obat.obat, 0) AS obat,
             COALESCE(lab.lab_pk, 0) AS lab_pk,
-            COALESCE(extra.lab_pa, 0) AS lab_pa,
+            COALESCE(lab.lab_pa, 0) AS lab_pa,
             COALESCE(usg.rad_usg, 0) AS rad_usg,
             COALESCE(rad.rontgen, 0) AS rontgen,
-            COALESCE(extra.fisio, 0) AS fisio,
-            COALESCE(extra.ekg, 0) AS ekg,
+            COALESCE(fisio.fisio_items, '') AS fisio_items,
+            COALESCE(ekg.ekg, 0) AS ekg,
+            COALESCE(ekg.count_ekg, 0) AS count_ekg,
             COALESCE(extra.darah, 0) AS darah,
             COALESCE(makan.makan_jumlah, 0) AS makan_jumlah,
             COALESCE(makan.makan_harga, 0) AS makan_harga,
@@ -182,7 +186,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN (
             SELECT pr.no_rawat,
                    SUM(pr.tarif_tindakan_dokter) AS jd_usg,
-                   SUM(pr.biaya) AS rad_usg
+                   SUM(pr.bhp) AS rad_usg
             FROM periksa_radiologi pr
             INNER JOIN ($filterSql) f ON f.no_rawat = pr.no_rawat
             INNER JOIN jns_perawatan_radiologi jpr ON jpr.kd_jenis_prw = pr.kd_jenis_prw
@@ -200,29 +204,121 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             GROUP BY pr.no_rawat
         ) rad ON rad.no_rawat = rp.no_rawat
         LEFT JOIN (
-            SELECT lab_total.no_rawat,
-                   SUM(lab_total.total_lab_pk) * 0.07 AS jd_lab,
-                   SUM(lab_total.total_lab_pk) AS lab_pk
-            FROM (
-                SELECT pl.no_rawat, SUM(pl.biaya) AS total_lab_pk
-                FROM periksa_lab pl
-                INNER JOIN ($filterSql) f ON f.no_rawat = pl.no_rawat
-                GROUP BY pl.no_rawat
-                UNION ALL
-                SELECT dpl.no_rawat, SUM(dpl.biaya_item) AS total_lab_pk
-                FROM detail_periksa_lab dpl
-                INNER JOIN ($filterSql) f ON f.no_rawat = dpl.no_rawat
-                GROUP BY dpl.no_rawat
-            ) lab_total
-            GROUP BY lab_total.no_rawat
+            SELECT pl.no_rawat,
+                   SUM(pl.tarif_tindakan_dokter) AS jd_lab,
+                   SUM(CASE WHEN UPPER(pl.kategori) = 'PK' THEN pl.bhp ELSE 0 END) AS lab_pk,
+                   SUM(CASE WHEN UPPER(pl.kategori) = 'PA' THEN pl.bhp ELSE 0 END) AS lab_pa
+            FROM periksa_lab pl
+            INNER JOIN ($filterSql) f ON f.no_rawat = pl.no_rawat
+            GROUP BY pl.no_rawat
         ) lab ON lab.no_rawat = rp.no_rawat
         LEFT JOIN (
-            SELECT no_rawat, SUM(total) AS obat
-            FROM detail_pemberian_obat
-            INNER JOIN ($filterSql) f USING (no_rawat)
-            WHERE status = 'Ranap'
-            GROUP BY no_rawat
+            SELECT obat_raw.no_rawat,
+                   obat_raw.ttl_obat,
+                   COALESCE(retur.ttl_retur, 0) AS ttl_retur,
+                   obat_raw.markup_obat_bhp,
+                   (obat_raw.ttl_obat - COALESCE(retur.ttl_retur, 0) + obat_raw.markup_obat_bhp) AS obat
+            FROM (
+                SELECT dpo.no_rawat,
+                       SUM(dpo.total) AS ttl_obat,
+                       SUM(COALESCE(db.dasar, 0) * dpo.jml) * 0.15 AS markup_obat_bhp
+                FROM detail_pemberian_obat dpo
+                INNER JOIN ($filterSql) f ON f.no_rawat = dpo.no_rawat
+                LEFT JOIN databarang db ON db.kode_brng = dpo.kode_brng
+                WHERE dpo.status = 'Ranap'
+                GROUP BY dpo.no_rawat
+            ) obat_raw
+            LEFT JOIN (
+                SELECT f.no_rawat,
+                       SUM(drj.subtotal) AS ttl_retur
+                FROM ($filterSql) f
+                INNER JOIN returjual rj ON rj.no_retur_jual LIKE CONCAT('%', f.no_rawat, '%')
+                                     OR rj.no_retur_jual LIKE CONCAT('%', REPLACE(f.no_rawat, '/', ''), '%')
+                INNER JOIN detreturjual drj ON drj.no_retur_jual = rj.no_retur_jual
+                GROUP BY f.no_rawat
+            ) retur ON retur.no_rawat = obat_raw.no_rawat
         ) obat ON obat.no_rawat = rp.no_rawat
+        LEFT JOIN (
+            SELECT bhp_total.no_rawat, SUM(bhp_total.nilai_bhp) AS bhp
+            FROM (
+                SELECT rid.no_rawat,
+                       SUM(CASE WHEN IFNULL(rid.bhp, 0) > 0 THEN rid.bhp ELSE IFNULL(jpi.bhp, 0) END) AS nilai_bhp
+                FROM rawat_inap_dr rid
+                INNER JOIN ($filterSql) f ON f.no_rawat = rid.no_rawat
+                INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rid.kd_jenis_prw
+                WHERE jpi.nm_perawatan LIKE '%BHP%'
+                GROUP BY rid.no_rawat
+                UNION ALL
+                SELECT rip.no_rawat,
+                       SUM(CASE WHEN IFNULL(rip.bhp, 0) > 0 THEN rip.bhp ELSE IFNULL(jpi.bhp, 0) END) AS nilai_bhp
+                FROM rawat_inap_pr rip
+                INNER JOIN ($filterSql) f ON f.no_rawat = rip.no_rawat
+                INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rip.kd_jenis_prw
+                WHERE jpi.nm_perawatan LIKE '%BHP%'
+                GROUP BY rip.no_rawat
+            ) bhp_total
+            GROUP BY bhp_total.no_rawat
+        ) bhp ON bhp.no_rawat = rp.no_rawat
+        LEFT JOIN (
+            SELECT fisio_raw.no_rawat,
+                   GROUP_CONCAT(
+                       CONCAT_WS('~',
+                           fisio_raw.nilai_fisio,
+                           fisio_raw.tgl_perawatan,
+                           fisio_raw.jam_rawat,
+                           REPLACE(REPLACE(fisio_raw.nm_perawatan, '~', ' '), '|', ' ')
+                       )
+                       ORDER BY fisio_raw.tgl_perawatan ASC, fisio_raw.jam_rawat ASC
+                       SEPARATOR '|'
+                   ) AS fisio_items
+            FROM (
+                SELECT rid.no_rawat,
+                       CASE WHEN IFNULL(rid.tarif_tindakandr, 0) > 0 THEN rid.tarif_tindakandr ELSE IFNULL(jpi.tarif_tindakandr, 0) END AS nilai_fisio,
+                       rid.tgl_perawatan,
+                       rid.jam_rawat,
+                       jpi.nm_perawatan
+                FROM rawat_inap_dr rid
+                INNER JOIN ($filterSql) f ON f.no_rawat = rid.no_rawat
+                INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rid.kd_jenis_prw
+                WHERE jpi.nm_perawatan LIKE '%fisio%'
+                UNION ALL
+                SELECT rip.no_rawat,
+                       IFNULL(jpi.tarif_tindakandr, 0) AS nilai_fisio,
+                       rip.tgl_perawatan,
+                       rip.jam_rawat,
+                       jpi.nm_perawatan
+                FROM rawat_inap_pr rip
+                INNER JOIN ($filterSql) f ON f.no_rawat = rip.no_rawat
+                INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rip.kd_jenis_prw
+                WHERE jpi.nm_perawatan LIKE '%fisio%'
+            ) fisio_raw
+            GROUP BY fisio_raw.no_rawat
+        ) fisio ON fisio.no_rawat = rp.no_rawat
+        LEFT JOIN (
+            SELECT ekg_total.no_rawat,
+                   SUM(ekg_total.nilai_ekg) AS ekg,
+                   SUM(ekg_total.count_ekg) AS count_ekg
+            FROM (
+                SELECT rid.no_rawat,
+                       SUM(CASE WHEN IFNULL(rid.bhp, 0) > 0 THEN rid.bhp ELSE IFNULL(jpi.bhp, 0) END) AS nilai_ekg,
+                       COUNT(*) AS count_ekg
+                FROM rawat_inap_dr rid
+                INNER JOIN ($filterSql) f ON f.no_rawat = rid.no_rawat
+                INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rid.kd_jenis_prw
+                WHERE jpi.nm_perawatan LIKE '%ekg%'
+                GROUP BY rid.no_rawat
+                UNION ALL
+                SELECT rip.no_rawat,
+                       SUM(CASE WHEN IFNULL(rip.bhp, 0) > 0 THEN rip.bhp ELSE IFNULL(jpi.bhp, 0) END) AS nilai_ekg,
+                       COUNT(*) AS count_ekg
+                FROM rawat_inap_pr rip
+                INNER JOIN ($filterSql) f ON f.no_rawat = rip.no_rawat
+                INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rip.kd_jenis_prw
+                WHERE jpi.nm_perawatan LIKE '%ekg%'
+                GROUP BY rip.no_rawat
+            ) ekg_total
+            GROUP BY ekg_total.no_rawat
+        ) ekg ON ekg.no_rawat = rp.no_rawat
         LEFT JOIN (
             SELECT no_rawat,
                    COUNT(*) AS makan_kali,
@@ -239,8 +335,6 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
                    SUM(CASE WHEN nm_perawatan LIKE '%Jasa Keperawatan%' OR nm_perawatan LIKE '%Keperawatan%' THEN totalbiaya ELSE 0 END) AS jk,
                    SUM(CASE WHEN nm_perawatan LIKE '%BHP%' THEN totalbiaya ELSE 0 END) AS bhp,
                    SUM(CASE WHEN nm_perawatan LIKE '%Lab PA%' OR nm_perawatan LIKE '%Patologi Anatomi%' THEN totalbiaya ELSE 0 END) AS lab_pa,
-                   SUM(CASE WHEN nm_perawatan LIKE '%Fisio%' OR nm_perawatan LIKE '%Fisioterapi%' THEN totalbiaya ELSE 0 END) AS fisio,
-                   SUM(CASE WHEN nm_perawatan LIKE '%EKG%' THEN totalbiaya ELSE 0 END) AS ekg,
                    SUM(CASE WHEN nm_perawatan LIKE '%Darah%' OR nm_perawatan LIKE '%Transfusi%' THEN totalbiaya ELSE 0 END) AS darah,
                    SUM(CASE WHEN nm_perawatan LIKE '%Makan%' OR nm_perawatan LIKE '%Diet%' THEN totalbiaya ELSE 0 END) AS makan_billing,
                    SUM(CASE WHEN nm_perawatan LIKE '%Photo%terap%' OR nm_perawatan LIKE '%Fototerap%' OR nm_perawatan LIKE '%Phototherapy%' THEN totalbiaya ELSE 0 END) AS phototherapy,
@@ -285,8 +379,8 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
         GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur,
                  bill.total_claim, manual.jum_claim, manual.jum_jdoperator, ugd.dokter_ugd, visit.visit_items, telp.telp_items, usg.jd_usg, rad.jd_rontgen,
-                 lab.jd_lab, extra.jd_pa, extra.hd, extra.jk, extra.bhp, obat.obat, lab.lab_pk, extra.lab_pa,
-                 usg.rad_usg, rad.rontgen, extra.fisio, extra.ekg, extra.darah, makan.makan_jumlah, makan.makan_harga,
+                 lab.jd_lab, extra.jd_pa, extra.hd, extra.jk, bhp.bhp, obat.ttl_obat, obat.ttl_retur, obat.markup_obat_bhp, obat.obat, lab.lab_pk, lab.lab_pa,
+                 usg.rad_usg, rad.rontgen, fisio.fisio_items, ekg.ekg, ekg.count_ekg, extra.darah, makan.makan_jumlah, makan.makan_harga,
                  makan.makan_kali, extra.makan_billing, extra.phototherapy, extra.oksigen, extra.spirometri, extra.albumin,
                  ok.jd_operator, ok.jd_anestesi, ok.jd_anak, ok.jd_dokter_umum, ok.has_operasi, ok.has_partus,
                  ok.has_phaco, ok.has_phaco_anestesi, ok.has_phaco_tanpa_anestesi, ok.operator1_codes, ok.operator1_names,
@@ -313,6 +407,10 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
         $row['jd_telpon_dpjp'] = $telpon['dpjp'];
         $row['jd_telpon_non_dpjp'] = $telpon['non_dpjp'];
         $row['ket_telpon'] = $telpon['condition'];
+        $fisio = aptd_keu_ranap_calculate_fisio($row);
+        $row['fisio'] = $fisio['total'];
+        $row['fisio_counted'] = $fisio['counted'];
+        $row['fisio_skipped'] = $fisio['skipped'];
         $row['jd_anestesi'] = aptd_keu_ranap_calculate_anestesi_fee($row);
         $row['ket_anestesi'] = aptd_keu_ranap_anestesi_condition($row);
         $row['jd_anak'] = aptd_keu_ranap_calculate_anak_fee($row);
@@ -637,6 +735,36 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
         }
 
         $result['condition'] = implode('; ', $notes);
+    }
+
+    return $result;
+}
+
+function aptd_keu_ranap_calculate_fisio(array $row)
+{
+    $result = [
+        'total' => 0,
+        'counted' => 0,
+        'skipped' => 0,
+    ];
+
+    if (empty($row['fisio_items'])) {
+        return $result;
+    }
+
+    foreach (explode('|', (string) $row['fisio_items']) as $item) {
+        $parts = explode('~', $item);
+        if (count($parts) < 4) {
+            continue;
+        }
+
+        if ($result['counted'] >= 3) {
+            $result['skipped']++;
+            continue;
+        }
+
+        $result['total'] += (float) $parts[0];
+        $result['counted']++;
     }
 
     return $result;
