@@ -21,6 +21,7 @@ $filter_jenis_bayar = isset($_POST['jenis_bayar']) ? trim($_POST['jenis_bayar'])
 // Build WHERE clause
 $where_parts = [
     "r.status_lanjut = 'Ralan'",
+    "EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = r.kd_poli AND pl.status = '1')",
     "r.tgl_registrasi BETWEEN '" . $conn->real_escape_string($filter_tgl_awal) . "' AND '" . $conn->real_escape_string($filter_tgl_akhir) . "'"
 ];
 

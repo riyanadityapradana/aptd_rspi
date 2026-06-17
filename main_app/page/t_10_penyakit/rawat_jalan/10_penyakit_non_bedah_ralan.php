@@ -21,7 +21,7 @@ SELECT
 FROM diagnosa_pasien dp
 JOIN penyakit p ON dp.kd_penyakit = p.kd_penyakit
 JOIN reg_periksa rp ON dp.no_rawat = rp.no_rawat
-JOIN poliklinik pl ON rp.kd_poli = pl.kd_poli
+JOIN poliklinik pl ON rp.kd_poli = pl.kd_poli AND pl.status = '1'
 WHERE rp.status_lanjut = 'Ralan'
   AND LOWER(pl.nm_poli) NOT LIKE '%bedah%'
   AND DATE(rp.tgl_registrasi) BETWEEN '$tgl_awal' AND '$tgl_akhir'

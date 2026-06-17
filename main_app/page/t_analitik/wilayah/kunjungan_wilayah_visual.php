@@ -13,6 +13,7 @@ if ($level === 'kecamatan') {
             LEFT JOIN kecamatan kec ON p.kd_kec = kec.kd_kec
             WHERE rp.tgl_registrasi BETWEEN ? AND ?
               AND rp.status_lanjut = 'Ralan'
+              AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')
               AND rp.status_bayar = 'Sudah Bayar'
               AND rp.stts <> 'Batal'
             GROUP BY kec.nm_kec
@@ -29,6 +30,7 @@ if ($level === 'kecamatan') {
             LEFT JOIN kabupaten kab ON p.kd_kab = kab.kd_kab
             WHERE rp.tgl_registrasi BETWEEN ? AND ?
               AND rp.status_lanjut = 'Ralan'
+              AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')
               AND rp.status_bayar = 'Sudah Bayar'
               AND rp.stts <> 'Batal'
             GROUP BY kab.nm_kab

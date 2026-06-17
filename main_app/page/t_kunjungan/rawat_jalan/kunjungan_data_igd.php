@@ -74,6 +74,7 @@ $sql = "
         SUM(CASE WHEN rp.kd_pj = 'A92' THEN 1 ELSE 0 END) AS asuransi
     FROM reg_periksa rp
     WHERE (" . implode(' OR ', $igdWhereParts) . ")
+        AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')
         AND rp.kd_pj IN ('A09', 'BPJ', 'A92')
         AND rp.stts = 'Sudah'
         AND rp.status_bayar = 'Sudah Bayar'

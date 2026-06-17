@@ -38,7 +38,7 @@ FROM reg_periksa rp
 INNER JOIN pasien ps 
     ON rp.no_rkm_medis = ps.no_rkm_medis
 INNER JOIN poliklinik pl 
-    ON rp.kd_poli = pl.kd_poli
+    ON rp.kd_poli = pl.kd_poli AND pl.status = '1'
 INNER JOIN dokter d 
     ON rp.kd_dokter = d.kd_dokter
 INNER JOIN penjab pj 

@@ -102,6 +102,11 @@ $sql .= "
           AND dp.kd_penyakit = ?
           AND {$dateColumn} BETWEEN ? AND ?";
 
+if ($cfg['status'] === 'Ralan') {
+    $sql .= "
+          AND pl.status = '1'";
+}
+
 if ($cfg['exclude_test']) {
     $sql .= "
           AND ps.nm_pasien NOT LIKE '%TEST%'

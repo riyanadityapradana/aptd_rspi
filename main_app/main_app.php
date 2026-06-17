@@ -95,8 +95,6 @@ function renderDropdownMenu($id, $label, $groups, $currentPage)
 $menuKunjunganRalan = [
     [
         ['page' => 'kunjungan_data_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan'],
-        ['page' => 'kunjungan_data_perpoli', 'label' => 'Kunjungan Pasien Rawat Jalan Perpoli'],
-        ['page' => 'kunjungan_data_igd', 'label' => 'Kunjungan Pasien IGD'],
         ['page' => 'kunjungan_data_perkab_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Perkab'],
         ['page' => 'kunjungan_data_per_minggu', 'label' => 'Kunjungan Pasien Rawat Jalan Per Minggu'],
         ['page' => 'top_10_poli_ralan', 'label' => 'Top 10 Poliklinik Pasien Tertinggi'],
@@ -178,10 +176,27 @@ $menuGizi = [
 
 $menuDataKlinis = [
     [
+        ['page' => '10_penyakit_ralan_perpoli', 'label' => '10 Besar Penyakit Rawat Jalan Perpoli'],
+    ],
+];
+
+$menuDataNonKlinis = [
+    [
+        ['page' => 'kunjungan_data_perpoli', 'label' => 'Kunjungan Rawat Jalan Perpoli'],
+        ['page' => 'kunjungan_data_igd', 'label' => 'Kunjungan IGD'],
+    ],
+    [
         ['page' => 'bor_rawat_inap', 'label' => 'BOR Rawat Inap'],
         ['page' => 'los_klinis_rawat_inap', 'label' => 'LOS Rawat Inap'],
         ['page' => 'toi_rawat_inap', 'label' => 'TOI Rawat Inap'],
         ['page' => 'bto_rawat_inap', 'label' => 'BTO Rawat Inap'],
+        ['page' => 'readme_indikator_rawat_inap', 'label' => 'README BOR, LOS, TOI, BTO'],
+    ],
+];
+
+$menuAdmin = [
+    [
+        ['page' => 'users_admin', 'label' => 'CRUD User'],
     ],
 ];
 ?>
@@ -232,6 +247,8 @@ $menuDataKlinis = [
                     <?php renderDropdownMenu('navbarDropdownPenyakit', 'Master Penyakit', $menuPenyakit, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownAnalitik', 'Analitik', $menuAnalitik, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownDataKlinis', 'Data Klinis', $menuDataKlinis, $page); ?>
+                    <?php renderDropdownMenu('navbarDropdownDataNonKlinis', 'Data Non Klinis', $menuDataNonKlinis, $page); ?>
+                    <?php renderDropdownMenu('navbarDropdownAdmin', 'Admin', $menuAdmin, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownGizi', 'Master Gizi', $menuGizi, $page); ?>
                 </ul>
                 <div class="form-inline my-2 my-lg-0">

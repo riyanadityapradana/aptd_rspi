@@ -28,7 +28,7 @@ $sql = "SELECT kab.nm_kab AS kabupaten,
 FROM reg_periksa rp
 JOIN pasien p      ON p.no_rkm_medis = rp.no_rkm_medis
 JOIN penjab pj     ON pj.kd_pj = rp.kd_pj
-JOIN poliklinik pl ON pl.kd_poli = rp.kd_poli
+JOIN poliklinik pl ON pl.kd_poli = rp.kd_poli AND pl.status = '1'
 JOIN kabupaten kab ON kab.kd_kab = p.kd_kab
 WHERE rp.tgl_registrasi BETWEEN ? AND ?
   AND rp.status_lanjut = 'Ralan'

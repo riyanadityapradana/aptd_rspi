@@ -4,7 +4,7 @@ require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php'
 $conn = $mysqli;
 
 $mapping_poli = [
-    'GIGI' => ['U0008', 'U0025', 'U0042', 'U0043', 'U0052', 'U0057', 'U0065'],
+    'GIGI' => ['U0008', 'U0025', 'U0042', 'U0043', 'U0052', 'U0057', 'U0065', 'U0077'],
     'BEDAH' => ['U0002', 'U0004', 'U0015', 'U0054', 'U0066'],
     'ANAK' => ['U0003', 'U0069', 'U0068', 'U0070'],
     'THT' => ['U0006', 'U0011'],
@@ -21,6 +21,7 @@ $mapping_poli = [
     'MCU' => ['U0071'],
     'HEMODIALISA' => ['U0023'],
     'IGD' => ['IGDK', 'U0009', 'U0013'],
+    'PONEK RALAN' => ['U0074'],
 ];
 
 $penjamin = ['A09' => 'UMUM', 'BPJ' => 'BPJS', 'A92' => 'ASURANSI'];
@@ -79,6 +80,7 @@ foreach ($mapping_poli as $poli_name => $poli_codes) {
         foreach ($penjamin as $kd_pj => $label) {
             $sql = "SELECT COUNT(*) AS jml FROM reg_periksa rp
                 WHERE rp.kd_poli IN ($poli_codes_str)
+                  AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')
                   AND rp.kd_pj = '$kd_pj'
                   AND rp.stts = 'Sudah'
                   AND rp.status_bayar = 'Sudah Bayar'
@@ -116,6 +118,7 @@ foreach ($weeks as $week) {
         SUM(CASE WHEN rp.kd_pj='A92' THEN 1 ELSE 0 END) AS asuransi
         FROM reg_periksa rp
         WHERE rp.stts = 'Sudah'
+          AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')
           AND rp.status_bayar = 'Sudah Bayar'
           AND rp.no_rkm_medis NOT IN (SELECT no_rkm_medis FROM pasien WHERE LOWER(nm_pasien) LIKE '%test%')
           AND DAYOFWEEK(rp.tgl_registrasi) <> 1

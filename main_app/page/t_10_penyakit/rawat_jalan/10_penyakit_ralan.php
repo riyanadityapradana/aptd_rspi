@@ -23,6 +23,7 @@ JOIN reg_periksa r ON d.no_rawat = r.no_rawat
 JOIN pasien p2 ON r.no_rkm_medis = p2.no_rkm_medis
 JOIN penyakit p ON d.kd_penyakit = p.kd_penyakit
 WHERE r.status_lanjut = 'Ralan'
+  AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = r.kd_poli AND pl.status = '1')
   AND p2.nm_pasien NOT LIKE '%TEST%'
   AND p2.nm_pasien NOT LIKE '%Tes%'
   AND p2.nm_pasien NOT LIKE '%Coba%'

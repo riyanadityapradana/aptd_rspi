@@ -22,7 +22,7 @@ FROM diagnosa_pasien d
 JOIN reg_periksa r ON d.no_rawat = r.no_rawat
 JOIN pasien p2 ON r.no_rkm_medis = p2.no_rkm_medis
 JOIN penyakit p ON d.kd_penyakit = p.kd_penyakit
-JOIN poliklinik pl ON r.kd_poli = pl.kd_poli
+JOIN poliklinik pl ON r.kd_poli = pl.kd_poli AND pl.status = '1'
 WHERE r.status_lanjut = 'Ralan'
   AND pl.nm_poli LIKE '%Bedah%'
   AND p2.nm_pasien NOT LIKE '%TEST%'

@@ -29,7 +29,7 @@ $sql = "SELECT
     SUM(CASE WHEN rp.kd_pj='BPJ' THEN 1 ELSE 0 END) AS jumlah_bpjs,
     SUM(CASE WHEN rp.kd_pj='A92' THEN 1 ELSE 0 END) AS jumlah_asuransi
 FROM reg_periksa rp
-LEFT JOIN poliklinik pl ON rp.kd_poli = pl.kd_poli
+INNER JOIN poliklinik pl ON rp.kd_poli = pl.kd_poli AND pl.status = '1'
 WHERE rp.tgl_registrasi BETWEEN ? AND ?
   AND rp.status_lanjut='Ralan'
   AND rp.status_bayar='Sudah Bayar'

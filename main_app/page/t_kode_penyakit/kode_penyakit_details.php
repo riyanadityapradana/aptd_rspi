@@ -109,6 +109,7 @@ if ($isRanap) {
             INNER JOIN penyakit py ON dp.kd_penyakit = py.kd_penyakit
             LEFT JOIN poliklinik pl ON rp.kd_poli = pl.kd_poli
             WHERE rp.status_lanjut = 'Ralan'
+              AND pl.status = '1'
               AND dp.kd_penyakit LIKE CONCAT(?, '%')
               AND DATE(rp.tgl_registrasi) BETWEEN ? AND ?
               AND LOWER(ps.nm_pasien) NOT LIKE '%test%'

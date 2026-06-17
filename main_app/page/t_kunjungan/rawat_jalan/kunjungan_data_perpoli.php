@@ -13,7 +13,7 @@
 					<?php
 					// Comprehensive poli mapping - mengelompokkan semua kode poli menjadi nama poli
 					$mapping_poli = [
-						'GIGI' => ['U0042', 'U0043', 'U0052', 'U0057', 'U0065'],
+						'GIGI' => ['U0042', 'U0043', 'U0052', 'U0057', 'U0065', 'U0077'],
 						'BEDAH' => ['U0015', 'U0065', 'U0064', 'U0054', 'U0070'],
 						'ANAK' => ['U0068', 'U0069', 'U0067'],
 						'THT' => ['U0011'],
@@ -30,6 +30,7 @@
 						'MCU' => ['U0071'],
 						'HEMODIALISA' => ['U0023'],
 						'IGD' => ['IGDK', 'U0009', 'U0013'],
+						'PONEK RALAN' => ['U0074'],
 						'REHAB MEDIK' => ['kfr'],
 					];
 					
@@ -118,6 +119,7 @@
 								
 								$whereParts = [
 									"rp.kd_poli IN (".$poli_codes_str.")",
+									"EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')",
 									"rp.stts = 'Sudah'",
 									"rp.status_bayar = 'Sudah Bayar'",
 									"rp.no_rkm_medis NOT IN (SELECT no_rkm_medis FROM pasien WHERE LOWER(nm_pasien) LIKE '%test%')"

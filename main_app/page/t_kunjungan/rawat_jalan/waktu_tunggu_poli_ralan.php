@@ -42,7 +42,7 @@ $sql = "SELECT
                 MIN(CASE WHEN d_soap.kd_dokter IS NOT NULL THEN pr.jam_rawat END) AS task_id_5
             FROM pemeriksaan_ralan pr
             INNER JOIN reg_periksa rp ON pr.no_rawat = rp.no_rawat
-            INNER JOIN poliklinik pl ON rp.kd_poli = pl.kd_poli
+            INNER JOIN poliklinik pl ON rp.kd_poli = pl.kd_poli AND pl.status = '1'
             INNER JOIN dokter d_reg ON rp.kd_dokter = d_reg.kd_dokter
             LEFT JOIN dokter d_soap ON pr.nip = d_soap.kd_dokter
             WHERE MONTH(pr.tgl_perawatan) = ?
