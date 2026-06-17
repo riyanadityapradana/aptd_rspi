@@ -96,6 +96,7 @@ $menuKunjunganRalan = [
     [
         ['page' => 'kunjungan_data_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan'],
         ['page' => 'kunjungan_data_perpoli', 'label' => 'Kunjungan Pasien Rawat Jalan Perpoli'],
+        ['page' => 'kunjungan_data_igd', 'label' => 'Kunjungan Pasien IGD'],
         ['page' => 'kunjungan_data_perkab_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Perkab'],
         ['page' => 'kunjungan_data_per_minggu', 'label' => 'Kunjungan Pasien Rawat Jalan Per Minggu'],
         ['page' => 'top_10_poli_ralan', 'label' => 'Top 10 Poliklinik Pasien Tertinggi'],
@@ -174,6 +175,15 @@ $menuGizi = [
         ['page' => 'adime_gizi', 'label' => 'Monitoring ADIME Gizi Rawat Inap'],
     ],
 ];
+
+$menuDataKlinis = [
+    [
+        ['page' => 'bor_rawat_inap', 'label' => 'BOR Rawat Inap'],
+        ['page' => 'los_klinis_rawat_inap', 'label' => 'LOS Rawat Inap'],
+        ['page' => 'toi_rawat_inap', 'label' => 'TOI Rawat Inap'],
+        ['page' => 'bto_rawat_inap', 'label' => 'BTO Rawat Inap'],
+    ],
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -221,6 +231,7 @@ $menuGizi = [
                     <?php renderDropdownMenu('navbarDropdownRanap', 'Master Kunjungan Ranap', $menuKunjunganRanap, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownPenyakit', 'Master Penyakit', $menuPenyakit, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownAnalitik', 'Analitik', $menuAnalitik, $page); ?>
+                    <?php renderDropdownMenu('navbarDropdownDataKlinis', 'Data Klinis', $menuDataKlinis, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownGizi', 'Master Gizi', $menuGizi, $page); ?>
                 </ul>
                 <div class="form-inline my-2 my-lg-0">
