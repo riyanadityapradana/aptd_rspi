@@ -195,7 +195,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN (
             SELECT pr.no_rawat,
                    SUM(pr.tarif_tindakan_dokter) AS jd_rontgen,
-                   SUM(pr.biaya) AS rontgen
+                   SUM(pr.bhp) AS rontgen
             FROM periksa_radiologi pr
             INNER JOIN ($filterSql) f ON f.no_rawat = pr.no_rawat
             INNER JOIN jns_perawatan_radiologi jpr ON jpr.kd_jenis_prw = pr.kd_jenis_prw
