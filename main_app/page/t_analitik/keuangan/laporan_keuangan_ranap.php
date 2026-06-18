@@ -88,7 +88,7 @@ ob_start(); ?>
         .keu-ranap-scroll::-webkit-scrollbar{height:14px}
         .keu-ranap-scroll::-webkit-scrollbar-thumb{background:#8b97aa;border-radius:999px;border:2px solid #eef2f7}
         .keu-ranap-scroll .dataTables_wrapper{width:max-content;min-width:100%;max-width:none}
-        .keu-ranap-scroll .dataTables_wrapper>.row{width:100%;min-width:7121px;max-width:none;margin-left:0;margin-right:0;position:relative;z-index:12;background:#fff;padding:6px 0;display:flex;align-items:center;flex-wrap:nowrap}
+        .keu-ranap-scroll .dataTables_wrapper>.row{width:100%;min-width:7061px;max-width:none;margin-left:0;margin-right:0;position:relative;z-index:12;background:#fff;padding:6px 0;display:flex;align-items:center;flex-wrap:nowrap}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"],.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]{padding-left:0;padding-right:0;max-width:none}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:first-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:first-child{flex:1 0 auto}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{position:sticky;right:0;z-index:16;flex:0 0 auto;width:auto!important;max-width:calc(100vw - 96px);background:#fff;padding-left:12px!important;box-shadow:-14px 0 18px -18px rgba(15,23,42,.85)}
@@ -99,9 +99,9 @@ ob_start(); ?>
         .keu-ranap-scroll .dataTables_info{padding-top:8px;font-size:13px;white-space:normal}
         .keu-ranap-scroll .dataTables_paginate{padding-top:4px;font-size:13px;text-align:right!important}
         .keu-ranap-scroll .dataTables_paginate .pagination{justify-content:flex-end!important;flex-wrap:wrap}
-        .keu-ranap-table{min-width:7121px;width:7121px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
+        .keu-ranap-table{min-width:7061px;width:7061px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
         .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle!important;border:1px solid #111!important;padding:6px 8px!important;line-height:1.25}
-        .keu-ranap-table thead th{background:#d9e2f3!important;color:#000!important;text-align:center;font-size:13px;font-weight:800}
+        .keu-ranap-table thead th{background:#d9e2f3!important;color:#000!important;text-align:center;font-size:13px;font-weight:800;white-space:normal;line-height:1.15}
         .keu-ranap-table thead tr:first-child th{background:#cfd8e8!important}
         .keu-ranap-table tbody td{font-size:13px;background:#fff}
         .keu-ranap-table .col-rawat{width:155px;min-width:155px;max-width:155px}
@@ -118,6 +118,8 @@ ob_start(); ?>
         .keu-ranap-table .col-ket-telp{width:280px;min-width:280px;max-width:280px;overflow:hidden;text-overflow:ellipsis}
         .keu-ranap-table .col-kamar{width:132px;min-width:132px;max-width:132px}
         .keu-ranap-table .col-sep{width:190px;min-width:190px;max-width:190px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+        .keu-ranap-table .col-obat-dasar{width:140px;min-width:140px;max-width:140px}
+        .keu-ranap-table .col-obat-margin{width:112px;min-width:112px;max-width:112px}
         .keu-ranap-table .num{width:104px;min-width:104px;text-align:right}
         .keu-ranap-table .flag{width:72px;min-width:72px;text-align:center}
         .keu-ranap-table thead tr:first-child th:nth-child(1),.keu-ranap-table tbody td:nth-child(1){position:sticky;left:0;z-index:5;background:#fff!important}
@@ -128,9 +130,9 @@ ob_start(); ?>
         .keu-rawat-btn:hover{background:#174f94;color:#fff}
         @media (max-width: 991.98px){
             .keu-ranap-scroll{margin-left:-8px;margin-right:-8px;width:calc(100% + 16px);max-width:calc(100% + 16px)}
-            .keu-ranap-scroll .dataTables_wrapper>.row{min-width:7121px;padding-left:8px;padding-right:8px}
+            .keu-ranap-scroll .dataTables_wrapper>.row{min-width:7061px;padding-left:8px;padding-right:8px}
             .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{max-width:calc(100vw - 24px);padding-right:8px!important}
-            .keu-ranap-table{min-width:7121px;width:7121px!important}
+            .keu-ranap-table{min-width:7061px;width:7061px!important}
             .keu-ranap-table th,.keu-ranap-table td{padding:5px 7px!important}
             .keu-ranap-table thead th,.keu-ranap-table tbody td{font-size:12px}
             .keu-rawat-btn{font-size:11px;padding:3px 7px}
@@ -170,9 +172,8 @@ ob_start(); ?>
                 <?php for ($i = 0; $i < 3; $i++): ?>
                     <col style="width:104px">
                 <?php endfor; ?>
-                <?php for ($i = 0; $i < 3; $i++): ?>
-                    <col style="width:104px">
-                <?php endfor; ?>
+                <col style="width:140px">
+                <col style="width:112px">
                 <?php for ($i = 0; $i < 7; $i++): ?>
                     <col style="width:104px">
                 <?php endfor; ?>
@@ -204,9 +205,8 @@ ob_start(); ?>
                     <th rowspan="2" class="num">JK</th>
                     <th rowspan="2" class="num">BHP</th>
                     <th rowspan="2" class="num">OBAT</th>
-                    <th rowspan="2" class="num">Ttl Obat</th>
-                    <th rowspan="2" class="num">Ttl Retur</th>
-                    <th rowspan="2" class="num">15% Dasar</th>
+                    <th rowspan="2" class="num col-obat-dasar">Total Harga Dasar</th>
+                    <th rowspan="2" class="num col-obat-margin">15% Dasar</th>
                     <th colspan="7">Penunjang</th>
                     <th colspan="3">MAKAN</th>
                     <th rowspan="2" class="num">Phototherapy</th>
@@ -254,7 +254,7 @@ ob_start(); ?>
             </thead>
             <tbody>
                 <?php if (empty($rows)): ?>
-                    <tr><td colspan="55" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
+                    <tr><td colspan="54" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
                 <?php else: foreach ($rows as $row): ?>
                     <tr>
                         <td class="col-rawat">
@@ -300,9 +300,8 @@ ob_start(); ?>
                         <td class="num"><?php echo aptd_currency($row['jk']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['bhp']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['obat']); ?></td>
-                        <td class="num"><?php echo aptd_currency($row['ttl_obat']); ?></td>
-                        <td class="num"><?php echo aptd_currency($row['ttl_retur']); ?></td>
-                        <td class="num"><?php echo aptd_currency($row['markup_obat_bhp']); ?></td>
+                        <td class="num col-obat-dasar"><?php echo aptd_currency($row['total_harga_dasar_obat']); ?></td>
+                        <td class="num col-obat-margin"><?php echo aptd_currency($row['markup_obat_bhp']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['lab_pk']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['lab_pa']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['rad_usg']); ?></td>

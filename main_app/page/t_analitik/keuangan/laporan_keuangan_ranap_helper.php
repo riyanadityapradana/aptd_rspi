@@ -27,8 +27,8 @@ function aptd_keu_ranap_export_url($month, $year)
 
 function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
 {
-    $filterSql = aptd_keu_ranap_filter_sql($mysqli, $startDate, $endDate);
     $mysqli->query('SET SESSION group_concat_max_len = 1048576');
+    $filterSql = aptd_keu_ranap_filter_sql($mysqli, $startDate, $endDate);
 
     $sql = "
         SELECT
@@ -75,8 +75,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             COALESCE(extra.hd, 0) AS hd,
             COALESCE(extra.jk, 0) AS jk,
             COALESCE(bhp.bhp, 0) AS bhp,
-            COALESCE(obat.ttl_obat, 0) AS ttl_obat,
-            COALESCE(obat.ttl_retur, 0) AS ttl_retur,
+            COALESCE(obat.total_harga_dasar_obat, 0) AS total_harga_dasar_obat,
             COALESCE(obat.markup_obat_bhp, 0) AS markup_obat_bhp,
             COALESCE(obat.obat, 0) AS obat,
             COALESCE(lab.lab_pk, 0) AS lab_pk,
@@ -213,30 +212,15 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             GROUP BY pl.no_rawat
         ) lab ON lab.no_rawat = rp.no_rawat
         LEFT JOIN (
-            SELECT obat_raw.no_rawat,
-                   obat_raw.ttl_obat,
-                   COALESCE(retur.ttl_retur, 0) AS ttl_retur,
-                   obat_raw.markup_obat_bhp,
-                   (obat_raw.ttl_obat - COALESCE(retur.ttl_retur, 0) + obat_raw.markup_obat_bhp) AS obat
-            FROM (
-                SELECT dpo.no_rawat,
-                       SUM(dpo.total) AS ttl_obat,
-                       SUM(COALESCE(db.dasar, 0) * dpo.jml) * 0.15 AS markup_obat_bhp
-                FROM detail_pemberian_obat dpo
-                INNER JOIN ($filterSql) f ON f.no_rawat = dpo.no_rawat
-                LEFT JOIN databarang db ON db.kode_brng = dpo.kode_brng
-                WHERE dpo.status = 'Ranap'
-                GROUP BY dpo.no_rawat
-            ) obat_raw
-            LEFT JOIN (
-                SELECT f.no_rawat,
-                       SUM(drj.subtotal) AS ttl_retur
-                FROM ($filterSql) f
-                INNER JOIN returjual rj ON rj.no_retur_jual LIKE CONCAT('%', f.no_rawat, '%')
-                                     OR rj.no_retur_jual LIKE CONCAT('%', REPLACE(f.no_rawat, '/', ''), '%')
-                INNER JOIN detreturjual drj ON drj.no_retur_jual = rj.no_retur_jual
-                GROUP BY f.no_rawat
-            ) retur ON retur.no_rawat = obat_raw.no_rawat
+            SELECT dpo.no_rawat,
+                   SUM(COALESCE(db.dasar, 0) * dpo.jml) AS total_harga_dasar_obat,
+                   SUM(COALESCE(db.dasar, 0) * dpo.jml) * 0.15 AS markup_obat_bhp,
+                   SUM(COALESCE(db.dasar, 0) * dpo.jml) * 1.15 AS obat
+            FROM detail_pemberian_obat dpo
+            INNER JOIN ($filterSql) f ON f.no_rawat = dpo.no_rawat
+            LEFT JOIN databarang db ON db.kode_brng = dpo.kode_brng
+            WHERE dpo.status = 'Ranap'
+            GROUP BY dpo.no_rawat
         ) obat ON obat.no_rawat = rp.no_rawat
         LEFT JOIN (
             SELECT bhp_total.no_rawat, SUM(bhp_total.nilai_bhp) AS bhp
@@ -379,7 +363,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
         GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur,
                  bill.total_claim, manual.jum_claim, manual.jum_jdoperator, ugd.dokter_ugd, visit.visit_items, telp.telp_items, usg.jd_usg, rad.jd_rontgen,
-                 lab.jd_lab, extra.jd_pa, extra.hd, extra.jk, bhp.bhp, obat.ttl_obat, obat.ttl_retur, obat.markup_obat_bhp, obat.obat, lab.lab_pk, lab.lab_pa,
+                 lab.jd_lab, extra.jd_pa, extra.hd, extra.jk, bhp.bhp, obat.total_harga_dasar_obat, obat.markup_obat_bhp, obat.obat, lab.lab_pk, lab.lab_pa,
                  usg.rad_usg, rad.rontgen, fisio.fisio_items, ekg.ekg, ekg.count_ekg, extra.darah, makan.makan_jumlah, makan.makan_harga,
                  makan.makan_kali, extra.makan_billing, extra.phototherapy, extra.oksigen, extra.spirometri, extra.albumin,
                  ok.jd_operator, ok.jd_anestesi, ok.jd_anak, ok.jd_dokter_umum, ok.has_operasi, ok.has_partus,
@@ -395,8 +379,6 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
 
     $rows = [];
     while ($row = $result->fetch_assoc()) {
-        $row['jd_dpjp'] = aptd_keu_ranap_calculate_dpjp_fee($row);
-        $row['ket_dpjp'] = aptd_keu_ranap_dpjp_condition($row);
         $visit = aptd_keu_ranap_calculate_visit_fee($row);
         $row['jd_visit'] = $visit['total'];
         $row['jd_visit_umum'] = $visit['umum'];
@@ -411,6 +393,8 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
         $row['fisio'] = $fisio['total'];
         $row['fisio_counted'] = $fisio['counted'];
         $row['fisio_skipped'] = $fisio['skipped'];
+        $row['jd_dpjp'] = aptd_keu_ranap_calculate_dpjp_fee($row);
+        $row['ket_dpjp'] = aptd_keu_ranap_dpjp_condition($row);
         $row['jd_anestesi'] = aptd_keu_ranap_calculate_anestesi_fee($row);
         $row['ket_anestesi'] = aptd_keu_ranap_anestesi_condition($row);
         $row['jd_anak'] = aptd_keu_ranap_calculate_anak_fee($row);
@@ -497,7 +481,29 @@ function aptd_keu_ranap_calculate_dpjp_fee(array $row)
     $claim = (float) $row['claim'];
     $rule = aptd_keu_ranap_dpjp_rule($row);
 
-    return $rule ? $claim * $rule['rate'] : 0;
+    if (!$rule) {
+        return 0;
+    }
+
+    $base = $claim * $rule['rate'];
+    $deduction = aptd_keu_ranap_dpjp_deduction($row);
+
+    return max(0, $base - $deduction);
+}
+
+function aptd_keu_ranap_dpjp_deduction(array $row)
+{
+    $deduction = 0;
+    $deduction += isset($row['jd_visit']) ? (float) $row['jd_visit'] : 0;
+    $deduction += isset($row['jd_telpon']) ? (float) $row['jd_telpon'] : 0;
+    $deduction += isset($row['fisio']) ? (float) $row['fisio'] : 0;
+
+    $dpjp = isset($row['kd_dokter_dpjp_status']) ? trim((string) $row['kd_dokter_dpjp_status']) : '';
+    if ($dpjp !== '023.120813') {
+        $deduction += isset($row['hd']) ? (float) $row['hd'] : 0;
+    }
+
+    return $deduction;
 }
 
 function aptd_keu_ranap_dpjp_rules()
@@ -590,6 +596,27 @@ function aptd_keu_ranap_dpjp_condition(array $row)
     $condition .= (int) ($rule['rate'] * 100) . '% x claim';
     if ((float) $row['claim'] <= 0) {
         $condition .= ' (CLAIM 0)';
+    }
+
+    $visit = isset($row['jd_visit']) ? (float) $row['jd_visit'] : 0;
+    $telpon = isset($row['jd_telpon']) ? (float) $row['jd_telpon'] : 0;
+    $fisio = isset($row['fisio']) ? (float) $row['fisio'] : 0;
+    $hd = isset($row['hd']) ? (float) $row['hd'] : 0;
+    $base = (float) $row['claim'] * $rule['rate'];
+    $deduction = aptd_keu_ranap_dpjp_deduction($row);
+
+    $condition .= ' - dikurangi JD Visite ' . aptd_currency($visit);
+    $condition .= ', JD Telpon ' . aptd_currency($telpon);
+
+    $dpjp = isset($row['kd_dokter_dpjp_status']) ? trim((string) $row['kd_dokter_dpjp_status']) : '';
+    if ($dpjp !== '023.120813') {
+        $condition .= ', HD ' . aptd_currency($hd);
+    }
+
+    $condition .= ', Fisio ' . aptd_currency($fisio);
+
+    if ($deduction > 0) {
+        $condition .= ' = ' . aptd_currency(max(0, $base - $deduction));
     }
 
     return $condition;
