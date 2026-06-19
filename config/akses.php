@@ -65,6 +65,7 @@ function aptd_get_routes()
         'pasien_rujukan_masuk_keluar' => 'page/t_analitik/umum/pasien_rujukan_masuk_keluar.php',
         'kunjungan_wilayah_visual' => 'page/t_analitik/wilayah/kunjungan_wilayah_visual.php',
         'laporan_keuangan_ranap' => 'page/t_analitik/keuangan/laporan_keuangan_ranap.php',
+        'input_data_claim' => 'page/t_analitik/keuangan/input_data_claim.php',
         'export_laporan_keuangan_ranap' => 'page/t_analitik/keuangan/export_laporan_keuangan_ranap.php',
         'rl32_ranap' => 'page/t_rl_32/rl_32_ranap.php',
         'users_admin' => 'page/t_admin/users.php',
@@ -105,7 +106,8 @@ function aptd_get_access_map()
             'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'kunjungan_wilayah_visual', 'pasien_rujukan_masuk_keluar',
         ],
         'users' => ['beranda'],
-        'rekammedis' => ['beranda', 'rl32_ranap'],
+        'rekammedis' => ['beranda', 'rl32_ranap', 'input_data_claim'],
+        'keuangan' => ['beranda', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap', 'input_data_claim'],
         'gizi' => ['beranda', 'adime_gizi', 'export_adime_gizi'],
     ];
 }

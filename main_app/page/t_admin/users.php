@@ -1,7 +1,7 @@
 <?php
 require_once dirname(dirname(dirname(__DIR__))) . '/config/koneksi.php';
 
-$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi'];
+$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'keuangan'];
 $message = '';
 $error = '';
 $currentUserId = isset($_SESSION['id_users']) ? (int) $_SESSION['id_users'] : 0;

@@ -4,12 +4,15 @@ require_once __DIR__ . '/laporan_keuangan_ranap_helper.php';
 list($month, $year, $startDate, $endDate) = aptd_keu_ranap_date_filter();
 $monthLabels = aptd_month_labels_local();
 $saveMessage = null;
+$levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
+$canEditClaim = in_array($levelLogin, ['admin', 'rekammedis'], true);
 if (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1') {
     $saveMessage = aptd_keu_ranap_save_manual(
         $mysqli,
         isset($_POST['manual_no_rawat']) ? $_POST['manual_no_rawat'] : '',
         isset($_POST['manual_claim']) ? $_POST['manual_claim'] : 0,
-        isset($_POST['manual_jd_operator']) ? $_POST['manual_jd_operator'] : 0
+        isset($_POST['manual_jd_operator']) ? $_POST['manual_jd_operator'] : 0,
+        $canEditClaim
     );
     $_SESSION['keu_ranap_flash'] = $saveMessage;
     $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year);
@@ -345,7 +348,7 @@ ob_start(); ?>
                     </div>
                     <div class="form-group">
                         <label for="manual_claim"><strong>Nilai / Jumlah Claim</strong></label>
-                        <input type="number" class="form-control" name="manual_claim" id="manual_claim" min="0" step="0.01" required>
+                        <input type="number" class="form-control" name="manual_claim" id="manual_claim" min="0" step="0.01" <?php echo $canEditClaim ? '' : 'readonly'; ?> required>
                     </div>
                     <div class="form-group mb-0">
                         <label for="manual_jd_operator"><strong>Nilai / Jumlah JD Operator</strong></label>
