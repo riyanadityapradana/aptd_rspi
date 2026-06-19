@@ -144,7 +144,6 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             COALESCE(makan.makan_jumlah, 0) AS makan_jumlah,
             COALESCE(makan.makan_harga, 0) AS makan_harga,
             COALESCE(makan.makan_kali, 0) AS makan_kali,
-            COALESCE(extra.makan_billing, 0) AS makan_billing,
             COALESCE(extra.phototherapy, 0) AS phototherapy,
             COALESCE(extra.oksigen, 0) AS oksigen,
             COALESCE(extra.spirometri, 0) AS spirometri,
@@ -359,13 +358,27 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             GROUP BY ekg_total.no_rawat
         ) ekg ON ekg.no_rawat = rp.no_rawat
         LEFT JOIN (
-            SELECT no_rawat,
+            SELECT makan_detail.no_rawat,
                    COUNT(*) AS makan_kali,
-                   0 AS makan_harga,
-                   0 AS makan_jumlah
-            FROM detail_beri_diet
-            INNER JOIN ($filterSql) f USING (no_rawat)
-            GROUP BY no_rawat
+                   ROUND(SUM(makan_detail.harga_porsi) / NULLIF(COUNT(*), 0)) AS makan_harga,
+                   SUM(makan_detail.harga_porsi) AS makan_jumlah
+            FROM (
+                SELECT dbd.no_rawat,
+                       CASE
+                           WHEN k.kelas LIKE '%VVIP%' THEN 35000
+                           WHEN k.kelas LIKE '%VIP%' THEN 30000
+                           WHEN k.kelas LIKE '%Kelas Utama%' AND k.kd_bangsal LIKE '%ICU%' THEN 27500
+                           WHEN k.kelas LIKE '%Kelas Utama%' AND k.kd_bangsal LIKE '%ISO%' THEN 20000
+                           WHEN k.kelas LIKE '%Kelas 1%' THEN 27500
+                           WHEN k.kelas LIKE '%Kelas 2%' THEN 20000
+                           WHEN k.kelas LIKE '%Kelas 3%' THEN 20000
+                           ELSE 0
+                       END AS harga_porsi
+                FROM detail_beri_diet dbd
+                INNER JOIN ($filterSql) f ON f.no_rawat = dbd.no_rawat
+                LEFT JOIN kamar k ON k.kd_kamar = dbd.kd_kamar
+            ) makan_detail
+            GROUP BY makan_detail.no_rawat
         ) makan ON makan.no_rawat = rp.no_rawat
         LEFT JOIN (
             SELECT no_rawat,
@@ -375,7 +388,6 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
                    SUM(CASE WHEN nm_perawatan LIKE '%BHP%' THEN totalbiaya ELSE 0 END) AS bhp,
                    SUM(CASE WHEN nm_perawatan LIKE '%Lab PA%' OR nm_perawatan LIKE '%Patologi Anatomi%' THEN totalbiaya ELSE 0 END) AS lab_pa,
                    SUM(CASE WHEN nm_perawatan LIKE '%Darah%' OR nm_perawatan LIKE '%Transfusi%' THEN totalbiaya ELSE 0 END) AS darah,
-                   SUM(CASE WHEN nm_perawatan LIKE '%Makan%' OR nm_perawatan LIKE '%Diet%' THEN totalbiaya ELSE 0 END) AS makan_billing,
                    SUM(CASE WHEN nm_perawatan LIKE '%Photo%terap%' OR nm_perawatan LIKE '%Fototerap%' OR nm_perawatan LIKE '%Phototherapy%' THEN totalbiaya ELSE 0 END) AS phototherapy,
                    SUM(CASE WHEN nm_perawatan LIKE '%Oksigen%' OR nm_perawatan LIKE '%Oxygen%' THEN totalbiaya ELSE 0 END) AS oksigen,
                    SUM(CASE WHEN nm_perawatan LIKE '%Spirometri%' OR nm_perawatan LIKE '%Spirometry%' THEN totalbiaya ELSE 0 END) AS spirometri,
@@ -420,7 +432,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
                  bill.total_claim, manual.jum_claim, manual.jum_jdoperator, ugd.dokter_ugd, visit.visit_items, telp.telp_items, usg.jd_usg, rad.jd_rontgen,
                  lab.jd_lab, extra.jd_pa, extra.hd, extra.jk, bhp.bhp, obat.total_harga_dasar_obat, obat.markup_obat_bhp, obat.obat, lab.lab_pk, lab.lab_pa,
                  usg.rad_usg, rad.rontgen, fisio.fisio_items, ekg.ekg, ekg.count_ekg, extra.darah, makan.makan_jumlah, makan.makan_harga,
-                 makan.makan_kali, extra.makan_billing, extra.phototherapy, extra.oksigen, extra.spirometri, extra.albumin,
+                 makan.makan_kali, extra.phototherapy, extra.oksigen, extra.spirometri, extra.albumin,
                  ok.jd_operator, ok.jd_anestesi, ok.jd_anak, ok.jd_dokter_umum, ok.has_operasi, ok.has_partus,
                  ok.has_phaco, ok.has_phaco_anestesi, ok.has_phaco_tanpa_anestesi, ok.operator1_codes, ok.operator1_names,
                  ok.has_operator_anak, ok.has_operator_anak_sc, ok.has_operator_anak_partus, ok.operator_anak_names,
@@ -454,12 +466,6 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
         $row['ket_anestesi'] = aptd_keu_ranap_anestesi_condition($row);
         $row['jd_anak'] = aptd_keu_ranap_calculate_anak_fee($row);
         $row['ket_anak'] = aptd_keu_ranap_anak_condition($row);
-        if ((float) $row['makan_jumlah'] <= 0 && isset($row['makan_billing'])) {
-            $row['makan_jumlah'] = (float) $row['makan_billing'];
-        }
-        if ((float) $row['makan_harga'] <= 0 && (float) $row['makan_jumlah'] > 0 && (int) $row['makan_kali'] > 0) {
-            $row['makan_harga'] = (float) $row['makan_jumlah'] / (int) $row['makan_kali'];
-        }
         $row['total_jasa_dokter'] = aptd_keu_ranap_sum_doctor_fee($row);
         $row['total_biaya_laporan'] = aptd_keu_ranap_sum_report_cost($row);
         $row['margin'] = (float) $row['claim'] - (float) $row['total_biaya_laporan'];
