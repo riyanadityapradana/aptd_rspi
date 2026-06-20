@@ -171,6 +171,7 @@ $menuAnalitik = [
 $menuGizi = [
     [
         ['page' => 'adime_gizi', 'label' => 'Monitoring ADIME Gizi Rawat Inap'],
+        ['page' => 'kunjungan_usia_ranap_gizi', 'label' => 'Kunjungan Rawat Inap Berdasarkan Usia'],
     ],
 ];
 

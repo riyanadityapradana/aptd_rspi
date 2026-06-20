@@ -7,6 +7,8 @@ function aptd_get_routes()
         'export_diare' => 'page/t_diare/export_diare.php',
         'adime_gizi' => 'page/t_gizi/adime_gizi.php',
         'export_adime_gizi' => 'page/t_gizi/export_adime_gizi.php',
+        'kunjungan_usia_ranap_gizi' => 'page/t_gizi/kunjungan_data_berdasarkanusia_ranap_gizi.php',
+        'export_kunjungan_usia_ranap_gizi' => 'page/t_gizi/export_kunjungan_usia_ranap_gizi.php',
 
         'kunjungan_data_ralan' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_ralan.php',
         'kunjungan_data_perpoli' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_perpoli.php',
@@ -108,7 +110,7 @@ function aptd_get_access_map()
         'users' => ['beranda'],
         'rekammedis' => ['beranda', 'rl32_ranap', 'input_data_claim'],
         'keuangan' => ['beranda', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap', 'input_data_claim'],
-        'gizi' => ['beranda', 'adime_gizi', 'export_adime_gizi'],
+        'gizi' => ['beranda', 'adime_gizi', 'export_adime_gizi', 'kunjungan_usia_ranap_gizi', 'export_kunjungan_usia_ranap_gizi'],
     ];
 }
 

@@ -201,6 +201,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
                    GROUP_CONCAT(
                        CONCAT_WS('~',
                            rid.kd_dokter,
+                           IFNULL(d_visit.kd_sps, ''),
                            rid.tarif_tindakandr,
                            rid.tgl_perawatan,
                            rid.jam_rawat,
@@ -212,6 +213,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             FROM rawat_inap_dr rid
             INNER JOIN ($filterSql) f ON f.no_rawat = rid.no_rawat
             INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rid.kd_jenis_prw
+            LEFT JOIN dokter d_visit ON d_visit.kd_dokter = rid.kd_dokter
             WHERE jpi.nm_perawatan LIKE '%Visite Dokter Spesialis%'
                OR jpi.nm_perawatan LIKE '%Visite Dokter Umum%'
             GROUP BY rid.no_rawat
@@ -221,6 +223,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
                    GROUP_CONCAT(
                        CONCAT_WS('~',
                            rid.kd_dokter,
+                           IFNULL(d_telp.kd_sps, ''),
                            rid.tarif_tindakandr,
                            rid.tgl_perawatan,
                            rid.jam_rawat,
@@ -232,6 +235,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             FROM rawat_inap_dr rid
             INNER JOIN ($filterSql) f ON f.no_rawat = rid.no_rawat
             INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rid.kd_jenis_prw
+            LEFT JOIN dokter d_telp ON d_telp.kd_dokter = rid.kd_dokter
             WHERE jpi.nm_perawatan LIKE '%Telpon%'
                OR jpi.nm_perawatan LIKE '%Telepon%'
             GROUP BY rid.no_rawat
@@ -749,20 +753,23 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
     }
 
     $dpjp = isset($row['kd_dokter_dpjp_status']) ? trim((string) $row['kd_dokter_dpjp_status']) : '';
+    $kdSpsDpjp = isset($row['kd_sps_dpjp']) ? trim((string) $row['kd_sps_dpjp']) : '';
     $doctorCounts = [];
     $skippedDpjp = 0;
+    $skippedPengganti = 0;
     $skippedLimit = 0;
     $counted = 0;
 
     foreach (explode('|', (string) $row['visit_items']) as $item) {
         $parts = explode('~', $item);
-        if (count($parts) < 5) {
+        if (count($parts) < 6) {
             continue;
         }
 
         $kdDokter = trim($parts[0]);
-        $tarif = (float) $parts[1];
-        $namaPerawatan = $parts[4];
+        $kdSpsVisit = trim($parts[1]);
+        $tarif = (float) $parts[2];
+        $namaPerawatan = $parts[5];
 
         if ($kdDokter === '') {
             continue;
@@ -770,6 +777,11 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
 
         if ($dpjp !== '' && $kdDokter === $dpjp) {
             $skippedDpjp++;
+            continue;
+        }
+
+        if ($kdSpsDpjp !== '' && $kdSpsVisit !== '' && $kdSpsVisit === $kdSpsDpjp) {
+            $skippedPengganti++;
             continue;
         }
 
@@ -793,7 +805,7 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
         }
     }
 
-    if ($counted > 0 || $skippedDpjp > 0 || $skippedLimit > 0) {
+    if ($counted > 0 || $skippedDpjp > 0 || $skippedPengganti > 0 || $skippedLimit > 0) {
         $notes = [
             'Umum ' . aptd_currency($result['umum']),
             'Spesialis ' . aptd_currency($result['spesialis']),
@@ -806,6 +818,10 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
 
         if ($skippedDpjp > 0) {
             $notes[] = 'skip DPJP ' . $skippedDpjp;
+        }
+
+        if ($skippedPengganti > 0) {
+            $notes[] = 'skip dokter pengganti spesialistik sama ' . $skippedPengganti;
         }
 
         if ($skippedLimit > 0) {
@@ -832,17 +848,20 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
     }
 
     $dpjp = isset($row['kd_dokter_dpjp_status']) ? trim((string) $row['kd_dokter_dpjp_status']) : '';
+    $kdSpsDpjp = isset($row['kd_sps_dpjp']) ? trim((string) $row['kd_sps_dpjp']) : '';
     $countDpjp = 0;
     $countNonDpjp = 0;
+    $countPengganti = 0;
 
     foreach (explode('|', (string) $row['telp_items']) as $item) {
         $parts = explode('~', $item);
-        if (count($parts) < 5) {
+        if (count($parts) < 6) {
             continue;
         }
 
         $kdDokter = trim($parts[0]);
-        $tarif = (float) $parts[1];
+        $kdSpsTelp = trim($parts[1]);
+        $tarif = (float) $parts[2];
 
         if ($kdDokter === '') {
             continue;
@@ -854,16 +873,21 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
             continue;
         }
 
+        if ($kdSpsDpjp !== '' && $kdSpsTelp !== '' && $kdSpsTelp === $kdSpsDpjp) {
+            $countPengganti++;
+            continue;
+        }
+
         $result['non_dpjp'] += $tarif;
         $result['total'] += $tarif;
         $countNonDpjp++;
     }
 
-    if ($countDpjp > 0 || $countNonDpjp > 0) {
+    if ($countDpjp > 0 || $countNonDpjp > 0 || $countPengganti > 0) {
         $notes = [
             'Telpon DPJP ' . aptd_currency($result['dpjp']),
-            'Telpon bukan DPJP ' . aptd_currency($result['non_dpjp']),
-            'Dihitung ' . $countNonDpjp . ' konsultasi bukan DPJP',
+            'Telpon raber ' . aptd_currency($result['non_dpjp']),
+            'Dihitung ' . $countNonDpjp . ' konsultasi raber',
         ];
 
         if ($dpjp !== '') {
@@ -872,6 +896,10 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
 
         if ($countDpjp > 0) {
             $notes[] = 'skip DPJP ' . $countDpjp;
+        }
+
+        if ($countPengganti > 0) {
+            $notes[] = 'skip dokter pengganti spesialistik sama ' . $countPengganti;
         }
 
         $result['condition'] = implode('; ', $notes);
