@@ -144,9 +144,9 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             COALESCE(makan.makan_jumlah, 0) AS makan_jumlah,
             COALESCE(makan.makan_harga, 0) AS makan_harga,
             COALESCE(makan.makan_kali, 0) AS makan_kali,
-            COALESCE(extra.phototherapy, 0) AS phototherapy,
-            COALESCE(extra.oksigen, 0) AS oksigen,
-            COALESCE(extra.spirometri, 0) AS spirometri,
+            COALESCE(bhp_penunjang.phototherapy, 0) AS phototherapy,
+            COALESCE(oksigen.oksigen, 0) AS oksigen,
+            COALESCE(bhp_penunjang.spirometri, 0) AS spirometri,
             COALESCE(extra.albumin, 0) AS albumin,
             COALESCE(manual.jum_jdoperator, ok.jd_operator, 0) AS jd_operator,
             COALESCE(ok.jd_anestesi, 0) AS jd_anestesi,
@@ -362,6 +362,31 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             GROUP BY ekg_total.no_rawat
         ) ekg ON ekg.no_rawat = rp.no_rawat
         LEFT JOIN (
+            SELECT bhp_penunjang_raw.no_rawat,
+                   SUM(CASE WHEN bhp_penunjang_raw.nm_perawatan LIKE '%Fototheraphy%' THEN bhp_penunjang_raw.nilai_bhp ELSE 0 END) AS phototherapy,
+                   SUM(CASE WHEN bhp_penunjang_raw.nm_perawatan LIKE '%Spirometri%' THEN bhp_penunjang_raw.nilai_bhp ELSE 0 END) AS spirometri
+            FROM (
+                SELECT rid.no_rawat,
+                       CASE WHEN IFNULL(rid.bhp, 0) > 0 THEN rid.bhp ELSE IFNULL(jpi.bhp, 0) END AS nilai_bhp,
+                       jpi.nm_perawatan
+                FROM rawat_inap_dr rid
+                INNER JOIN ($filterSql) f ON f.no_rawat = rid.no_rawat
+                INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rid.kd_jenis_prw
+                WHERE jpi.nm_perawatan LIKE '%Fototheraphy%'
+                   OR jpi.nm_perawatan LIKE '%Spirometri%'
+                UNION ALL
+                SELECT rip.no_rawat,
+                       CASE WHEN IFNULL(rip.bhp, 0) > 0 THEN rip.bhp ELSE IFNULL(jpi.bhp, 0) END AS nilai_bhp,
+                       jpi.nm_perawatan
+                FROM rawat_inap_pr rip
+                INNER JOIN ($filterSql) f ON f.no_rawat = rip.no_rawat
+                INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rip.kd_jenis_prw
+                WHERE jpi.nm_perawatan LIKE '%Fototheraphy%'
+                   OR jpi.nm_perawatan LIKE '%Spirometri%'
+            ) bhp_penunjang_raw
+            GROUP BY bhp_penunjang_raw.no_rawat
+        ) bhp_penunjang ON bhp_penunjang.no_rawat = rp.no_rawat
+        LEFT JOIN (
             SELECT makan_detail.no_rawat,
                    COUNT(*) AS makan_kali,
                    ROUND(SUM(makan_detail.harga_porsi) / NULLIF(COUNT(*), 0)) AS makan_harga,
@@ -385,6 +410,14 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
             GROUP BY makan_detail.no_rawat
         ) makan ON makan.no_rawat = rp.no_rawat
         LEFT JOIN (
+            SELECT tb.no_rawat,
+                   SUM(tb.besar_biaya) AS oksigen
+            FROM tambahan_biaya tb
+            INNER JOIN ($filterSql) f ON f.no_rawat = tb.no_rawat
+            WHERE tb.nama_biaya LIKE '%oksigen%'
+            GROUP BY tb.no_rawat
+        ) oksigen ON oksigen.no_rawat = rp.no_rawat
+        LEFT JOIN (
             SELECT no_rawat,
                    SUM(CASE WHEN nm_perawatan LIKE '%PA%' OR nm_perawatan LIKE '%Patologi Anatomi%' OR nm_perawatan LIKE '%Lab PA%' THEN totalbiaya ELSE 0 END) AS jd_pa,
                    SUM(CASE WHEN nm_perawatan LIKE '%HD%' OR nm_perawatan LIKE '%Hemodialisa%' THEN totalbiaya ELSE 0 END) AS hd,
@@ -392,9 +425,6 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
                    SUM(CASE WHEN nm_perawatan LIKE '%BHP%' THEN totalbiaya ELSE 0 END) AS bhp,
                    SUM(CASE WHEN nm_perawatan LIKE '%Lab PA%' OR nm_perawatan LIKE '%Patologi Anatomi%' THEN totalbiaya ELSE 0 END) AS lab_pa,
                    SUM(CASE WHEN nm_perawatan LIKE '%Darah%' OR nm_perawatan LIKE '%Transfusi%' THEN totalbiaya ELSE 0 END) AS darah,
-                   SUM(CASE WHEN nm_perawatan LIKE '%Photo%terap%' OR nm_perawatan LIKE '%Fototerap%' OR nm_perawatan LIKE '%Phototherapy%' THEN totalbiaya ELSE 0 END) AS phototherapy,
-                   SUM(CASE WHEN nm_perawatan LIKE '%Oksigen%' OR nm_perawatan LIKE '%Oxygen%' THEN totalbiaya ELSE 0 END) AS oksigen,
-                   SUM(CASE WHEN nm_perawatan LIKE '%Spirometri%' OR nm_perawatan LIKE '%Spirometry%' THEN totalbiaya ELSE 0 END) AS spirometri,
                    SUM(CASE WHEN nm_perawatan LIKE '%Albumin%' THEN totalbiaya ELSE 0 END) AS albumin
             FROM billing
             INNER JOIN ($filterSql) f USING (no_rawat)
@@ -436,7 +466,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
                  bill.total_claim, manual.jum_claim, manual.jum_jdoperator, ugd.dokter_ugd, visit.visit_items, telp.telp_items, usg.jd_usg, rad.jd_rontgen,
                  lab.jd_lab, extra.jd_pa, extra.hd, extra.jk, bhp.bhp, obat.total_harga_dasar_obat, obat.markup_obat_bhp, obat.obat, lab.lab_pk, lab.lab_pa,
                  usg.rad_usg, rad.rontgen, fisio.fisio_items, ekg.ekg, ekg.count_ekg, extra.darah, makan.makan_jumlah, makan.makan_harga,
-                 makan.makan_kali, extra.phototherapy, extra.oksigen, extra.spirometri, extra.albumin,
+                 makan.makan_kali, bhp_penunjang.phototherapy, oksigen.oksigen, bhp_penunjang.spirometri, extra.albumin,
                  ok.jd_operator, ok.jd_anestesi, ok.jd_anak, ok.jd_dokter_umum, ok.has_operasi, ok.has_partus,
                  ok.has_phaco, ok.has_phaco_anestesi, ok.has_phaco_tanpa_anestesi, ok.operator1_codes, ok.operator1_names,
                  ok.has_operator_anak, ok.has_operator_anak_sc, ok.has_operator_anak_partus, ok.operator_anak_names,
@@ -454,11 +484,13 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
         $row['jd_visit'] = $visit['total'];
         $row['jd_visit_umum'] = $visit['umum'];
         $row['jd_visit_spesialis'] = $visit['spesialis'];
+        $row['jd_visit_pengganti'] = $visit['pengganti'];
         $row['ket_visit'] = $visit['condition'];
         $telpon = aptd_keu_ranap_calculate_telpon_fee($row);
         $row['jd_telpon'] = $telpon['total'];
         $row['jd_telpon_dpjp'] = $telpon['dpjp'];
         $row['jd_telpon_non_dpjp'] = $telpon['non_dpjp'];
+        $row['jd_telpon_pengganti'] = $telpon['pengganti'];
         $row['ket_telpon'] = $telpon['condition'];
         $fisio = aptd_keu_ranap_calculate_fisio($row);
         $row['fisio'] = $fisio['total'];
@@ -611,8 +643,8 @@ function aptd_keu_ranap_calculate_dpjp_fee(array $row)
 function aptd_keu_ranap_dpjp_deduction(array $row)
 {
     $deduction = 0;
-    $deduction += isset($row['jd_visit']) ? (float) $row['jd_visit'] : 0;
-    $deduction += isset($row['jd_telpon']) ? (float) $row['jd_telpon'] : 0;
+    $deduction += isset($row['jd_visit_pengganti']) ? (float) $row['jd_visit_pengganti'] : 0;
+    $deduction += isset($row['jd_telpon_pengganti']) ? (float) $row['jd_telpon_pengganti'] : 0;
     $deduction += isset($row['fisio']) ? (float) $row['fisio'] : 0;
 
     $dpjp = isset($row['kd_dokter_dpjp_status']) ? trim((string) $row['kd_dokter_dpjp_status']) : '';
@@ -715,15 +747,15 @@ function aptd_keu_ranap_dpjp_condition(array $row)
         $condition .= ' (CLAIM 0)';
     }
 
-    $visit = isset($row['jd_visit']) ? (float) $row['jd_visit'] : 0;
-    $telpon = isset($row['jd_telpon']) ? (float) $row['jd_telpon'] : 0;
+    $visitPengganti = isset($row['jd_visit_pengganti']) ? (float) $row['jd_visit_pengganti'] : 0;
+    $telponPengganti = isset($row['jd_telpon_pengganti']) ? (float) $row['jd_telpon_pengganti'] : 0;
     $fisio = isset($row['fisio']) ? (float) $row['fisio'] : 0;
     $hd = isset($row['hd']) ? (float) $row['hd'] : 0;
     $base = (float) $row['claim'] * $rule['rate'];
     $deduction = aptd_keu_ranap_dpjp_deduction($row);
 
-    $condition .= ' - dikurangi JD Visite ' . aptd_currency($visit);
-    $condition .= ', JD Telpon ' . aptd_currency($telpon);
+    $condition .= ' - dikurangi JD Visite Pengganti ' . aptd_currency($visitPengganti);
+    $condition .= ', JD Telpon Pengganti ' . aptd_currency($telponPengganti);
 
     $dpjp = isset($row['kd_dokter_dpjp_status']) ? trim((string) $row['kd_dokter_dpjp_status']) : '';
     if ($dpjp !== '023.120813') {
@@ -745,6 +777,7 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
         'total' => 0,
         'umum' => 0,
         'spesialis' => 0,
+        'pengganti' => 0,
         'condition' => 'Tidak ada visite umum/spesialis',
     ];
 
@@ -756,7 +789,8 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
     $kdSpsDpjp = isset($row['kd_sps_dpjp']) ? trim((string) $row['kd_sps_dpjp']) : '';
     $doctorCounts = [];
     $skippedDpjp = 0;
-    $skippedPengganti = 0;
+    $countedPengganti = 0;
+    $skippedPenggantiLimit = 0;
     $skippedLimit = 0;
     $counted = 0;
 
@@ -781,7 +815,13 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
         }
 
         if ($kdSpsDpjp !== '' && $kdSpsVisit !== '' && $kdSpsVisit === $kdSpsDpjp) {
-            $skippedPengganti++;
+            if ($countedPengganti >= 3) {
+                $skippedPenggantiLimit++;
+                continue;
+            }
+
+            $result['pengganti'] += $tarif;
+            $countedPengganti++;
             continue;
         }
 
@@ -805,11 +845,12 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
         }
     }
 
-    if ($counted > 0 || $skippedDpjp > 0 || $skippedPengganti > 0 || $skippedLimit > 0) {
+    if ($counted > 0 || $countedPengganti > 0 || $skippedDpjp > 0 || $skippedPenggantiLimit > 0 || $skippedLimit > 0) {
         $notes = [
             'Umum ' . aptd_currency($result['umum']),
             'Spesialis ' . aptd_currency($result['spesialis']),
             'Dihitung ' . $counted . ' visite',
+            'Pengganti ' . aptd_currency($result['pengganti']) . ' (' . $countedPengganti . ' visite)',
         ];
 
         if ($dpjp !== '') {
@@ -820,8 +861,8 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
             $notes[] = 'skip DPJP ' . $skippedDpjp;
         }
 
-        if ($skippedPengganti > 0) {
-            $notes[] = 'skip dokter pengganti spesialistik sama ' . $skippedPengganti;
+        if ($skippedPenggantiLimit > 0) {
+            $notes[] = 'skip pengganti >3 visite/no_rawat ' . $skippedPenggantiLimit;
         }
 
         if ($skippedLimit > 0) {
@@ -840,6 +881,7 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
         'total' => 0,
         'dpjp' => 0,
         'non_dpjp' => 0,
+        'pengganti' => 0,
         'condition' => 'Tidak ada konsultasi telpon',
     ];
 
@@ -874,6 +916,7 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
         }
 
         if ($kdSpsDpjp !== '' && $kdSpsTelp !== '' && $kdSpsTelp === $kdSpsDpjp) {
+            $result['pengganti'] += $tarif;
             $countPengganti++;
             continue;
         }
@@ -888,6 +931,7 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
             'Telpon DPJP ' . aptd_currency($result['dpjp']),
             'Telpon raber ' . aptd_currency($result['non_dpjp']),
             'Dihitung ' . $countNonDpjp . ' konsultasi raber',
+            'Pengganti ' . aptd_currency($result['pengganti']) . ' (' . $countPengganti . ' konsultasi)',
         ];
 
         if ($dpjp !== '') {
@@ -899,7 +943,7 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
         }
 
         if ($countPengganti > 0) {
-            $notes[] = 'skip dokter pengganti spesialistik sama ' . $countPengganti;
+            $notes[] = 'dokter pengganti spesialistik sama ' . $countPengganti;
         }
 
         $result['condition'] = implode('; ', $notes);
@@ -1063,7 +1107,9 @@ function aptd_keu_ranap_sum_doctor_fee(array $row)
         'jd_anestesi',
         'jd_anak',
         'jd_visit',
+        'jd_visit_pengganti',
         'jd_telpon',
+        'jd_telpon_pengganti',
         'jd_usg',
         'jd_rontgen',
         'jd_lab',

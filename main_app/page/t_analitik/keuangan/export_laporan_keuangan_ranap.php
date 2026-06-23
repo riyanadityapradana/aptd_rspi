@@ -34,7 +34,7 @@ echo '<th rowspan="2">Status Pulang</th>';
 echo '<th rowspan="2">DPJP</th>';
 echo '<th rowspan="2">Kamar</th>';
 echo '<th rowspan="2">CLAIM</th>';
-echo '<th colspan="19">Jasa Dokter</th>';
+echo '<th colspan="21">Jasa Dokter</th>';
 echo '<th rowspan="2">JK</th>';
 echo '<th rowspan="2">BHP</th>';
 echo '<th rowspan="2">OBAT</th>';
@@ -51,7 +51,7 @@ echo '<th colspan="4">Keterangan</th>';
 echo '</tr>';
 echo '<tr style="background:#d9e2f3;font-weight:bold;text-align:center;">';
 $headers = [
-    'Dokter UGD', 'JD DPJP', 'Ket. JD DPJP', 'JD Operator', 'JD Anestesi', 'Ket. JD Anestesi', 'JD Anak', 'Ket. JD Anak', 'JD Visite', 'JD Visite Umum', 'JD Visite Spesialis', 'Ket. JD Visite', 'JD Telp', 'Ket. JD Telp', 'JD USG',
+    'Dokter UGD', 'JD DPJP', 'Ket. JD DPJP', 'JD Operator', 'JD Anestesi', 'Ket. JD Anestesi', 'JD Anak', 'Ket. JD Anak', 'JD Visite', 'JD Visite Umum', 'JD Visite Spesialis', 'JD Visite Pengganti', 'Ket. JD Visite', 'JD Telp', 'JD Telpon Pengganti', 'Ket. JD Telp', 'JD USG',
     'JD Rontgen', 'JD Lab', 'JD PA', 'HD', 'LAB PK', 'LAB PA', 'Rad USG', 'Rontgen', 'Fisio', 'EKG',
     'Darah', 'Jumlah', 'Harga', 'Kali', 'DARAH', 'ALBU', 'TINDA', 'SEP'
 ];
@@ -84,8 +84,10 @@ foreach ($rows as $row) {
         $row['jd_visit'],
         $row['jd_visit_umum'],
         $row['jd_visit_spesialis'],
+        $row['jd_visit_pengganti'],
         $row['ket_visit'],
         $row['jd_telpon'],
+        $row['jd_telpon_pengganti'],
         $row['ket_telpon'],
         $row['jd_usg'],
         $row['jd_rontgen'],
