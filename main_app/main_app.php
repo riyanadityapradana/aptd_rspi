@@ -151,23 +151,6 @@ $menuPenyakit = [
     ],
 ];
 
-$menuAnalitik = [
-    [
-        ['page' => 'diare_data', 'label' => 'Data Pasien Diagnosa Diare'],
-        ['page' => 'rekap_pasien_baru_lama', 'label' => 'Rekap Pasien Baru vs Lama'],
-        ['page' => 'top_10_dokter_pasien', 'label' => 'Top 10 Dokter Paling Banyak Pasien'],
-        ['page' => 'pasien_rujukan_masuk_keluar', 'label' => 'Pasien Rujukan Masuk / Keluar'],
-    ],
-    [
-        ['page' => 'los_rawat_inap', 'label' => 'LOS Rawat Inap'],
-        ['page' => 'bor_sederhana', 'label' => 'BOR Sederhana Per Bangsal/Kamar'],
-        ['page' => 'laporan_keuangan_ranap', 'label' => 'Laporan Keuangan Rawat Inap'],
-    ],
-    [
-        ['page' => 'kunjungan_wilayah_visual', 'label' => 'Kunjungan Berdasarkan Kecamatan/Kabupaten'],
-    ],
-];
-
 $menuGizi = [
     [
         ['page' => 'adime_gizi', 'label' => 'Monitoring ADIME Gizi Rawat Inap'],
@@ -182,6 +165,16 @@ $menuDataKlinis = [
 ];
 
 $menuDataNonKlinis = [
+    [
+        ['page' => 'diare_data', 'label' => 'Data Pasien Diagnosa Diare'],
+        ['page' => 'rekap_pasien_baru_lama', 'label' => 'Rekap Pasien Baru vs Lama'],
+        ['page' => 'top_10_dokter_pasien', 'label' => 'Top 10 Dokter Paling Banyak Pasien'],
+        ['page' => 'pasien_rujukan_masuk_keluar', 'label' => 'Pasien Rujukan Masuk / Keluar'],
+        ['page' => 'kunjungan_wilayah_visual', 'label' => 'Kunjungan Berdasarkan Kecamatan/Kabupaten'],
+    ],
+    [
+        ['page' => 'laporan_keuangan_ranap', 'label' => 'Laporan Keuangan Rawat Inap'],
+    ],
     [
         ['page' => 'kunjungan_data_perpoli', 'label' => 'Kunjungan Rawat Jalan Perpoli'],
         ['page' => 'kunjungan_data_igd', 'label' => 'Kunjungan IGD'],
@@ -247,7 +240,6 @@ $menuAdmin = [
                     <?php renderDropdownMenu('navbarDropdownRanap', 'Master Kunjungan Ranap', $menuKunjunganRanap, $page); ?>
                     <?php if ($levelLogin === 'rekammedis') { renderMenuLink('input_data_claim', 'Input Data Claim', $page); } ?>
                     <?php renderDropdownMenu('navbarDropdownPenyakit', 'Master Penyakit', $menuPenyakit, $page); ?>
-                    <?php renderDropdownMenu('navbarDropdownAnalitik', 'Analitik', $menuAnalitik, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownDataKlinis', 'Data Klinis', $menuDataKlinis, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownDataNonKlinis', 'Data Non Klinis', $menuDataNonKlinis, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownAdmin', 'Admin', $menuAdmin, $page); ?>
