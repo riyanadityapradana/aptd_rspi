@@ -33,25 +33,25 @@ $jenisBayarLabel = $filters['jenis_bayar'] === 'semua' ? 'Semua' : $penjabList[$
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 $sheet->setTitle('Kunjungan Usia Ranap');
-$sheet->mergeCells('A1:N1');
+$sheet->mergeCells('A1:R1');
 $sheet->setCellValue('A1', 'KUNJUNGAN PASIEN RAWAT INAP BERDASARKAN USIA - GIZI');
-$sheet->mergeCells('A2:N2');
+$sheet->mergeCells('A2:R2');
 $sheet->setCellValue('A2', 'Periode: ' . $filters['tgl_awal'] . ' s/d ' . $filters['tgl_akhir'] . ' | Usia: ' . $usiaCategories[$filters['usia']]);
-$sheet->mergeCells('A3:N3');
+$sheet->mergeCells('A3:R3');
 $sheet->setCellValue('A3', 'Status Pulang: ' . $statusLabel . ' | Jenis Bayar: ' . $jenisBayarLabel . ' | Total: ' . count($rows) . ' pasien');
 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
 $sheet->getStyle('A1:A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-$headers = ['No', 'No. RM', 'Nama Pasien', 'No. Rawat', 'Tgl Lahir', 'Tgl Registrasi', 'Umur Daftar', 'Usia Tahun', 'Kode Kamar', 'Nama Bangsal', 'Tgl Masuk', 'Tgl Keluar', 'Jenis Bayar', 'Status Pulang'];
-$columns = range('A', 'N');
+$headers = ['No', 'No. RM', 'Nama Pasien', 'No. Rawat', 'Tgl Lahir', 'Tgl Registrasi', 'Umur Daftar', 'Usia Tahun', 'Kode Kamar', 'Nama Bangsal', 'Tgl Masuk', 'Tgl Keluar', 'Diagnosa Awal', 'Diagnosa Akhir', 'TB', 'BB', 'Jenis Bayar', 'Status Pulang'];
+$columns = range('A', 'R');
 foreach ($headers as $idx => $header) {
     $sheet->setCellValue($columns[$idx] . '5', $header);
 }
 
-$sheet->getStyle('A5:N5')->getFont()->setBold(true);
-$sheet->getStyle('A5:N5')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF2F3944');
-$sheet->getStyle('A5:N5')->getFont()->getColor()->setARGB('FFFFFFFF');
-$sheet->getStyle('A5:N5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+$sheet->getStyle('A5:R5')->getFont()->setBold(true);
+$sheet->getStyle('A5:R5')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF2F3944');
+$sheet->getStyle('A5:R5')->getFont()->getColor()->setARGB('FFFFFFFF');
+$sheet->getStyle('A5:R5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
 $rowNum = 6;
 $no = 1;
@@ -68,23 +68,27 @@ foreach ($rows as $row) {
     $sheet->setCellValue('J' . $rowNum, $row['nama_bangsal']);
     $sheet->setCellValue('K' . $rowNum, $row['tgl_masuk']);
     $sheet->setCellValue('L' . $rowNum, $row['tgl_keluar']);
-    $sheet->setCellValue('M' . $rowNum, $row['jenis_bayar']);
-    $sheet->setCellValue('N' . $rowNum, $row['status_pulang']);
+    $sheet->setCellValue('M' . $rowNum, $row['diagnosa_awal']);
+    $sheet->setCellValue('N' . $rowNum, $row['diagnosa_akhir']);
+    $sheet->setCellValue('O' . $rowNum, $row['tb']);
+    $sheet->setCellValue('P' . $rowNum, $row['bb']);
+    $sheet->setCellValue('Q' . $rowNum, $row['jenis_bayar']);
+    $sheet->setCellValue('R' . $rowNum, $row['status_pulang']);
     $rowNum++;
 }
 
 if ($rowNum === 6) {
     $sheet->setCellValue('A6', 'Tidak ada data');
-    $sheet->mergeCells('A6:N6');
+    $sheet->mergeCells('A6:R6');
     $sheet->getStyle('A6')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     $rowNum = 7;
 }
 
 $lastRow = $rowNum - 1;
-$sheet->getStyle('A5:N' . $lastRow)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-$sheet->getStyle('A5:N' . $lastRow)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('A:N')->getAlignment()->setWrapText(true);
-foreach (range('A', 'N') as $col) {
+$sheet->getStyle('A5:R' . $lastRow)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+$sheet->getStyle('A5:R' . $lastRow)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+$sheet->getStyle('A:R')->getAlignment()->setWrapText(true);
+foreach (range('A', 'R') as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
 

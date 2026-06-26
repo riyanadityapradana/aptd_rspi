@@ -164,6 +164,34 @@ function aptd_gizi_usia_fetch($conn, $filters, $limit = null, $offset = 0)
             IFNULL(b.nm_bangsal, '-') AS nama_bangsal,
             IFNULL(ki.tgl_masuk, '-') AS tgl_masuk,
             IFNULL(ki.tgl_keluar, '-') AS tgl_keluar,
+            IFNULL(ki.diagnosa_awal, '-') AS diagnosa_awal,
+            IFNULL(ki.diagnosa_akhir, '-') AS diagnosa_akhir,
+            IFNULL((
+                SELECT pr.tinggi
+                FROM pemeriksaan_ranap pr
+                WHERE pr.no_rawat = r.no_rawat
+                    AND TRIM(IFNULL(pr.tinggi, '')) <> ''
+                    AND TRIM(IFNULL(pr.berat, '')) <> ''
+                    AND TRIM(pr.tinggi) <> '-'
+                    AND TRIM(pr.berat) <> '-'
+                    AND TRIM(pr.tinggi) REGEXP '^[0-9]+([.,][0-9]+)?$'
+                    AND TRIM(pr.berat) REGEXP '^[0-9]+([.,][0-9]+)?$'
+                ORDER BY pr.tgl_perawatan DESC, pr.jam_rawat DESC
+                LIMIT 1
+            ), '-') AS tb,
+            IFNULL((
+                SELECT pr.berat
+                FROM pemeriksaan_ranap pr
+                WHERE pr.no_rawat = r.no_rawat
+                    AND TRIM(IFNULL(pr.tinggi, '')) <> ''
+                    AND TRIM(IFNULL(pr.berat, '')) <> ''
+                    AND TRIM(pr.tinggi) <> '-'
+                    AND TRIM(pr.berat) <> '-'
+                    AND TRIM(pr.tinggi) REGEXP '^[0-9]+([.,][0-9]+)?$'
+                    AND TRIM(pr.berat) REGEXP '^[0-9]+([.,][0-9]+)?$'
+                ORDER BY pr.tgl_perawatan DESC, pr.jam_rawat DESC
+                LIMIT 1
+            ), '-') AS bb,
             IFNULL(ki.stts_pulang, '-') AS status_pulang,
             IFNULL(j.png_jawab, '-') AS jenis_bayar
         " . aptd_gizi_usia_base_sql($where['clause']) . "

@@ -81,13 +81,17 @@ $exportAction = 'page/t_gizi/export_kunjungan_usia_ranap_gizi.php';
                         <th>Nama Bangsal</th>
                         <th>Tgl Masuk</th>
                         <th>Tgl Keluar</th>
+                        <th>Diagnosa Awal</th>
+                        <th>Diagnosa Akhir</th>
+                        <th>TB</th>
+                        <th>BB</th>
                         <th>Jenis Bayar</th>
                         <th>Status Pulang</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($rows)): ?>
-                        <tr><td colspan="14" style="text-align:center;color:#777;">Tidak ada data.</td></tr>
+                        <tr><td colspan="18" style="text-align:center;color:#777;">Tidak ada data.</td></tr>
                     <?php else: ?>
                         <?php $no = 1; foreach ($rows as $row): ?>
                             <tr>
@@ -103,6 +107,10 @@ $exportAction = 'page/t_gizi/export_kunjungan_usia_ranap_gizi.php';
                                 <td><?php echo aptd_gizi_usia_h($row['nama_bangsal']); ?></td>
                                 <td><?php echo aptd_gizi_usia_h($row['tgl_masuk']); ?></td>
                                 <td><?php echo aptd_gizi_usia_h($row['tgl_keluar']); ?></td>
+                                <td><?php echo aptd_gizi_usia_h($row['diagnosa_awal']); ?></td>
+                                <td><?php echo aptd_gizi_usia_h($row['diagnosa_akhir']); ?></td>
+                                <td style="text-align:center;"><?php echo aptd_gizi_usia_h($row['tb']); ?></td>
+                                <td style="text-align:center;"><?php echo aptd_gizi_usia_h($row['bb']); ?></td>
                                 <td><?php echo aptd_gizi_usia_h($row['jenis_bayar']); ?></td>
                                 <td><?php echo aptd_gizi_usia_h($row['status_pulang']); ?></td>
                             </tr>
@@ -111,7 +119,7 @@ $exportAction = 'page/t_gizi/export_kunjungan_usia_ranap_gizi.php';
                 </tbody>
                 <tfoot>
                     <tr style="background:#f8f9fa;font-weight:bold;">
-                        <td colspan="14" style="text-align:right;">Total Data: <?php echo number_format($totalRows, 0, ',', '.'); ?> pasien</td>
+                        <td colspan="18" style="text-align:right;">Total Data: <?php echo number_format($totalRows, 0, ',', '.'); ?> pasien</td>
                     </tr>
                 </tfoot>
             </table>
