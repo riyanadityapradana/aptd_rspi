@@ -361,16 +361,15 @@ while ($row = $result->fetch_assoc()) {
             searchInput.addEventListener('input', filterUsers);
         }
 
-        if (window.jQuery) {
-            $('#modalEditUser').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                $('#editUserId').val(button.data('id'));
-                $('#editNama').val(button.attr('data-nama'));
-                $('#editUsername').val(button.attr('data-username'));
-                $('#editJabatan').val(button.attr('data-jabatan'));
-                $('#editLevel').val(button.attr('data-level'));
-                $('#editPassword').val('');
+        Array.prototype.forEach.call(document.querySelectorAll('.user-edit-btn'), function(button) {
+            button.addEventListener('click', function() {
+                document.getElementById('editUserId').value = button.getAttribute('data-id') || '';
+                document.getElementById('editNama').value = button.getAttribute('data-nama') || '';
+                document.getElementById('editUsername').value = button.getAttribute('data-username') || '';
+                document.getElementById('editJabatan').value = button.getAttribute('data-jabatan') || '';
+                document.getElementById('editLevel').value = button.getAttribute('data-level') || '';
+                document.getElementById('editPassword').value = '';
             });
-        }
+        });
     })();
 </script>
