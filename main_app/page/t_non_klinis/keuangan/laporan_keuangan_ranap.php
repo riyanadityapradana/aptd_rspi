@@ -109,7 +109,7 @@ ob_start(); ?>
         .keu-ranap-scroll::-webkit-scrollbar{height:14px}
         .keu-ranap-scroll::-webkit-scrollbar-thumb{background:#8b97aa;border-radius:999px;border:2px solid #eef2f7}
         .keu-ranap-scroll .dataTables_wrapper{width:max-content;min-width:100%;max-width:none}
-        .keu-ranap-scroll .dataTables_wrapper>.row{width:100%;min-width:7377px;max-width:none;margin-left:0;margin-right:0;position:relative;z-index:12;background:#fff;padding:6px 0;display:flex;align-items:center;flex-wrap:nowrap}
+        .keu-ranap-scroll .dataTables_wrapper>.row{width:100%;min-width:7565px;max-width:none;margin-left:0;margin-right:0;position:relative;z-index:12;background:#fff;padding:6px 0;display:flex;align-items:center;flex-wrap:nowrap}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"],.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]{padding-left:0;padding-right:0;max-width:none}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:first-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:first-child{flex:1 0 auto}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{position:sticky;right:0;z-index:16;flex:0 0 auto;width:auto!important;max-width:calc(100vw - 96px);background:#fff;padding-left:12px!important;box-shadow:-14px 0 18px -18px rgba(15,23,42,.85)}
@@ -120,7 +120,7 @@ ob_start(); ?>
         .keu-ranap-scroll .dataTables_info{padding-top:8px;font-size:13px;white-space:normal}
         .keu-ranap-scroll .dataTables_paginate{padding-top:4px;font-size:13px;text-align:right!important}
         .keu-ranap-scroll .dataTables_paginate .pagination{justify-content:flex-end!important;flex-wrap:wrap}
-        .keu-ranap-table{min-width:7377px;width:7377px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
+        .keu-ranap-table{min-width:7565px;width:7565px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
         .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle!important;border:1px solid #111!important;padding:6px 8px!important;line-height:1.25}
         .keu-ranap-table thead th{background:#d9e2f3!important;color:#000!important;text-align:center;font-size:13px;font-weight:800;white-space:normal;line-height:1.15}
         .keu-ranap-table thead tr:first-child th{background:#cfd8e8!important}
@@ -144,6 +144,9 @@ ob_start(); ?>
         .keu-ranap-table .num{width:104px;min-width:104px;text-align:right}
         .keu-ranap-table .col-claim{width:88px;min-width:88px;max-width:88px;text-align:right}
         .keu-ranap-table .flag{width:72px;min-width:72px;text-align:center}
+        .keu-ranap-table .col-ket-tindakan{width:260px;min-width:260px;max-width:260px;overflow:hidden;text-overflow:ellipsis;text-align:left}
+        .keu-ranap-table .margin-negative{color:#b91c1c;font-weight:800}
+        .keu-ranap-table .margin-positive{color:#166534;font-weight:800}
         .keu-action-cell{width:124px;min-width:124px;max-width:124px;text-align:center;padding-left:6px!important;padding-right:6px!important}
         .keu-calc-btn{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:24px;border:0;border-radius:4px;background:#15803d;color:#fff;font-size:11px;font-weight:800;padding:2px 9px;cursor:pointer;line-height:1}
         .keu-calc-btn:hover{background:#166534;color:#fff}
@@ -151,15 +154,16 @@ ob_start(); ?>
         .keu-not-counted{font-weight:700;color:#64748b;text-align:left!important;background:#f8fafc!important}
         .keu-ranap-table thead tr:first-child th:nth-child(1),.keu-ranap-table tbody td:nth-child(1){position:sticky;left:0;z-index:5;background:#fff!important}
         .keu-ranap-table thead tr:first-child th:nth-child(2),.keu-ranap-table tbody td:nth-child(2){position:sticky;left:155px;z-index:5;background:#fff!important}
-        .keu-ranap-table thead tr:first-child th:nth-child(3),.keu-ranap-table tbody td:nth-child(3){position:sticky;left:243px;z-index:5;background:#fff!important;box-shadow:8px 0 12px -10px rgba(15,23,42,.8)}
-        .keu-ranap-table thead tr:first-child th:nth-child(1),.keu-ranap-table thead tr:first-child th:nth-child(2),.keu-ranap-table thead tr:first-child th:nth-child(3){z-index:8;background:#cfd8e8!important}
+        .keu-ranap-table thead tr:first-child th:nth-child(3),.keu-ranap-table tbody td:nth-child(3){position:sticky;left:243px;z-index:5;background:#fff!important}
+        .keu-ranap-table thead tr:first-child th:nth-child(4),.keu-ranap-table tbody td:nth-child(4){position:sticky;left:503px;z-index:5;background:#fff!important;box-shadow:8px 0 12px -10px rgba(15,23,42,.8)}
+        .keu-ranap-table thead tr:first-child th:nth-child(1),.keu-ranap-table thead tr:first-child th:nth-child(2),.keu-ranap-table thead tr:first-child th:nth-child(3),.keu-ranap-table thead tr:first-child th:nth-child(4){z-index:8;background:#cfd8e8!important}
         .keu-rawat-btn{display:inline-flex;align-items:center;gap:4px;border:0;border-radius:4px;background:#256ec7;color:#fff;font-size:12px;font-weight:800;padding:4px 8px;cursor:pointer}
         .keu-rawat-btn:hover{background:#174f94;color:#fff}
         @media (max-width: 991.98px){
             .keu-ranap-scroll{margin-left:-8px;margin-right:-8px;width:calc(100% + 16px);max-width:calc(100% + 16px)}
-            .keu-ranap-scroll .dataTables_wrapper>.row{min-width:7377px;padding-left:8px;padding-right:8px}
+            .keu-ranap-scroll .dataTables_wrapper>.row{min-width:7565px;padding-left:8px;padding-right:8px}
             .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{max-width:calc(100vw - 24px);padding-right:8px!important}
-            .keu-ranap-table{min-width:7377px;width:7377px!important}
+            .keu-ranap-table{min-width:7565px;width:7565px!important}
             .keu-ranap-table th,.keu-ranap-table td{padding:5px 7px!important}
             .keu-ranap-table thead th,.keu-ranap-table tbody td{font-size:12px}
             .keu-rawat-btn{font-size:11px;padding:3px 7px}
@@ -171,6 +175,7 @@ ob_start(); ?>
                 <col style="width:155px">
                 <col style="width:88px">
                 <col style="width:260px">
+                <col style="width:190px">
                 <col style="width:230px">
                 <col style="width:230px">
                 <col style="width:104px">
@@ -215,14 +220,14 @@ ob_start(); ?>
                 <?php endfor; ?>
                 <col style="width:72px">
                 <col style="width:72px">
-                <col style="width:72px">
-                <col style="width:128px">
+                <col style="width:260px">
             </colgroup>
             <thead>
                 <tr>
                     <th rowspan="2" class="col-rawat">No Rawat</th>
                     <th rowspan="2" class="col-rm">No RM</th>
                     <th rowspan="2" class="col-name">Nama Pasien</th>
+                    <th rowspan="2" class="col-sep">SEP</th>
                     <th rowspan="2" class="col-diagnosa">Diagnosa Awal</th>
                     <th rowspan="2" class="col-diagnosa">Diagnosa Akhir</th>
                     <th rowspan="2" class="col-date">Tanggal Masuk</th>
@@ -245,7 +250,7 @@ ob_start(); ?>
                     <th rowspan="2" class="num">Spirometri</th>
                     <th rowspan="2" class="num">TOTAL</th>
                     <th rowspan="2" class="num">MARGIN</th>
-                    <th colspan="4">Keterangan</th>
+                    <th colspan="3">Keterangan</th>
                 </tr>
                 <tr>
                     <th class="num">Dokter UGD</th>
@@ -281,8 +286,7 @@ ob_start(); ?>
                     <th class="flag">Kali</th>
                     <th class="flag">DARAH</th>
                     <th class="flag">ALBU</th>
-                    <th class="flag">TINDA</th>
-                    <th class="col-sep">SEP</th>
+                    <th class="col-ket-tindakan">TINDAKAN</th>
                 </tr>
             </thead>
             <tbody>
@@ -304,6 +308,7 @@ ob_start(); ?>
                         </td>
                         <td class="col-rm"><?php echo htmlspecialchars($row['no_rkm_medis'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="col-name"><?php echo htmlspecialchars($row['nama_pasien_umur'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-sep" title="<?php echo htmlspecialchars($row['no_sep'] ?: '-', ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['no_sep'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="col-diagnosa"><?php echo htmlspecialchars($row['diagnosa_awal'] ?: $row['diagnosa_sep'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="col-diagnosa"><?php echo htmlspecialchars($row['diagnosa_akhir'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="col-date"><?php echo htmlspecialchars($row['tanggal_masuk'], ENT_QUOTES, 'UTF-8'); ?></td>
@@ -325,7 +330,7 @@ ob_start(); ?>
                         </td>
                         <?php if (!$hasHitung): ?>
                             <td class="keu-not-counted">Belum dihitung</td>
-                            <?php for ($emptyCol = 1; $emptyCol < 45; $emptyCol++): ?>
+                            <?php for ($emptyCol = 1; $emptyCol < 44; $emptyCol++): ?>
                                 <td></td>
                             <?php endfor; ?>
                         <?php else: ?>
@@ -369,11 +374,10 @@ ob_start(); ?>
                         <td class="num"><?php echo aptd_currency($row['oksigen']); ?></td>
                         <td class="num"><?php echo aptd_currency($row['spirometri']); ?></td>
                         <td class="num" style="font-weight:bold;"><?php echo aptd_currency($row['total_biaya_laporan']); ?></td>
-                        <td class="num" style="font-weight:bold;"><?php echo aptd_currency($row['margin']); ?></td>
+                        <td class="num <?php echo (float) $row['margin'] < 0 ? 'margin-negative' : 'margin-positive'; ?>"><?php echo aptd_currency($row['margin']); ?></td>
                         <td class="flag"><?php echo htmlspecialchars($row['ket_darah'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="flag"><?php echo htmlspecialchars($row['ket_albumin'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td class="flag"><?php echo htmlspecialchars($row['ket_tindakan'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td class="col-sep" title="<?php echo htmlspecialchars($row['no_sep'] ?: '-', ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['no_sep'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-ket-tindakan" title="<?php echo htmlspecialchars($row['ket_tindakan'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['ket_tindakan'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <?php endif; ?>
                     </tr>
                 <?php endforeach; endif; ?>

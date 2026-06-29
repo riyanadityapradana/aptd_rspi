@@ -26,6 +26,7 @@ echo '<tr style="background:#cfd8e8;font-weight:bold;text-align:center;">';
 echo '<th rowspan="2">No Rawat</th>';
 echo '<th rowspan="2">No RM</th>';
 echo '<th rowspan="2">Nama Pasien</th>';
+echo '<th rowspan="2">SEP</th>';
 echo '<th rowspan="2">Diagnosa Awal</th>';
 echo '<th rowspan="2">Diagnosa Akhir</th>';
 echo '<th rowspan="2">Tanggal Masuk</th>';
@@ -47,13 +48,13 @@ echo '<th rowspan="2">Oksigen</th>';
 echo '<th rowspan="2">Spirometri</th>';
 echo '<th rowspan="2">TOTAL</th>';
 echo '<th rowspan="2">MARGIN</th>';
-echo '<th colspan="4">Keterangan</th>';
+echo '<th colspan="3">Keterangan</th>';
 echo '</tr>';
 echo '<tr style="background:#d9e2f3;font-weight:bold;text-align:center;">';
 $headers = [
     'Dokter UGD', 'JD DPJP', 'Ket. JD DPJP', 'JD Operator', 'JD Anestesi', 'Ket. JD Anestesi', 'JD Anak', 'Ket. JD Anak', 'JD Visite', 'JD Visite Umum', 'JD Visite Spesialis', 'JD Visite Pengganti', 'Ket. JD Visite', 'JD Telp', 'JD Telpon Pengganti', 'Ket. JD Telp', 'JD USG',
     'JD Rontgen', 'JD Lab', 'JD PA', 'HD', 'LAB PK', 'LAB PA', 'Rad USG', 'Rontgen', 'Fisio', 'EKG',
-    'Darah', 'Jumlah', 'Harga', 'Kali', 'DARAH', 'ALBU', 'TINDA', 'SEP'
+    'Darah', 'Jumlah', 'Harga', 'Kali', 'DARAH', 'ALBUMIN', 'TINDAKAN'
 ];
 foreach ($headers as $header) {
     echo '<th>' . htmlspecialchars($header, ENT_QUOTES, 'UTF-8') . '</th>';
@@ -65,6 +66,7 @@ foreach ($rows as $row) {
         $row['no_rawat'],
         $row['no_rkm_medis'],
         $row['nama_pasien_umur'],
+        $row['no_sep'] ?: '-',
         $row['diagnosa_awal'] ?: $row['diagnosa_sep'],
         $row['diagnosa_akhir'] ?: '-',
         $row['tanggal_masuk'],
@@ -76,7 +78,7 @@ foreach ($rows as $row) {
     ];
 
     if (empty($row['has_hitung'])) {
-        $values = array_merge($baseValues, array_fill(0, 45, ''));
+        $values = array_merge($baseValues, array_fill(0, 44, ''));
     } else {
         $values = array_merge($baseValues, [
         $row['dokter_ugd'],
@@ -123,7 +125,6 @@ foreach ($rows as $row) {
         $row['ket_darah'],
         $row['ket_albumin'],
         $row['ket_tindakan'],
-        $row['no_sep'] ?: '-',
         ]);
     }
 

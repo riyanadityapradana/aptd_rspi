@@ -6,7 +6,13 @@ $monthLabels = aptd_month_labels_local();
 $saveMessage = null;
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
 $canEditClaim = in_array($levelLogin, ['admin', 'rekammedis'], true);
-$claimPage = isset($_GET['claim_page']) ? max(0, (int) $_GET['claim_page']) : (isset($_POST['claim_page']) ? max(0, (int) $_POST['claim_page']) : 0);
+if (isset($_POST['save_claim']) && $_POST['save_claim'] === '1') {
+    $claimPage = isset($_POST['claim_page']) ? max(0, (int) $_POST['claim_page']) : 0;
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $claimPage = 0;
+} else {
+    $claimPage = isset($_GET['claim_page']) ? max(0, (int) $_GET['claim_page']) : 0;
+}
 
 if (isset($_POST['save_claim']) && $_POST['save_claim'] === '1') {
     $saveMessage = aptd_keu_ranap_save_claim(
@@ -166,6 +172,51 @@ $rows = aptd_keu_ranap_fetch_claim_rows($mysqli, $startDate, $endDate);
         document.addEventListener('DOMContentLoaded', function() {
             if (!window.jQuery) { return; }
             var targetPage = <?php echo (int) $claimPage; ?>;
+            var pageLength = 10;
+            var storageKey = 'aptd_input_claim_page_<?php echo (int) $year; ?>_<?php echo (int) $month; ?>';
+            var storedPage = parseInt(window.sessionStorage ? (sessionStorage.getItem(storageKey) || '0') : '0', 10);
+            if (targetPage <= 0 && storedPage > 0) {
+                targetPage = storedPage;
+            }
+
+            var language = {
+                decimal: '',
+                sEmptyTable: 'Tidak ada data yang tersedia pada tabel ini',
+                sProcessing: 'Sedang memproses...',
+                sLengthMenu: 'Tampilkan _MENU_ entri',
+                sZeroRecords: 'Tidak ditemukan data yang sesuai',
+                sInfo: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ entri',
+                sInfoEmpty: 'Menampilkan 0 sampai 0 dari 0 entri',
+                sInfoFiltered: '(disaring dari _MAX_ entri keseluruhan)',
+                sInfoPostFix: '',
+                sSearch: '',
+                searchPlaceholder: 'Cari Data..',
+                sUrl: '',
+                oPaginate: {
+                    sFirst: 'Pertama',
+                    sPrevious: 'Sebelumnya',
+                    sNext: 'Selanjutnya',
+                    sLast: 'Terakhir'
+                }
+            };
+
+            var initClaimTable = function() {
+                if (!$.fn.DataTable || !$('#table4').length) { return false; }
+                if (!$.fn.DataTable.isDataTable('#table4')) {
+                    $('#table4').DataTable({
+                        lengthChange: false,
+                        paging: true,
+                        pagingType: 'numbers',
+                        scrollCollapse: true,
+                        ordering: true,
+                        info: true,
+                        displayStart: Math.max(0, targetPage) * pageLength,
+                        language: language
+                    });
+                }
+                return true;
+            };
+
             var restoreClaimPage = function() {
                 if (!$.fn.DataTable || !$.fn.DataTable.isDataTable('#table4')) { return false; }
                 var table = $('#table4').DataTable();
@@ -176,16 +227,23 @@ $rows = aptd_keu_ranap_fetch_claim_rows($mysqli, $startDate, $endDate);
                 return true;
             };
 
-            if (!restoreClaimPage()) {
+            if (!initClaimTable() || !restoreClaimPage()) {
+                setTimeout(function() { initClaimTable(); restoreClaimPage(); }, 50);
                 setTimeout(restoreClaimPage, 150);
                 setTimeout(restoreClaimPage, 400);
             }
 
             var syncClaimPage = function() {
                 if ($.fn.DataTable && $.fn.DataTable.isDataTable('#table4')) {
-                    $('#claim_page').val($('#table4').DataTable().page());
+                    var currentPage = $('#table4').DataTable().page();
+                    $('#claim_page').val(currentPage);
+                    if (window.sessionStorage) {
+                        sessionStorage.setItem(storageKey, currentPage);
+                    }
                 }
             };
+
+            $('#table4').on('page.dt draw.dt', syncClaimPage);
 
             $('#modalClaim').on('show.bs.modal', function(event) {
                 syncClaimPage();
