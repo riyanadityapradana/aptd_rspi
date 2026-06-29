@@ -74,7 +74,7 @@ function aptd_get_routes()
 
 function aptd_get_access_map()
 {
-    return [
+    $accessMap = [
         'admin' => ['*'],
         'manajemen' => [
             'beranda', 'kunjungan_data_ralan', 'kunjungan_data_perpoli', 'kunjungan_data_igd', 'kunjungan_data_per_minggu', 'top_10_poli_ralan',
@@ -110,6 +110,10 @@ function aptd_get_access_map()
         'moneta' => ['beranda', 'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'kunjungan_wilayah_visual'],
         'gizi' => ['beranda', 'adime_gizi', 'export_adime_gizi', 'kunjungan_usia_ranap_gizi', 'export_kunjungan_usia_ranap_gizi'],
     ];
+
+    $accessMap['direktur'] = $accessMap['manajemen'];
+
+    return $accessMap;
 }
 
 function aptd_can_access($level, $page)
