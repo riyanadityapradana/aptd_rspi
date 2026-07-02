@@ -46,7 +46,7 @@ $rows = aptd_keu_ranap_fetch_claim_rows($mysqli, $startDate, $endDate);
     <div class="claim-head">
         <div>
             <h2>Input Data Claim</h2>
-            <p>Input nilai claim pasien rawat inap BPJS per nomor rawat.</p>
+            <p>Input nilai claim pasien rawat inap BPJS. Tarif INA-CBG ditampilkan sebagai fallback sampai claim manual disimpan.</p>
         </div>
         <form method="post" class="claim-filter">
             <select name="month" class="form-control form-control-sm">

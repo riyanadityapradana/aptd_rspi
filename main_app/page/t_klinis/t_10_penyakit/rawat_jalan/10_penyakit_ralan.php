@@ -3,41 +3,74 @@
 require_once dirname(dirname(dirname(dirname(dirname(__DIR__))))) . '/config/koneksi.php';
 $conn = $mysqli;
 
-// Ambil input tanggal awal dan akhir dari POST, default tanggal hari ini
-$tgl_awal = isset($_POST['tgl_awal']) ? $_POST['tgl_awal'] : date('Y-m-01');
-$tgl_akhir = isset($_POST['tgl_akhir']) ? $_POST['tgl_akhir'] : date('Y-m-d');
+function penyakitRalanValidDate($value, $fallback)
+{
+    $value = trim((string) $value);
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $parts)) {
+        return $fallback;
+    }
 
-// Validasi input tanggal
-$tgl_awal = !empty($tgl_awal) ? $tgl_awal : date('Y-m-01');
-$tgl_akhir = !empty($tgl_akhir) ? $tgl_akhir : date('Y-m-d');
+    return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) ? $value : $fallback;
+}
+
+// Ambil input tanggal awal dan akhir dari POST, default bulan berjalan
+$tgl_awal = penyakitRalanValidDate(isset($_POST['tgl_awal']) ? $_POST['tgl_awal'] : '', date('Y-m-01'));
+$tgl_akhir = penyakitRalanValidDate(isset($_POST['tgl_akhir']) ? $_POST['tgl_akhir'] : '', date('Y-m-d'));
+if ($tgl_awal > $tgl_akhir) {
+    $tmp = $tgl_awal;
+    $tgl_awal = $tgl_akhir;
+    $tgl_akhir = $tmp;
+}
 $detailMode = 'ralan';
 
-// Query untuk mengambil 10 besar penyakit rawat jalan berdasarkan filter
+// Pilih tepat satu diagnosa non-Z per nomor rawat berdasarkan urutan prioritas.
 $query_ralan = "
 SELECT
-    d.kd_penyakit,
+    selected.kd_penyakit,
     p.nm_penyakit,
     COUNT(*) AS jumlah_kasus
-FROM diagnosa_pasien d
-JOIN reg_periksa r ON d.no_rawat = r.no_rawat
-JOIN pasien p2 ON r.no_rkm_medis = p2.no_rkm_medis
-JOIN penyakit p ON d.kd_penyakit = p.kd_penyakit
-WHERE r.status_lanjut = 'Ralan'
-  AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = r.kd_poli AND pl.status = '1')
-  AND p2.nm_pasien NOT LIKE '%TEST%'
-  AND p2.nm_pasien NOT LIKE '%Tes%'
-  AND p2.nm_pasien NOT LIKE '%Coba%'
-  AND DATE(r.tgl_registrasi) BETWEEN '$tgl_awal' AND '$tgl_akhir'
-GROUP BY d.kd_penyakit, p.nm_penyakit
-ORDER BY jumlah_kasus DESC
+FROM (
+    SELECT
+        r.no_rawat,
+        SUBSTRING_INDEX(
+            GROUP_CONCAT(
+                d.kd_penyakit
+                ORDER BY
+                    CASE WHEN d.prioritas > 0 THEN d.prioritas ELSE 999 END ASC,
+                    d.kd_penyakit ASC
+            ),
+            ',',
+            1
+        ) AS kd_penyakit
+    FROM reg_periksa r
+    INNER JOIN diagnosa_pasien d ON d.no_rawat = r.no_rawat
+    INNER JOIN pasien p2 ON p2.no_rkm_medis = r.no_rkm_medis
+    WHERE r.status_lanjut = 'Ralan'
+      AND d.status = 'Ralan'
+      AND UPPER(d.kd_penyakit) NOT LIKE 'Z%'
+      AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = r.kd_poli AND pl.status = '1')
+      AND LOWER(p2.nm_pasien) NOT LIKE '%test%'
+      AND LOWER(p2.nm_pasien) NOT LIKE '%tes%'
+      AND LOWER(p2.nm_pasien) NOT LIKE '%coba%'
+      AND r.tgl_registrasi >= ?
+      AND r.tgl_registrasi < DATE_ADD(?, INTERVAL 1 DAY)
+    GROUP BY r.no_rawat
+) selected
+INNER JOIN penyakit p ON p.kd_penyakit = selected.kd_penyakit
+GROUP BY selected.kd_penyakit, p.nm_penyakit
+ORDER BY jumlah_kasus DESC, selected.kd_penyakit ASC
 LIMIT 10";
 
-$result_ralan = $conn->query($query_ralan);
-
-// Error handling untuk query
-if (!$result_ralan) {
-    die('<div class="alert alert-danger">Query error: ' . $conn->error . '</div>');
+$stmt_ralan = $conn->prepare($query_ralan);
+if (!$stmt_ralan) {
+    die('<div class="alert alert-danger">Query error: ' . htmlspecialchars($conn->error, ENT_QUOTES, 'UTF-8') . '</div>');
 }
+
+$stmt_ralan->bind_param('ss', $tgl_awal, $tgl_akhir);
+if (!$stmt_ralan->execute()) {
+    die('<div class="alert alert-danger">Query error: ' . htmlspecialchars($stmt_ralan->error, ENT_QUOTES, 'UTF-8') . '</div>');
+}
+$result_ralan = $stmt_ralan->get_result();
 
 // Ambil data untuk grafik dan tabel
 $data_grafik = [];

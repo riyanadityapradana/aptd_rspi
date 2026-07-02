@@ -71,7 +71,7 @@ ob_start(); ?>
 ob_start(); ?>
 <section class="analytics-cards">
     <div class="analytics-card"><div class="analytics-k">Pasien BPJS Ranap</div><div class="analytics-v"><?php echo aptd_number($summary['jumlah_pasien']); ?></div><div class="analytics-s"><?php echo htmlspecialchars($monthLabels[$month] . ' ' . $year, ENT_QUOTES, 'UTF-8'); ?></div></div>
-    <div class="analytics-card"><div class="analytics-k">Total Claim</div><div class="analytics-v"><?php echo aptd_currency($summary['total_claim']); ?></div><div class="analytics-s">Sumber: lap_keuangan_bpjs</div></div>
+    <div class="analytics-card"><div class="analytics-k">Total Claim</div><div class="analytics-v"><?php echo aptd_currency($summary['total_claim']); ?></div><div class="analytics-s">Manual / fallback INA-CBG</div></div>
     <div class="analytics-card"><div class="analytics-k">Total Jasa Dokter</div><div class="analytics-v"><?php echo aptd_currency($summary['total_jasa_dokter']); ?></div><div class="analytics-s">Akumulasi kolom jasa dokter</div></div>
     <div class="analytics-card"><div class="analytics-k">Lab + Radiologi</div><div class="analytics-v"><?php echo aptd_currency($summary['total_lab'] + $summary['total_radiologi']); ?></div><div class="analytics-s">Dokter lab, USG, dan rontgen</div></div>
 </section>
@@ -91,7 +91,7 @@ ob_start(); ?>
         </div>
         <span class="analytics-pill"><?php echo htmlspecialchars($startDate . ' s.d. ' . $endDate, ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
-    <div class="analytics-note">Filter awal mengikuti arahan gambar: pasien rawat inap BPJS, ada di <code>kamar_inap</code>, dan status pulang bukan <code>Pindah Kamar</code>. Perhitungan detail dijalankan per nomor rawat melalui tombol <code>Hitung</code> setelah claim tersedia.</div>
+    <div class="analytics-note">Filter awal mengikuti arahan gambar: pasien rawat inap BPJS, ada di <code>kamar_inap</code>, dan status pulang bukan <code>Pindah Kamar</code>. CLAIM manual diprioritaskan; jika belum tersedia, sistem memakai tarif INA-CBG. Perhitungan detail dijalankan per nomor rawat melalui tombol <code>Hitung</code>.</div>
 </section>
 <?php $panels = ob_get_clean();
 
@@ -293,7 +293,10 @@ ob_start(); ?>
                 <?php if (empty($rows)): ?>
                     <tr><td colspan="57" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
                 <?php else: foreach ($rows as $row): ?>
-                    <?php $hasHitung = isset($row['has_hitung']) && (int) $row['has_hitung'] === 1; ?>
+                    <?php
+                    $hasHitung = isset($row['has_hitung']) && (int) $row['has_hitung'] === 1;
+                    $canHitungRow = $canCalculateKeuangan && (float) $row['claim'] > 0;
+                    ?>
                     <tr>
                         <td class="col-rawat">
                             <button type="button"
@@ -323,8 +326,11 @@ ob_start(); ?>
                                 <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
                                 <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
                                 <input type="hidden" name="calculate_no_rawat" value="<?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?>">
-                                <button type="submit" class="keu-calc-btn" title="<?php echo $hasHitung ? 'Hitung ulang data keuangan' : 'Hitung data keuangan'; ?>" <?php echo (!$canCalculateKeuangan || (float) $row['claim'] <= 0) ? 'disabled' : ''; ?>>
-                                    <?php echo $hasHitung ? 'Recalculate' : 'Hitung'; ?>
+                                <button type="submit"
+                                        class="keu-calc-btn"
+                                        title="<?php echo !$canHitungRow ? 'CLAIM belum tersedia' : ($hasHitung ? 'Hitung ulang data keuangan' : 'Hitung data keuangan'); ?>"
+                                        <?php echo $canHitungRow ? '' : 'disabled aria-disabled="true"'; ?>>
+                                    <?php echo $hasHitung ? 'Hitung Ulang' : 'Hitung'; ?>
                                 </button>
                             </form>
                         </td>

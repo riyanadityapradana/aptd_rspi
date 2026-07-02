@@ -25,8 +25,32 @@ function aptd_keu_ranap_export_url($month, $year)
     return 'page/t_non_klinis/keuangan/export_laporan_keuangan_ranap.php?month=' . rawurlencode($month) . '&year=' . rawurlencode($year);
 }
 
+function aptd_keu_ranap_inacbg_tariff_sql()
+{
+    return "
+        SELECT igr.no_rawat,
+               CAST(TRIM(igr.tariff) AS DECIMAL(16,2)) AS tariff
+        FROM tb_inacbg_grouping_result igr
+        LEFT JOIN tb_inacbg_grouping_result newer
+          ON newer.no_rawat = igr.no_rawat
+         AND TRIM(IFNULL(newer.tariff, '')) REGEXP '^[0-9]+([.][0-9]+)?$'
+         AND CAST(TRIM(newer.tariff) AS DECIMAL(16,2)) > 0
+         AND (
+                IFNULL(newer.datetime, '1000-01-01 00:00:00') > IFNULL(igr.datetime, '1000-01-01 00:00:00')
+             OR (
+                    IFNULL(newer.datetime, '1000-01-01 00:00:00') = IFNULL(igr.datetime, '1000-01-01 00:00:00')
+                AND newer.no_sep > igr.no_sep
+             )
+         )
+        WHERE TRIM(IFNULL(igr.tariff, '')) REGEXP '^[0-9]+([.][0-9]+)?$'
+          AND CAST(TRIM(igr.tariff) AS DECIMAL(16,2)) > 0
+          AND newer.no_rawat IS NULL
+    ";
+}
+
 function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
 {
+    $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
     $sql = "
         SELECT
             rp.no_rawat,
@@ -44,7 +68,10 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
                 MAX(NULLIF(bs.nmdpdjp, '')),
                 MAX(NULLIF(reg_dpjp.nm_dokter, ''))
             ) AS dpjp,
-            COALESCE(manual.jum_claim, 0) AS claim
+            CASE
+                WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
+                ELSE COALESCE(inacbg.tariff, 0)
+            END AS claim
         FROM kamar_inap ki
         INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
         INNER JOIN pasien p ON p.no_rkm_medis = rp.no_rkm_medis
@@ -59,11 +86,12 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
             FROM lap_keuangan_bpjs
             GROUP BY no_rawat
         ) manual ON manual.no_rawat = rp.no_rawat
+        LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
         WHERE ki.tgl_masuk BETWEEN ? AND ?
           AND rp.status_lanjut = 'Ranap'
           AND rp.kd_pj = 'BPJ'
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
-        GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.jum_claim
+        GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.jum_claim, inacbg.tariff
         ORDER BY tanggal_masuk ASC, rp.no_rawat ASC";
 
     $stmt = $mysqli->prepare($sql);
@@ -85,6 +113,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
     $mysqli->query('SET SESSION group_concat_max_len = 1048576');
     $onlyNoRawat = trim((string) $onlyNoRawat);
     $filterSql = aptd_keu_ranap_filter_sql($mysqli, $startDate, $endDate, $onlyNoRawat);
+    $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
     $singleFilterSql = $onlyNoRawat !== '' ? " AND rp.no_rawat = ?" : "";
 
     $sql = "
@@ -119,7 +148,10 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
             GROUP_CONCAT(DISTINCT ki.kd_kamar ORDER BY ki.tgl_masuk, ki.jam_masuk SEPARATOR ', ') AS kamar,
             MAX(IFNULL(bs.no_sep, '')) AS no_sep,
             MAX(IFNULL(bs.nmdiagnosaawal, '')) AS diagnosa_sep,
-            COALESCE(manual.jum_claim, bill.total_claim, 0) AS claim,
+            CASE
+                WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
+                ELSE COALESCE(inacbg.tariff, 0)
+            END AS claim,
             COALESCE(manual.jum_claim, 0) AS manual_claim,
             COALESCE(manual.jum_jdoperator, 0) AS manual_jd_operator,
             COALESCE(ugd.dokter_ugd, 0) AS dokter_ugd,
@@ -134,7 +166,10 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
                 WHEN COALESCE(hd.hd_count, 0) <= 0 THEN 0
                 ELSE 150000 + ((COALESCE(hd.hd_count, 0) - 1) * 100000)
             END AS hd,
-            (COALESCE(manual.jum_claim, bill.total_claim, 0) * 0.15) AS jk,
+            (CASE
+                WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
+                ELSE COALESCE(inacbg.tariff, 0)
+            END * 0.15) AS jk,
             COALESCE(bhp.bhp, 0) AS bhp,
             COALESCE(obat.total_harga_dasar_obat, 0) AS total_harga_dasar_obat,
             COALESCE(obat.markup_obat_bhp, 0) AS markup_obat_bhp,
@@ -166,11 +201,11 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
             COALESCE(ok.has_phaco_tanpa_anestesi, 0) AS has_phaco_tanpa_anestesi,
             COALESCE(ok.operator1_codes, '') AS operator1_codes,
             COALESCE(ok.operator1_names, '') AS operator1_names,
-            COALESCE(ok.has_operator_anak, 0) AS has_operator_anak,
-            COALESCE(ok.has_operator_anak_sc, 0) AS has_operator_anak_sc,
-            COALESCE(ok.has_operator_anak_partus, 0) AS has_operator_anak_partus,
-            COALESCE(ok.operator_anak_names, '') AS operator_anak_names,
-            COALESCE(ok.operator_anak_package_names, '') AS operator_anak_package_names,
+            COALESCE(ok.has_dokter_anak, 0) AS has_dokter_anak,
+            COALESCE(ok.has_dokter_anak_sc, 0) AS has_dokter_anak_sc,
+            COALESCE(ok.has_dokter_anak_partus, 0) AS has_dokter_anak_partus,
+            COALESCE(ok.dokter_anak_names, '') AS dokter_anak_names,
+            COALESCE(ok.dokter_anak_package_names, '') AS dokter_anak_package_names,
             COALESCE(ok.tindakan_operasi, '') AS tindakan_operasi
         FROM kamar_inap ki
         INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
@@ -185,17 +220,11 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
         LEFT JOIN spesialis sep_sps ON sep_sps.kd_sps = sep_dokter.kd_sps
         LEFT JOIN (
-            SELECT no_rawat, MAX(totalbiaya) AS total_claim
-            FROM billing
-            INNER JOIN ($filterSql) f USING (no_rawat)
-            WHERE status = 'Tagihan'
-            GROUP BY no_rawat
-        ) bill ON bill.no_rawat = rp.no_rawat
-        LEFT JOIN (
             SELECT no_rawat, MAX(jum_claim) AS jum_claim, MAX(jum_jdoperator) AS jum_jdoperator
             FROM lap_keuangan_bpjs
             GROUP BY no_rawat
         ) manual ON manual.no_rawat = rp.no_rawat
+        LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
         LEFT JOIN (
             SELECT rid.no_rawat, SUM(rid.tarif_tindakandr) AS dokter_ugd
             FROM rawat_inap_dr rid
@@ -518,16 +547,28 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
                              AND (NULLIF(TRIM(o.dokter_anestesi), '') IS NULL OR TRIM(o.dokter_anestesi) = '-') THEN 1 ELSE 0 END) AS has_phaco_tanpa_anestesi,
                    GROUP_CONCAT(DISTINCT NULLIF(TRIM(o.operator1), '') ORDER BY o.tgl_operasi SEPARATOR '|') AS operator1_codes,
                    GROUP_CONCAT(DISTINCT COALESCE(NULLIF(d_operator1.nm_dokter, ''), NULLIF(TRIM(o.operator1), '')) ORDER BY o.tgl_operasi SEPARATOR ', ') AS operator1_names,
-                   MAX(CASE WHEN d_operator1.kd_sps = 'S0011' THEN 1 ELSE 0 END) AS has_operator_anak,
-                   MAX(CASE WHEN d_operator1.kd_sps = 'S0011' AND po.nm_perawatan LIKE '%SC%' THEN 1 ELSE 0 END) AS has_operator_anak_sc,
-                   MAX(CASE WHEN d_operator1.kd_sps = 'S0011' AND po.nm_perawatan LIKE '%Partus%' THEN 1 ELSE 0 END) AS has_operator_anak_partus,
-                   GROUP_CONCAT(DISTINCT CASE WHEN d_operator1.kd_sps = 'S0011' THEN COALESCE(NULLIF(d_operator1.nm_dokter, ''), NULLIF(TRIM(o.operator1), '')) END ORDER BY o.tgl_operasi SEPARATOR ', ') AS operator_anak_names,
-                   GROUP_CONCAT(DISTINCT CASE WHEN d_operator1.kd_sps = 'S0011' THEN po.nm_perawatan END ORDER BY o.tgl_operasi SEPARATOR ', ') AS operator_anak_package_names,
+                   MAX(CASE WHEN NULLIF(TRIM(o.dokter_anak), '') IS NOT NULL
+                                  AND TRIM(o.dokter_anak) <> '-' THEN 1 ELSE 0 END) AS has_dokter_anak,
+                   MAX(CASE WHEN NULLIF(TRIM(o.dokter_anak), '') IS NOT NULL
+                                  AND TRIM(o.dokter_anak) <> '-'
+                                  AND po.nm_perawatan LIKE '%SC%' THEN 1 ELSE 0 END) AS has_dokter_anak_sc,
+                   MAX(CASE WHEN NULLIF(TRIM(o.dokter_anak), '') IS NOT NULL
+                                  AND TRIM(o.dokter_anak) <> '-'
+                                  AND po.nm_perawatan LIKE '%Partus%' THEN 1 ELSE 0 END) AS has_dokter_anak_partus,
+                   GROUP_CONCAT(DISTINCT CASE WHEN NULLIF(TRIM(o.dokter_anak), '') IS NOT NULL
+                                                   AND TRIM(o.dokter_anak) <> '-'
+                                              THEN COALESCE(NULLIF(d_dokter_anak.nm_dokter, ''), TRIM(o.dokter_anak)) END
+                                ORDER BY o.tgl_operasi SEPARATOR ', ') AS dokter_anak_names,
+                   GROUP_CONCAT(DISTINCT CASE WHEN NULLIF(TRIM(o.dokter_anak), '') IS NOT NULL
+                                                   AND TRIM(o.dokter_anak) <> '-'
+                                              THEN po.nm_perawatan END
+                                ORDER BY o.tgl_operasi SEPARATOR ', ') AS dokter_anak_package_names,
                    GROUP_CONCAT(DISTINCT NULLIF(TRIM(po.nm_perawatan), '') ORDER BY o.tgl_operasi SEPARATOR ', ') AS tindakan_operasi
             FROM operasi o
             INNER JOIN ($filterSql) f ON f.no_rawat = o.no_rawat
-            LEFT JOIN paket_operasi po ON po.kode_paket = o.kode_paket
-            LEFT JOIN dokter d_operator1 ON d_operator1.kd_dokter = o.operator1
+             LEFT JOIN paket_operasi po ON po.kode_paket = o.kode_paket
+             LEFT JOIN dokter d_operator1 ON d_operator1.kd_dokter = o.operator1
+             LEFT JOIN dokter d_dokter_anak ON d_dokter_anak.kd_dokter = o.dokter_anak
             GROUP BY o.no_rawat
         ) ok ON ok.no_rawat = rp.no_rawat
         WHERE ki.tgl_masuk BETWEEN ? AND ?
@@ -536,15 +577,15 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
           AND rp.kd_pj = 'BPJ'
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
         GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur,
-                 bill.total_claim, manual.jum_claim, manual.jum_jdoperator, ugd.dokter_ugd, visit.visit_items, telp.telp_items, usg.jd_usg, rad.jd_rontgen,
+                 manual.jum_claim, manual.jum_jdoperator, inacbg.tariff, ugd.dokter_ugd, visit.visit_items, telp.telp_items, usg.jd_usg, rad.jd_rontgen,
                  lab.jd_lab, lab.jd_pa, hd.hd_count, bhp.bhp, obat.total_harga_dasar_obat, obat.markup_obat_bhp, obat.obat, lab.lab_pk, lab.lab_pa,
                  usg.rad_usg, rad.rontgen, fisio.fisio_items, ekg.ekg, ekg.count_ekg, darah.darah, darah.jumlah_darah,
                  makan.makan_jumlah, makan.makan_harga, makan.makan_kali, bhp_penunjang.phototherapy, oksigen.oksigen,
                  bhp_penunjang.spirometri, albumin.jumlah_albumin,
                  ok.jd_operator, ok.jd_anestesi, ok.jd_anak, ok.jd_dokter_umum, ok.has_operasi, ok.has_partus,
                  ok.has_phaco, ok.has_phaco_anestesi, ok.has_phaco_tanpa_anestesi, ok.operator1_codes, ok.operator1_names,
-                 ok.has_operator_anak, ok.has_operator_anak_sc, ok.has_operator_anak_partus, ok.operator_anak_names,
-                 ok.operator_anak_package_names, ok.tindakan_operasi
+                 ok.has_dokter_anak, ok.has_dokter_anak_sc, ok.has_dokter_anak_partus, ok.dokter_anak_names,
+                 ok.dokter_anak_package_names, ok.tindakan_operasi
         ORDER BY tanggal_masuk ASC, rp.no_rawat ASC";
 
     $stmt = $mysqli->prepare($sql);
@@ -741,6 +782,7 @@ function aptd_keu_ranap_ensure_cache_schema(mysqli $mysqli)
 function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
 {
     aptd_keu_ranap_ensure_cache_schema($mysqli);
+    $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
 
     $selectCache = '';
     foreach (aptd_keu_ranap_cache_map() as $key => $column) {
@@ -767,7 +809,10 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
             ) AS dpjp,
             GROUP_CONCAT(DISTINCT ki.kd_kamar ORDER BY ki.tgl_masuk, ki.jam_masuk SEPARATOR ', ') AS kamar,
             MAX(IFNULL(bs.nmdiagnosaawal, '')) AS diagnosa_sep,
-            COALESCE(manual.jum_claim, 0) AS claim,
+            CASE
+                WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
+                ELSE COALESCE(inacbg.tariff, 0)
+            END AS claim,
             manual.calculated_at,
             CASE WHEN manual.calculated_at IS NULL THEN 0 ELSE 1 END AS has_hitung
             $selectCache
@@ -781,11 +826,12 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN maping_dokter_dpjpvclaim mdpjp ON mdpjp.kd_dokter_bpjs = NULLIF(bs.kddpjp, '')
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
         LEFT JOIN lap_keuangan_bpjs manual ON manual.no_rawat = rp.no_rawat
+        LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
         WHERE ki.tgl_masuk BETWEEN ? AND ?
           AND rp.status_lanjut = 'Ranap'
           AND rp.kd_pj = 'BPJ'
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
-        GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.no_rawat
+        GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.no_rawat, manual.jum_claim, inacbg.tariff
         ORDER BY tanggal_masuk ASC, rp.no_rawat ASC";
 
     $stmt = $mysqli->prepare($sql);
@@ -821,14 +867,6 @@ function aptd_keu_ranap_save_manual(mysqli $mysqli, $noRawat, $claim, $jdOperato
 
     if (!$allowClaimUpdate) {
         $claim = $exists ? (float) $current['jum_claim'] : 0;
-        if (!$exists) {
-            $bill = $mysqli->prepare("SELECT MAX(totalbiaya) AS total_claim FROM billing WHERE no_rawat = ? AND status = 'Tagihan'");
-            $bill->bind_param('s', $noRawat);
-            $bill->execute();
-            $billRow = $bill->get_result()->fetch_assoc();
-            $bill->close();
-            $claim = isset($billRow['total_claim']) ? (float) $billRow['total_claim'] : 0;
-        }
     }
 
     if ($exists) {
@@ -893,23 +931,17 @@ function aptd_keu_ranap_calculate_and_store(mysqli $mysqli, $noRawat, $startDate
         return ['success' => false, 'message' => 'No rawat tidak boleh kosong.'];
     }
 
-    $claimStmt = $mysqli->prepare('SELECT MAX(jum_claim) AS jum_claim FROM lap_keuangan_bpjs WHERE no_rawat = ?');
-    $claimStmt->bind_param('s', $noRawat);
-    $claimStmt->execute();
-    $claimRow = $claimStmt->get_result()->fetch_assoc();
-    $claimStmt->close();
-
-    $claim = isset($claimRow['jum_claim']) ? (float) $claimRow['jum_claim'] : 0;
-    if ($claim <= 0) {
-        return ['success' => false, 'message' => 'Data claim belum tersedia untuk no rawat ini.'];
-    }
-
     $rows = aptd_keu_ranap_fetch_rows($mysqli, $startDate, $endDate, $noRawat);
     if (empty($rows)) {
         return ['success' => false, 'message' => 'Data pasien tidak ditemukan pada periode yang dipilih.'];
     }
 
     $row = $rows[0];
+    $claim = isset($row['claim']) ? (float) $row['claim'] : 0;
+    if ($claim <= 0) {
+        return ['success' => false, 'message' => 'Claim manual dan tarif INA-CBG belum tersedia untuk no rawat ini.'];
+    }
+
     $row['claim'] = $claim;
     $row['jk'] = $claim * 0.15;
     $row['jd_dpjp'] = aptd_keu_ranap_calculate_dpjp_fee($row);
@@ -927,7 +959,6 @@ function aptd_keu_ranap_store_calculation(mysqli $mysqli, array $row)
 {
     $map = aptd_keu_ranap_cache_map();
     $noRawat = isset($row['no_rawat']) ? trim((string) $row['no_rawat']) : '';
-    $claim = isset($row['claim']) ? (float) $row['claim'] : 0;
     $jdOperator = isset($row['jd_operator']) ? (float) $row['jd_operator'] : 0;
 
     $check = $mysqli->prepare('SELECT COUNT(*) AS total FROM lap_keuangan_bpjs WHERE no_rawat = ?');
@@ -943,20 +974,20 @@ function aptd_keu_ranap_store_calculation(mysqli $mysqli, array $row)
     }
 
     if ($exists) {
-        $sets = ['jum_claim = ?', 'jum_jdoperator = ?', 'calculated_at = NOW()'];
+        $sets = ['jum_jdoperator = ?', 'calculated_at = NOW()'];
         foreach ($columns as $column) {
             $sets[] = $column . ' = ?';
         }
         $sql = 'UPDATE lap_keuangan_bpjs SET ' . implode(', ', $sets) . ' WHERE no_rawat = ?';
         $stmt = $mysqli->prepare($sql);
-        $bindValues = array_merge([$claim, $jdOperator], $values, [$noRawat]);
-        $types = 'dd' . str_repeat('s', count($values)) . 's';
+        $bindValues = array_merge([$jdOperator], $values, [$noRawat]);
+        $types = 'd' . str_repeat('s', count($values)) . 's';
     } else {
         $insertColumns = array_merge(['no_rawat', 'jum_claim', 'jum_jdoperator', 'calculated_at'], $columns);
         $placeholders = array_merge(['?', '?', '?', 'NOW()'], array_fill(0, count($columns), '?'));
         $sql = 'INSERT INTO lap_keuangan_bpjs (' . implode(', ', $insertColumns) . ') VALUES (' . implode(', ', $placeholders) . ')';
         $stmt = $mysqli->prepare($sql);
-        $bindValues = array_merge([$noRawat, $claim, $jdOperator], $values);
+        $bindValues = array_merge([$noRawat, 0, $jdOperator], $values);
         $types = 'sdd' . str_repeat('s', count($values));
     }
 
@@ -1152,6 +1183,7 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
     $kdSpsDpjp = isset($row['kd_sps_dpjp']) ? trim((string) $row['kd_sps_dpjp']) : '';
     $doctorCounts = [];
     $skippedDpjp = 0;
+    $skippedAnestesi = 0;
     $countedPengganti = 0;
     $skippedPenggantiLimit = 0;
     $skippedLimit = 0;
@@ -1174,6 +1206,11 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
 
         if ($dpjp !== '' && $kdDokter === $dpjp) {
             $skippedDpjp++;
+            continue;
+        }
+
+        if ($kdSpsVisit === 'S0008') {
+            $skippedAnestesi++;
             continue;
         }
 
@@ -1208,7 +1245,7 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
         }
     }
 
-    if ($counted > 0 || $countedPengganti > 0 || $skippedDpjp > 0 || $skippedPenggantiLimit > 0 || $skippedLimit > 0) {
+    if ($counted > 0 || $countedPengganti > 0 || $skippedDpjp > 0 || $skippedAnestesi > 0 || $skippedPenggantiLimit > 0 || $skippedLimit > 0) {
         $notes = [
             'Umum ' . aptd_currency($result['umum']),
             'Spesialis ' . aptd_currency($result['spesialis']),
@@ -1222,6 +1259,10 @@ function aptd_keu_ranap_calculate_visit_fee(array $row)
 
         if ($skippedDpjp > 0) {
             $notes[] = 'skip DPJP ' . $skippedDpjp;
+        }
+
+        if ($skippedAnestesi > 0) {
+            $notes[] = 'skip dokter anastesi (S0008) ' . $skippedAnestesi;
         }
 
         if ($skippedPenggantiLimit > 0) {
@@ -1257,6 +1298,7 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
     $countDpjp = 0;
     $countNonDpjp = 0;
     $countPengganti = 0;
+    $skippedAnestesi = 0;
 
     foreach (explode('|', (string) $row['telp_items']) as $item) {
         $parts = explode('~', $item);
@@ -1278,6 +1320,11 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
             continue;
         }
 
+        if ($kdSpsTelp === 'S0008') {
+            $skippedAnestesi++;
+            continue;
+        }
+
         if ($kdSpsDpjp !== '' && $kdSpsTelp !== '' && $kdSpsTelp === $kdSpsDpjp) {
             $result['pengganti'] += $tarif;
             $countPengganti++;
@@ -1289,7 +1336,7 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
         $countNonDpjp++;
     }
 
-    if ($countDpjp > 0 || $countNonDpjp > 0 || $countPengganti > 0) {
+    if ($countDpjp > 0 || $countNonDpjp > 0 || $countPengganti > 0 || $skippedAnestesi > 0) {
         $notes = [
             'Telpon DPJP ' . aptd_currency($result['dpjp']),
             'Telpon raber ' . aptd_currency($result['non_dpjp']),
@@ -1307,6 +1354,10 @@ function aptd_keu_ranap_calculate_telpon_fee(array $row)
 
         if ($countPengganti > 0) {
             $notes[] = 'dokter pengganti spesialistik sama ' . $countPengganti;
+        }
+
+        if ($skippedAnestesi > 0) {
+            $notes[] = 'skip dokter anastesi (S0008) ' . $skippedAnestesi;
         }
 
         $result['condition'] = implode('; ', $notes);
@@ -1408,36 +1459,35 @@ function aptd_keu_ranap_anak_condition(array $row)
         return 'Tidak ada DPJP di bridging_sep/status_dpjp';
     }
 
+    if (isset($row['kd_sps_dpjp']) && trim((string) $row['kd_sps_dpjp']) === 'S0011') {
+        return 'DPJP Spesialis Anak (S0011), JD Anak 0';
+    }
+
     if ((int) $row['has_operasi'] !== 1) {
         return 'Tidak ada operasi';
     }
 
-    if (aptd_keu_ranap_is_operator_dpjp($row)) {
-        return 'DPJP sama dengan operator1';
+    if ((int) $row['has_dokter_anak'] !== 1) {
+        return 'operasi.dokter_anak kosong atau -';
     }
 
-    $operatorNames = !empty($row['operator1_names']) ? $row['operator1_names'] : '-';
-    if ((int) $row['has_operator_anak'] !== 1) {
-        return 'Operator1 bukan Spesialis Anak: ' . $operatorNames;
-    }
-
-    $anakNames = !empty($row['operator_anak_names']) ? $row['operator_anak_names'] : $operatorNames;
-    $packages = !empty($row['operator_anak_package_names']) ? $row['operator_anak_package_names'] : '-';
+    $anakNames = !empty($row['dokter_anak_names']) ? $row['dokter_anak_names'] : '-';
+    $packages = !empty($row['dokter_anak_package_names']) ? $row['dokter_anak_package_names'] : '-';
     $rule = aptd_keu_ranap_anak_rule($row);
 
     if (!$rule) {
-        return 'Operator Anak, bukan SC/Partus: ' . $anakNames . ' - ' . $packages;
+        return 'Dokter Anak terisi, paket bukan SC/Partus: ' . $anakNames . ' - ' . $packages;
     }
 
     if ($rule['type'] === 'percent') {
-        $condition = 'Operator Anak + SC: ' . $anakNames . ' - ' . (int) ($rule['value'] * 100) . '% x claim';
+        $condition = 'Dokter Anak + SC: ' . $anakNames . ' - ' . (int) ($rule['value'] * 100) . '% x claim';
         if ((float) $row['claim'] <= 0) {
             $condition .= ' (CLAIM 0)';
         }
         return $condition;
     }
 
-    return 'Operator Anak + Partus: ' . $anakNames . ' - ' . aptd_currency($rule['value']);
+    return 'Dokter Anak + Partus: ' . $anakNames . ' - ' . aptd_currency($rule['value']);
 }
 
 function aptd_keu_ranap_anak_rule(array $row)
@@ -1446,15 +1496,16 @@ function aptd_keu_ranap_anak_rule(array $row)
         return null;
     }
 
-    if (aptd_keu_ranap_is_operator_dpjp($row) || (int) $row['has_operator_anak'] !== 1) {
+    if ((isset($row['kd_sps_dpjp']) && trim((string) $row['kd_sps_dpjp']) === 'S0011')
+        || (int) $row['has_dokter_anak'] !== 1) {
         return null;
     }
 
-    if ((int) $row['has_operator_anak_sc'] === 1) {
+    if ((int) $row['has_dokter_anak_sc'] === 1) {
         return ['type' => 'percent', 'value' => 0.04];
     }
 
-    if ((int) $row['has_operator_anak_partus'] === 1) {
+    if ((int) $row['has_dokter_anak_partus'] === 1) {
         return ['type' => 'fixed', 'value' => 115000];
     }
 

@@ -25,7 +25,7 @@ if (file_exists($envPath)) {
 
 
 // Konfigurasi database kedua
-$server2   = getenv('DB_SERVER2') ?: '192.168.1.4';
+$server2   = getenv('DB_SERVER2') ?: '192.168.1.5';
 //$server2   = getenv('DB_SERVER') ?: 'localhost';
 $username2 = getenv('DB_USERNAME2') ?: 'root';
 $password2 = getenv('DB_PASSWORD2') ?: '';

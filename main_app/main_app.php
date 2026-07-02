@@ -133,7 +133,6 @@ $menuKunjunganRanap = [
 
 $menuPenyakit = [
     [
-        ['page' => '10_penyakit_ralan', 'label' => '10 Penyakit Tertinggi Rawat Jalan'],
         ['page' => '10_penyakit_bedah_ralan', 'label' => '10 Penyakit Bedah Tertinggi Rawat Jalan'],
         ['page' => '10_penyakit_non_bedah_ralan', 'label' => '10 Penyakit Non Bedah Tertinggi Rawat Jalan'],
     ],
@@ -160,6 +159,7 @@ $menuGizi = [
 
 $menuDataKlinis = [
     [
+        ['page' => '10_penyakit_ralan', 'label' => '10 Besar Penyakit Rawat Jalan'],
         ['page' => '10_penyakit_ralan_perpoli', 'label' => '10 Besar Penyakit Rawat Jalan Perpoli'],
     ],
 ];
@@ -180,10 +180,7 @@ $menuDataNonKlinis = [
         ['page' => 'kunjungan_data_igd', 'label' => 'Kunjungan IGD'],
     ],
     [
-        ['page' => 'bor_rawat_inap', 'label' => 'BOR Rawat Inap'],
-        ['page' => 'los_klinis_rawat_inap', 'label' => 'LOS Rawat Inap'],
-        ['page' => 'toi_rawat_inap', 'label' => 'TOI Rawat Inap'],
-        ['page' => 'bto_rawat_inap', 'label' => 'BTO Rawat Inap'],
+        ['page' => 'indikator_rawat_inap', 'label' => 'Dashboard BOR, LOS, TOI, BTO'],
         ['page' => 'readme_indikator_rawat_inap', 'label' => 'README BOR, LOS, TOI, BTO'],
     ],
 ];
