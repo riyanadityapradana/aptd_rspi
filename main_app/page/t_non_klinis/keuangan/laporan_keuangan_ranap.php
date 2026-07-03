@@ -7,6 +7,16 @@ $saveMessage = null;
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
 $canEditClaim = in_array($levelLogin, ['admin', 'rekammedis'], true);
 $canCalculateKeuangan = in_array($levelLogin, ['admin', 'keuangan'], true);
+$isReportRowAction = (isset($_POST['calculate_keu_row']) && $_POST['calculate_keu_row'] === '1')
+    || (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1');
+if ($isReportRowAction) {
+    $reportPage = isset($_POST['report_page']) ? max(0, (int) $_POST['report_page']) : 0;
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $reportPage = 0;
+} else {
+    $reportPage = isset($_GET['report_page']) ? max(0, (int) $_GET['report_page']) : 0;
+}
+
 if (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1') {
     $saveMessage = aptd_keu_ranap_save_manual(
         $mysqli,
@@ -16,7 +26,7 @@ if (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1') {
         $canEditClaim
     );
     $_SESSION['keu_ranap_flash'] = $saveMessage;
-    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year);
+    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year) . '&report_page=' . rawurlencode($reportPage);
     echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
     echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '"></noscript>';
     return;
@@ -33,7 +43,7 @@ if (isset($_POST['calculate_keu_row']) && $_POST['calculate_keu_row'] === '1') {
         $saveMessage = ['success' => false, 'message' => 'Level Anda tidak memiliki akses untuk menghitung data keuangan.'];
     }
     $_SESSION['keu_ranap_flash'] = $saveMessage;
-    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year);
+    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year) . '&report_page=' . rawurlencode($reportPage);
     echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
     echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '"></noscript>';
     return;
@@ -325,6 +335,7 @@ ob_start(); ?>
                                 <input type="hidden" name="calculate_keu_row" value="1">
                                 <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
                                 <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
+                                <input type="hidden" name="report_page" class="keu-report-page" value="<?php echo (int) $reportPage; ?>">
                                 <input type="hidden" name="calculate_no_rawat" value="<?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?>">
                                 <button type="submit"
                                         class="keu-calc-btn"
@@ -396,6 +407,7 @@ ob_start(); ?>
                 <input type="hidden" name="save_keu_manual" value="1">
                 <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
                 <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
+                <input type="hidden" name="report_page" class="keu-report-page" value="<?php echo (int) $reportPage; ?>">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalKeuManualLabel">Input Data Keuangan BPJS</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -427,12 +439,81 @@ ob_start(); ?>
         (function(){
             document.addEventListener('DOMContentLoaded', function() {
                 if (!window.jQuery) { return; }
+                var targetPage = <?php echo (int) $reportPage; ?>;
+                var pageLength = 10;
+                var language = {
+                    decimal: '',
+                    sEmptyTable: 'Tidak ada data yang tersedia pada tabel ini',
+                    sProcessing: 'Sedang memproses...',
+                    sLengthMenu: 'Tampilkan _MENU_ entri',
+                    sZeroRecords: 'Tidak ditemukan data yang sesuai',
+                    sInfo: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ entri',
+                    sInfoEmpty: 'Menampilkan 0 sampai 0 dari 0 entri',
+                    sInfoFiltered: '(disaring dari _MAX_ entri keseluruhan)',
+                    sInfoPostFix: '',
+                    sSearch: '',
+                    searchPlaceholder: 'Cari Data..',
+                    sUrl: '',
+                    oPaginate: {
+                        sFirst: 'Pertama',
+                        sPrevious: 'Sebelumnya',
+                        sNext: 'Selanjutnya',
+                        sLast: 'Terakhir'
+                    }
+                };
+
+                var initReportTable = function() {
+                    if (!$.fn.DataTable || !$('#table4').length) { return false; }
+                    if (!$.fn.DataTable.isDataTable('#table4')) {
+                        $('#table4').DataTable({
+                            lengthChange: false,
+                            paging: true,
+                            pagingType: 'numbers',
+                            scrollCollapse: true,
+                            ordering: true,
+                            info: true,
+                            displayStart: Math.max(0, targetPage) * pageLength,
+                            language: language
+                        });
+                    }
+                    return true;
+                };
+
+                var restoreReportPage = function() {
+                    if (!$.fn.DataTable || !$.fn.DataTable.isDataTable('#table4')) { return false; }
+                    var table = $('#table4').DataTable();
+                    var pageInfo = table.page.info();
+                    if (pageInfo.pages > 0 && targetPage > 0) {
+                        table.page(Math.min(targetPage, pageInfo.pages - 1)).draw(false);
+                    }
+                    return true;
+                };
+
+                if (!initReportTable() || !restoreReportPage()) {
+                    setTimeout(function() {
+                        initReportTable();
+                        restoreReportPage();
+                    }, 50);
+                    setTimeout(restoreReportPage, 150);
+                }
+
+                var syncReportPage = function() {
+                    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#table4')) {
+                        $('.keu-report-page').val($('#table4').DataTable().page());
+                    }
+                };
+
+                $('#table4').on('page.dt draw.dt', syncReportPage);
+
                 $('#modalKeuManual').on('show.bs.modal', function(event) {
+                    syncReportPage();
                     var button = $(event.relatedTarget);
                     $('#manual_no_rawat').val(button.data('no-rawat') || '');
                     $('#manual_claim').val(button.data('claim') || 0);
                     $('#manual_jd_operator').val(button.data('jd-operator') || 0);
                 });
+
+                $('.keu-action-cell form, #modalKeuManual form').on('submit', syncReportPage);
             });
         })();
     </script>
