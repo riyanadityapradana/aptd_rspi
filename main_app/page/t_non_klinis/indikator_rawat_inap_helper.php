@@ -39,7 +39,7 @@ function aptd_ranap_indicator_bangsal_options($mysqli)
          FROM kamar k
          INNER JOIN bangsal b ON b.kd_bangsal = k.kd_bangsal
          WHERE k.statusdata = '1'
-           AND LOWER(TRIM(k.kd_bangsal)) <> 'test'
+           AND TRIM(k.kd_bangsal) NOT IN ('test', 'KB', 'OK')
          ORDER BY b.nm_bangsal ASC"
     );
 }
@@ -95,7 +95,7 @@ function aptd_ranap_indicator_calculate($mysqli, $startDate, $endDate, $bangsalF
          FROM kamar k
          INNER JOIN bangsal b ON b.kd_bangsal = k.kd_bangsal
          WHERE k.statusdata = '1'
-           AND LOWER(TRIM(k.kd_bangsal)) <> 'test'
+           AND TRIM(k.kd_bangsal) NOT IN ('test', 'KB', 'OK')
            {$bedWhere}
          GROUP BY k.kd_bangsal, b.nm_bangsal, k.kelas
          ORDER BY b.nm_bangsal ASC, k.kelas ASC",
@@ -146,7 +146,7 @@ function aptd_ranap_indicator_calculate($mysqli, $startDate, $endDate, $bangsalF
          FROM kamar_inap ki
          INNER JOIN kamar k ON k.kd_kamar = ki.kd_kamar
          WHERE k.statusdata = '1'
-           AND LOWER(TRIM(k.kd_bangsal)) <> 'test'
+           AND TRIM(k.kd_bangsal) NOT IN ('test', 'KB', 'OK')
            AND ki.tgl_masuk <= ?
            AND (
                (
@@ -206,7 +206,7 @@ function aptd_ranap_indicator_calculate($mysqli, $startDate, $endDate, $bangsalF
                AND e.tgl_keluar < DATE_ADD(?, INTERVAL 1 DAY)
                AND e.stts_pulang NOT IN ('-', 'Pindah Kamar')
                AND k_scope.statusdata = '1'
-               AND LOWER(TRIM(k_scope.kd_bangsal)) <> 'test'
+               AND TRIM(k_scope.kd_bangsal) NOT IN ('test', 'KB', 'OK')
                {$exitWhere}
              GROUP BY e.no_rawat
          ) final_stay
@@ -251,7 +251,7 @@ function aptd_ranap_indicator_calculate($mysqli, $startDate, $endDate, $bangsalF
                )
            )
            AND k_scope.statusdata = '1'
-           AND LOWER(TRIM(k_scope.kd_bangsal)) <> 'test'
+           AND TRIM(k_scope.kd_bangsal) NOT IN ('test', 'KB', 'OK')
            {$flowWhere}",
         str_repeat('s', count($initialParams)),
         $initialParams
@@ -280,7 +280,7 @@ function aptd_ranap_indicator_calculate($mysqli, $startDate, $endDate, $bangsalF
          ) admission
          INNER JOIN kamar k_scope ON k_scope.kd_kamar = admission.kamar_awal
          WHERE k_scope.statusdata = '1'
-           AND LOWER(TRIM(k_scope.kd_bangsal)) <> 'test'
+           AND TRIM(k_scope.kd_bangsal) NOT IN ('test', 'KB', 'OK')
            {$flowWhere}",
         str_repeat('s', count($admissionParams)),
         $admissionParams
@@ -303,7 +303,7 @@ function aptd_ranap_indicator_calculate($mysqli, $startDate, $endDate, $bangsalF
            AND next_stay.tgl_masuk >= ?
            AND next_stay.tgl_masuk < DATE_ADD(?, INTERVAL 1 DAY)
            AND k_scope.statusdata = '1'
-           AND LOWER(TRIM(k_scope.kd_bangsal)) <> 'test'
+           AND TRIM(k_scope.kd_bangsal) NOT IN ('test', 'KB', 'OK')
            {$flowWhere}",
         str_repeat('s', count($transferParams)),
         $transferParams

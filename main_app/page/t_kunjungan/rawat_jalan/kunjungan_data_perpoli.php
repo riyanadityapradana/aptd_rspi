@@ -1,4 +1,7 @@
-<?php require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php'; ?>
+<?php
+require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
+require_once dirname(__DIR__) . '/poli_specialty_helper.php';
+?>
 <br>
 <div class="row text-left">
 	<div class="col">
@@ -11,28 +14,7 @@
 		<div class="dataTables_wrapper table-responsive-sm" style="padding-top: 0;">
 				<div class="wrapper">
 					<?php
-					// Comprehensive poli mapping - mengelompokkan semua kode poli menjadi nama poli
-					$mapping_poli = [
-						'GIGI' => ['U0042', 'U0043', 'U0052', 'U0057', 'U0065', 'U0077'],
-						'BEDAH' => ['U0015', 'U0065', 'U0064', 'U0054', 'U0070'],
-						'ANAK' => ['U0068', 'U0069', 'U0067'],
-						'THT' => ['U0011'],
-						'PENYAKIT DALAM' => ['U0036', 'U0037', 'U0063', 'U0040', 'U0038', 'U0039'],
-						'PARU' => ['U0019'],
-						'SARAF' => ['U0049', 'U0050'],
-						'MATA' => ['U0005', 'U0061'],
-						'KANDUNGAN' => ['U0010', 'U0024', 'U0028', 'U0044', 'U0045', 'U0046', 'U0047', 'U0048', 'U0051', 'U0059', 'U0060', 'U0075', 'U0076'],
-						'REHABILITASI MEDIK' => ['kfr'],
-						//'JANTUNG' => ['U0012', 'U0032'],
-						'JIWA' => ['U0018'],
-						'ORTHOPEDI' => ['U0014', 'U0016'],
-						'VAKSIN' => ['U0053'],
-						'MCU' => ['U0071'],
-						'HEMODIALISA' => ['U0023'],
-						'IGD' => ['IGDK', 'U0009', 'U0013'],
-						'PONEK RALAN' => ['U0074'],
-						'REHAB MEDIK' => ['kfr'],
-					];
+					$specialtyGroups = aptd_poli_specialty_mapping($mysqli);
 					
 					// Mapping jenis pembayar
 					$penjamin = [
@@ -42,7 +24,8 @@
 					];
 					
 					// Read filter values from POST
-					$filter_poli = isset($_POST['poli']) ? trim($_POST['poli']) : 'PENYAKIT DALAM';
+					$requestedPoli = isset($_POST['poli']) ? trim((string) $_POST['poli']) : '';
+					$filter_poli = aptd_poli_specialty_selected_group($specialtyGroups, $requestedPoli);
 					$filter_month = isset($_POST['month']) ? intval($_POST['month']) : date('n');
 					$filter_year = isset($_POST['year']) ? intval($_POST['year']) : date('Y');
 
@@ -60,7 +43,7 @@
 							<label for="poli">Poliklinik:&nbsp;</label>
 							<select name="poli" id="poli" class="form-control form-control-sm ml-1">
 								<?php
-								foreach($mapping_poli as $poli_name => $codes){
+								foreach($specialtyGroups as $poli_name => $codes){
 									$sel = ($filter_poli === $poli_name) ? 'selected' : '';
 									echo "<option value=\"".htmlspecialchars($poli_name)."\" $sel>".htmlspecialchars($poli_name)."</option>";
 								}
@@ -109,7 +92,7 @@
 					<tbody>
 						<?php
 							// Get poli codes for selected poli group
-							$poli_codes = isset($mapping_poli[$filter_poli]) ? $mapping_poli[$filter_poli] : [];
+							$poli_codes = isset($specialtyGroups[$filter_poli]) ? $specialtyGroups[$filter_poli] : [];
 							
 							$data = [];
 							

@@ -233,7 +233,8 @@ ob_start();
             </div>
         </div>
         <div class="analytics-note">
-            Tempat tidur berasal dari <code>kamar.statusdata = '1'</code> dan bangsal <code>test</code> dikecualikan.
+            Tempat tidur berasal dari <code>kamar.statusdata = '1'</code>; bangsal
+            <code>test</code>, <code>KB</code>, dan <code>OK</code> dikecualikan.
             Pasien keluar dihitung satu kali per <code>no_rawat</code> berdasarkan tanggal keluar dalam bulan laporan,
             dengan status <code>-</code> dan <code>Pindah Kamar</code> tidak dihitung sebagai keluar rumah sakit.
             Lama dirawat dihitung dari tanggal masuk pertama sampai tanggal keluar akhir.

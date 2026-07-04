@@ -161,6 +161,7 @@ $menuDataKlinis = [
     [
         ['page' => '10_penyakit_ralan', 'label' => '10 Besar Penyakit Rawat Jalan'],
         ['page' => '10_penyakit_ralan_perpoli', 'label' => '10 Besar Penyakit Rawat Jalan Perpoli'],
+        ['page' => '10_penyakit_ugd_ponek', 'label' => '10 Penyakit Terbanyak UGD & Ponek'],
     ],
 ];
 
@@ -177,7 +178,7 @@ $menuDataNonKlinis = [
     ],
     [
         ['page' => 'kunjungan_data_perpoli', 'label' => 'Kunjungan Rawat Jalan Perpoli'],
-        ['page' => 'kunjungan_data_igd', 'label' => 'Kunjungan IGD'],
+        ['page' => 'kunjungan_data_igd', 'label' => 'Kunjungan UGD & Ponek'],
     ],
     [
         ['page' => 'indikator_rawat_inap', 'label' => 'Dashboard BOR, LOS, TOI, BTO'],

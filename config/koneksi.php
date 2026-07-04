@@ -48,5 +48,3 @@ try {
 // Set zona waktu default
 date_default_timezone_set(getenv('TIMEZONE') ?: 'Asia/Makassar');
 
-?>
-

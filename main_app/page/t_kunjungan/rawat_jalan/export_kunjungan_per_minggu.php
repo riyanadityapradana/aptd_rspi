@@ -1,28 +1,10 @@
-﻿<?php
+<?php
 require_once dirname(dirname(__DIR__)) . '/export_excel_helper.php';
 require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
+require_once dirname(__DIR__) . '/poli_specialty_helper.php';
 $conn = $mysqli;
 
-$mapping_poli = [
-    'GIGI' => ['U0008', 'U0025', 'U0042', 'U0043', 'U0052', 'U0057', 'U0065', 'U0077'],
-    'BEDAH' => ['U0002', 'U0004', 'U0015', 'U0054', 'U0066'],
-    'ANAK' => ['U0003', 'U0069', 'U0068', 'U0070'],
-    'THT' => ['U0006', 'U0011'],
-    'PENYAKIT DALAM' => ['U0023', 'U0030', 'U0031', 'U0032', 'U0033', 'U0034', 'U0035', 'U0036', 'U0037', 'U0038', 'U0039', 'U0040', 'U0041', 'U0063'],
-    'PARU' => ['U0019'],
-    'SARAF' => ['U0007', 'U0049', 'U0050'],
-    'MATA' => ['U0005', 'U0061'],
-    'KANDUNGAN' => ['U0010', 'U0024', 'U0028', 'U0044', 'U0045', 'U0046', 'U0047', 'U0048', 'U0051', 'U0059', 'U0060', 'U0075', 'U0076'],
-    'REHABILITASI MEDIK' => ['kfr'],
-    'JANTUNG' => ['U0012', 'U0032'],
-    'JIWA' => ['U0013', 'U0018'],
-    'ORTHOPEDI' => ['U0014', 'U0016'],
-    'VAKSIN' => ['U0053'],
-    'MCU' => ['U0071'],
-    'HEMODIALISA' => ['U0023'],
-    'IGD' => ['IGDK', 'U0009', 'U0013'],
-    'PONEK RALAN' => ['U0074'],
-];
+$specialtyGroups = aptd_poli_specialty_mapping($mysqli);
 
 $penjamin = ['A09' => 'UMUM', 'BPJ' => 'BPJS', 'A92' => 'ASURANSI'];
 $filter_month = isset($_POST['bulan']) ? (int) $_POST['bulan'] : (int) date('n');
@@ -68,7 +50,7 @@ $weeklyUmum = [];
 $weeklyBpjs = [];
 $weeklyAsuransi = [];
 
-foreach ($mapping_poli as $poli_name => $poli_codes) {
+foreach ($specialtyGroups as $poli_name => $poli_codes) {
     $row = ['Poliklinik' => $poli_name];
     foreach ($weeks as $week_idx => $week) {
         $poli_codes_str = "'" . implode("','", array_map(function ($v) use ($conn) {

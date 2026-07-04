@@ -1,5 +1,6 @@
 <?php
 require_once dirname(dirname(dirname(dirname(dirname(__DIR__))))) . '/config/koneksi.php';
+require_once dirname(dirname(dirname(__DIR__))) . '/t_kunjungan/poli_specialty_helper.php';
 $conn = $mysqli;
 
 function penyakitRalanPerpoliValidDate($value, $fallback)
@@ -12,34 +13,15 @@ function penyakitRalanPerpoliValidDate($value, $fallback)
     return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) ? $value : $fallback;
 }
 
-$mappingPoli = [
-    'GIGI' => ['U0042', 'U0043', 'U0052', 'U0057', 'U0065', 'U0077'],
-    'BEDAH' => ['U0015', 'U0065', 'U0064', 'U0054', 'U0070'],
-    'ANAK' => ['U0068', 'U0069', 'U0067'],
-    'THT' => ['U0011'],
-    'PENYAKIT DALAM' => ['U0036', 'U0037', 'U0063', 'U0040', 'U0038', 'U0039'],
-    'PARU' => ['U0019'],
-    'SARAF' => ['U0049', 'U0050'],
-    'MATA' => ['U0005', 'U0061'],
-    'KANDUNGAN' => ['U0010', 'U0024', 'U0028', 'U0044', 'U0045', 'U0046', 'U0047', 'U0048', 'U0051', 'U0059', 'U0060', 'U0075', 'U0076'],
-    'REHABILITASI MEDIK' => ['kfr'],
-    'JIWA' => ['U0018'],
-    'ORTHOPEDI' => ['U0014', 'U0016'],
-    'VAKSIN' => ['U0053'],
-    'MCU' => ['U0071'],
-    'HEMODIALISA' => ['U0023'],
-    'IGD' => ['IGDK', 'U0009', 'U0013'],
-    'PONEK RALAN' => ['U0074'],
-    'REHAB MEDIK' => ['kfr'],
-];
+$specialtyGroups = aptd_poli_specialty_mapping($mysqli);
 
 $tglAwal = penyakitRalanPerpoliValidDate(isset($_POST['tgl_awal']) ? $_POST['tgl_awal'] : '', date('Y-m-01'));
 $tglAkhir = penyakitRalanPerpoliValidDate(isset($_POST['tgl_akhir']) ? $_POST['tgl_akhir'] : '', date('Y-m-d'));
-$filterPoli = isset($_POST['poli']) ? trim($_POST['poli']) : 'PENYAKIT DALAM';
-if (!isset($mappingPoli[$filterPoli])) { $filterPoli = 'PENYAKIT DALAM'; }
+$requestedPoli = isset($_POST['poli']) ? trim((string) $_POST['poli']) : '';
+$filterPoli = aptd_poli_specialty_selected_group($specialtyGroups, $requestedPoli);
 if ($tglAwal > $tglAkhir) { $tmp = $tglAwal; $tglAwal = $tglAkhir; $tglAkhir = $tmp; }
 
-$codes = $mappingPoli[$filterPoli];
+$codes = $specialtyGroups[$filterPoli];
 $placeholders = implode(',', array_fill(0, count($codes), '?'));
 $types = str_repeat('s', count($codes)) . 'ss';
 $params = array_merge($codes, [$tglAwal, $tglAkhir]);
@@ -111,7 +93,7 @@ $values = array_map(function ($row) { return (int) $row['jumlah_kasus']; }, $row
 <div class="row text-left"><div class="col"><h3 style="color:#666;margin-bottom:5px;">10 BESAR PENYAKIT RAWAT JALAN PER POLI</h3><hr style="height:1px;background-image:linear-gradient(to right,rgba(0,0,0,0),rgba(102,102,102,1),rgba(0,0,0,0));margin-top:0;margin-bottom:10px;"></div></div>
 <form method="post" class="form-inline mb-3">
     <label for="poli" class="mr-2">Poli</label>
-    <select name="poli" id="poli" class="form-control form-control-sm mr-2"><?php foreach ($mappingPoli as $name => $codes): ?><option value="<?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $filterPoli === $name ? 'selected' : ''; ?>><?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select>
+    <select name="poli" id="poli" class="form-control form-control-sm mr-2"><?php foreach ($specialtyGroups as $name => $codes): ?><option value="<?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $filterPoli === $name ? 'selected' : ''; ?>><?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select>
     <label for="tgl_awal" class="mr-2">Tanggal Awal</label><input type="date" name="tgl_awal" id="tgl_awal" class="form-control form-control-sm mr-2" value="<?php echo htmlspecialchars($tglAwal, ENT_QUOTES, 'UTF-8'); ?>">
     <label for="tgl_akhir" class="mr-2">Tanggal Akhir</label><input type="date" name="tgl_akhir" id="tgl_akhir" class="form-control form-control-sm mr-2" value="<?php echo htmlspecialchars($tglAkhir, ENT_QUOTES, 'UTF-8'); ?>">
     <button type="submit" class="btn btn-primary btn-sm">Tampilkan Data</button>

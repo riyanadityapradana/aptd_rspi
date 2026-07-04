@@ -1,27 +1,9 @@
-﻿<?php
+<?php
 require_once dirname(dirname(__DIR__)) . '/export_excel_helper.php';
 require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php';
+require_once dirname(__DIR__) . '/poli_specialty_helper.php';
 
-$mapping_poli = [
-    'GIGI' => ['U0042', 'U0043', 'U0052', 'U0057', 'U0065', 'U0077'],
-    'BEDAH' => ['U0015', 'U0065', 'U0064', 'U0054', 'U0070'],
-    'ANAK' => ['U0068', 'U0069', 'U0067'],
-    'THT' => ['U0011'],
-    'PENYAKIT DALAM' => ['U0036', 'U0037', 'U0063', 'U0040', 'U0038', 'U0039'],
-    'PARU' => ['U0019'],
-    'SARAF' => ['U0049', 'U0050'],
-    'MATA' => ['U0005', 'U0061'],
-    'KANDUNGAN' => ['U0010', 'U0024', 'U0028', 'U0044', 'U0045', 'U0046', 'U0047', 'U0048', 'U0051', 'U0059', 'U0060', 'U0075', 'U0076'],
-    'REHABILITASI MEDIK' => ['kfr'],
-    'JIWA' => ['U0018'],
-    'ORTHOPEDI' => ['U0014', 'U0016'],
-    'VAKSIN' => ['U0053'],
-    'MCU' => ['U0071'],
-    'HEMODIALISA' => ['U0023'],
-    'IGD' => ['IGDK', 'U0009', 'U0013'],
-    'PONEK RALAN' => ['U0074'],
-    'REHAB MEDIK' => ['kfr'],
-];
+$specialtyGroups = aptd_poli_specialty_mapping($mysqli);
 
 $penjamin = [
     'A09' => 'UMUM',
@@ -29,7 +11,8 @@ $penjamin = [
     'A92' => 'ASURANSI',
 ];
 
-$filter_poli = isset($_POST['poli']) ? trim((string) $_POST['poli']) : 'PENYAKIT DALAM';
+$requestedPoli = isset($_POST['poli']) ? trim((string) $_POST['poli']) : '';
+$filter_poli = aptd_poli_specialty_selected_group($specialtyGroups, $requestedPoli);
 $filter_month = isset($_POST['month']) ? (int) $_POST['month'] : (int) date('n');
 $filter_year = isset($_POST['year']) ? (int) $_POST['year'] : (int) date('Y');
 $monthNames = [1=>'Januari',2=>'Februari',3=>'Maret',4=>'April',5=>'Mei',6=>'Juni',7=>'Juli',8=>'Agustus',9=>'September',10=>'Oktober',11=>'November',12=>'Desember'];
@@ -42,7 +25,7 @@ if (strtoupper($filter_poli) === 'VAKSIN') {
     ];
 }
 
-$poli_codes = isset($mapping_poli[$filter_poli]) ? $mapping_poli[$filter_poli] : [];
+$poli_codes = isset($specialtyGroups[$filter_poli]) ? $specialtyGroups[$filter_poli] : [];
 $data = array_fill_keys(array_keys($penjamin), 0);
 $total = 0;
 
