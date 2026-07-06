@@ -1036,7 +1036,7 @@ function aptd_keu_ranap_dpjp_deduction(array $row)
 function aptd_keu_ranap_dpjp_rules()
 {
     return [
-        'S0001' => 0.19, // Obgyn default operasi; partus 25% perlu kondisi terpisah.
+        'S0001' => 0.19, // Obgyn 19%; partus 25% ditangani sebagai kondisi khusus.
         'S0005' => 0.18, // Orthopedi/OT
         'S0006' => 0.18, // Bedah
         'S0007' => 0.19, // Syaraf
@@ -1061,7 +1061,7 @@ function aptd_keu_ranap_dpjp_rule(array $row)
             return ['rate' => 0.19, 'condition' => 'OG operasi'];
         }
 
-        return null;
+        return ['rate' => 0.19, 'condition' => 'OG tanpa operasi'];
     }
 
     if ($kdSps === 'S0010') {
@@ -1549,19 +1549,38 @@ function aptd_keu_ranap_sum_report_cost(array $row)
 
 function aptd_keu_ranap_summary(array $rows)
 {
+    $doctorFeeKeys = [
+        'jd_dpjp',
+        'dokter_ugd',
+        'jd_operator',
+        'jd_anestesi',
+        'jd_anak',
+        'jd_visit',
+        'jd_visit_pengganti',
+        'jd_telpon',
+        'jd_telpon_pengganti',
+        'jd_usg',
+        'jd_rontgen',
+        'jd_lab',
+        'jd_pa',
+        'hd',
+        'fisio',
+    ];
+
     $summary = [
         'jumlah_pasien' => count($rows),
         'total_claim' => 0,
         'total_jasa_dokter' => 0,
-        'total_lab' => 0,
-        'total_radiologi' => 0,
+        'total_obat' => 0,
     ];
 
     foreach ($rows as $row) {
         $summary['total_claim'] += isset($row['claim']) ? (float) $row['claim'] : 0;
-        $summary['total_jasa_dokter'] += isset($row['total_jasa_dokter']) ? (float) $row['total_jasa_dokter'] : 0;
-        $summary['total_lab'] += isset($row['jd_lab']) ? (float) $row['jd_lab'] : 0;
-        $summary['total_radiologi'] += (isset($row['jd_usg']) ? (float) $row['jd_usg'] : 0) + (isset($row['jd_rontgen']) ? (float) $row['jd_rontgen'] : 0);
+        $summary['total_obat'] += isset($row['obat']) ? (float) $row['obat'] : 0;
+
+        foreach ($doctorFeeKeys as $key) {
+            $summary['total_jasa_dokter'] += isset($row[$key]) ? (float) $row[$key] : 0;
+        }
     }
 
     return $summary;

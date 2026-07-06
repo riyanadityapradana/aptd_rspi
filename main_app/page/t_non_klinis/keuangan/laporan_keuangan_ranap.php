@@ -83,7 +83,7 @@ ob_start(); ?>
     <div class="analytics-card"><div class="analytics-k">Pasien BPJS Ranap</div><div class="analytics-v"><?php echo aptd_number($summary['jumlah_pasien']); ?></div><div class="analytics-s"><?php echo htmlspecialchars($monthLabels[$month] . ' ' . $year, ENT_QUOTES, 'UTF-8'); ?></div></div>
     <div class="analytics-card"><div class="analytics-k">Total Claim</div><div class="analytics-v"><?php echo aptd_currency($summary['total_claim']); ?></div><div class="analytics-s">Manual / fallback INA-CBG</div></div>
     <div class="analytics-card"><div class="analytics-k">Total Jasa Dokter</div><div class="analytics-v"><?php echo aptd_currency($summary['total_jasa_dokter']); ?></div><div class="analytics-s">Akumulasi kolom jasa dokter</div></div>
-    <div class="analytics-card"><div class="analytics-k">Lab + Radiologi</div><div class="analytics-v"><?php echo aptd_currency($summary['total_lab'] + $summary['total_radiologi']); ?></div><div class="analytics-s">Dokter lab, USG, dan rontgen</div></div>
+    <div class="analytics-card"><div class="analytics-k">Total Obat</div><div class="analytics-v"><?php echo aptd_currency($summary['total_obat']); ?></div><div class="analytics-s">Akumulasi biaya obat pasien</div></div>
 </section>
 <?php $cards = ob_get_clean();
 
