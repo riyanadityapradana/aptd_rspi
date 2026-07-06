@@ -34,6 +34,7 @@ echo '<th rowspan="2">Tanggal Keluar</th>';
 echo '<th rowspan="2">Status Pulang</th>';
 echo '<th rowspan="2">DPJP</th>';
 echo '<th rowspan="2">Kamar</th>';
+echo '<th rowspan="2">Lama Dirawat</th>';
 echo '<th rowspan="2">CLAIM</th>';
 echo '<th colspan="21">Jasa Dokter</th>';
 echo '<th rowspan="2">JK</th>';
@@ -74,6 +75,7 @@ foreach ($rows as $row) {
         $row['status_pulang'],
         $row['dpjp'] ?: '-',
         $row['kamar'] ?: '-',
+        $row['lama_dirawat'] === null ? '-' : (int) $row['lama_dirawat'],
         $row['claim'],
     ];
 

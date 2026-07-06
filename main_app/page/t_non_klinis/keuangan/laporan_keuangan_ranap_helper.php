@@ -362,7 +362,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
                            fisio_raw.jam_rawat,
                            REPLACE(REPLACE(fisio_raw.nm_perawatan, '~', ' '), '|', ' ')
                        )
-                       ORDER BY fisio_raw.tgl_perawatan ASC, fisio_raw.jam_rawat ASC
+                       ORDER BY fisio_raw.tgl_perawatan ASC, fisio_raw.jam_rawat ASC, fisio_raw.source_order ASC
                        SEPARATOR '|'
                    ) AS fisio_items
             FROM (
@@ -370,7 +370,8 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
                        CASE WHEN IFNULL(rid.tarif_tindakandr, 0) > 0 THEN rid.tarif_tindakandr ELSE IFNULL(jpi.tarif_tindakandr, 0) END AS nilai_fisio,
                        rid.tgl_perawatan,
                        rid.jam_rawat,
-                       jpi.nm_perawatan
+                       jpi.nm_perawatan,
+                       1 AS source_order
                 FROM rawat_inap_dr rid
                 INNER JOIN ($filterSql) f ON f.no_rawat = rid.no_rawat
                 INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rid.kd_jenis_prw
@@ -380,12 +381,24 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
                        IFNULL(jpi.tarif_tindakandr, 0) AS nilai_fisio,
                        rip.tgl_perawatan,
                        rip.jam_rawat,
-                       jpi.nm_perawatan
-                FROM rawat_inap_pr rip
-                INNER JOIN ($filterSql) f ON f.no_rawat = rip.no_rawat
-                INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rip.kd_jenis_prw
-                WHERE jpi.nm_perawatan LIKE '%fisio%'
-            ) fisio_raw
+                       jpi.nm_perawatan,
+                       2 AS source_order
+                 FROM rawat_inap_pr rip
+                 INNER JOIN ($filterSql) f ON f.no_rawat = rip.no_rawat
+                 INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rip.kd_jenis_prw
+                 WHERE jpi.nm_perawatan LIKE '%fisio%'
+                 UNION ALL
+                 SELECT ridp.no_rawat,
+                        IFNULL(ridp.tarif_tindakandr, 0) AS nilai_fisio,
+                        ridp.tgl_perawatan,
+                        ridp.jam_rawat,
+                        jpi.nm_perawatan,
+                        3 AS source_order
+                 FROM rawat_inap_drpr ridp
+                 INNER JOIN ($filterSql) f ON f.no_rawat = ridp.no_rawat
+                 INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = ridp.kd_jenis_prw
+                 WHERE jpi.nm_perawatan LIKE '%fisio%'
+             ) fisio_raw
             GROUP BY fisio_raw.no_rawat
         ) fisio ON fisio.no_rawat = rp.no_rawat
         LEFT JOIN (
@@ -793,6 +806,14 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
                 MAX(NULLIF(reg_dpjp.nm_dokter, ''))
             ) AS dpjp,
             GROUP_CONCAT(DISTINCT ki.kd_kamar ORDER BY ki.tgl_masuk, ki.jam_masuk SEPARATOR ', ') AS kamar,
+            DATEDIFF(
+                MAX(CASE
+                    WHEN ki.stts_pulang <> '-'
+                     AND ki.stts_pulang <> 'Pindah Kamar'
+                    THEN NULLIF(ki.tgl_keluar, '0000-00-00')
+                END),
+                MAX(NULLIF(bs.tglsep, '0000-00-00'))
+            ) AS lama_dirawat,
             MAX(IFNULL(bs.nmdiagnosaawal, '')) AS diagnosa_sep,
             CASE
                 WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim

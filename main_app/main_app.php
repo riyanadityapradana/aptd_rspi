@@ -202,7 +202,7 @@ $menuAdmin = [
         <meta name="description" content="">
         <meta name="author" content="">
 
-        <link rel="icon" href="../assets/assets-admin/img/fotokantor/logo1.png">
+        <link rel="icon" type="image/png" href="../assets/assets-admin/img/logo1.png?v=20260706">
         <link href="../assets/assets-admin/css/bootstrap.min.css" rel="stylesheet">
         <link href="../assets/assets-admin/css/dataTables.bootstrap4.min.css" rel="stylesheet">
         <link href="../assets/assets-admin/css/style.css" rel="stylesheet">
@@ -216,6 +216,7 @@ $menuAdmin = [
         .container { max-width: 100%; padding-left: 10px; padding-right: 10px; }
         .navbar { min-height: 58px; }
         .navbar-brand { display: inline-flex; align-items: center; white-space: nowrap; font-size: 16px; }
+        .navbar-brand-logo { mix-blend-mode: multiply; }
         .navbar-nav { align-items: center; }
         .navbar-nav .nav-link { white-space: nowrap; font-size: 13px; padding-left: 8px; padding-right: 8px; }
         .dropdown-menu { font-size: 13px; }
@@ -230,7 +231,7 @@ $menuAdmin = [
     </head>
     <body>
         <nav class="navbar navbar-expand-lg fixed-top navbar-dark" style="background-color:rgba(109,156,227,1)">
-            <a class="navbar-brand page-scroll" href="main_app.php?page=beranda"><img src="../assets/assets-admin/img/logo1.png" height="35" class="d-inline-block align-top" color="white" alt="" style="padding-top: 0">&nbsp;&nbsp;Beranda</a>
+            <a class="navbar-brand page-scroll" href="main_app.php?page=beranda"><img src="../assets/assets-admin/img/logo1.png?v=20260706" height="35" class="navbar-brand-logo d-inline-block align-top" alt="Logo Pelita Insani Martapura" style="padding-top: 0">&nbsp;&nbsp;Beranda</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#myNavbar" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
             <div class="collapse navbar-collapse" id="myNavbar">
                 <ul class="navbar-nav mr-auto mt-2 mt-lg-0">

@@ -34,7 +34,7 @@ unset(
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Login Aplikasi Tarikan Data RSPI</title>
-    <link rel="icon" href="../assets/assets-admin/img/logo1.png">
+    <link rel="icon" type="image/png" href="../assets/assets-admin/img/logo1.png?v=20260706">
     <link href="../assets/assets-admin/css/bootstrap.min.css" rel="stylesheet">
     <link href="../assets/assets-admin/css/animate.css" rel="stylesheet">
     <style>
@@ -127,6 +127,13 @@ unset(
             text-transform: uppercase;
             position: relative;
             z-index: 1;
+        }
+
+        .brand-badge-logo {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            flex-shrink: 0;
         }
 
         .brand-title {
@@ -229,6 +236,46 @@ unset(
         .form-control:focus {
             border-color: var(--blue-500);
             box-shadow: 0 0 0 4px rgba(88, 181, 239, 0.16);
+        }
+
+        .password-field {
+            position: relative;
+        }
+
+        .password-field .form-control {
+            padding-right: 54px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--blue-700);
+            cursor: pointer;
+            transform: translateY(-50%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle:hover {
+            background: rgba(88, 181, 239, 0.12);
+        }
+
+        .password-toggle:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(88, 181, 239, 0.22);
+        }
+
+        .password-toggle svg {
+            width: 20px;
+            height: 20px;
         }
 
         .btn-login {
@@ -337,6 +384,7 @@ unset(
             .login-shell { padding: 18px 12px; }
             .login-grid { border-radius: 22px; }
             .brand-panel, .form-panel { padding: 28px 18px; }
+            .brand-badge-logo { width: 52px; height: 52px; }
             .login-card { padding: 22px 18px; border-radius: 20px; }
             .form-title, .brand-title { font-size: 28px; }
         }
@@ -347,7 +395,7 @@ unset(
         <div class="login-grid animated fadeIn">
             <section class="brand-panel">
                 <div class="brand-badge">
-                    <img src="../assets/assets-admin/img/logo1.png" alt="Logo RSPI" style="height: 26px;">
+                    <img class="brand-badge-logo" src="../assets/assets-admin/img/logo1.png?v=20260706" alt="Logo Pelita Insani Martapura">
                     APTD RSPI
                 </div>
                 <h1 class="brand-title">Satu pintu akses untuk tarikan data layanan RSPI.</h1>
@@ -387,7 +435,21 @@ unset(
                             </div>
                             <div class="form-group">
                                 <label for="password">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" placeholder="Masukkan password" required>
+                                <div class="password-field">
+                                    <input type="password" class="form-control" id="password" name="password" placeholder="Masukkan password" required>
+                                    <button type="button" class="password-toggle" id="togglePassword" aria-label="Tampilkan password" aria-controls="password" aria-pressed="false" title="Tampilkan password">
+                                        <svg class="password-icon-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                        <svg class="password-icon-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+                                            <path d="M3 3l18 18"></path>
+                                            <path d="M10.6 10.6a2 2 0 002.8 2.8"></path>
+                                            <path d="M9.9 4.2A10.8 10.8 0 0112 4c6.5 0 10 8 10 8a18.5 18.5 0 01-2.1 3.2"></path>
+                                            <path d="M6.6 6.6C3.7 8.5 2 12 2 12s3.5 8 10 8a9.8 9.8 0 005.4-1.6"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-login">Masuk ke Aplikasi</button>
                         </form>
@@ -464,6 +526,19 @@ unset(
     <script src="../assets/assets-admin/js/bootstrap.min.js"></script>
     <script>
         $(function () {
+            $('#togglePassword').on('click', function () {
+                var $password = $('#password');
+                var tampil = $password.attr('type') === 'password';
+
+                $password.attr('type', tampil ? 'text' : 'password');
+                $(this)
+                    .attr('aria-pressed', tampil ? 'true' : 'false')
+                    .attr('aria-label', tampil ? 'Sembunyikan password' : 'Tampilkan password')
+                    .attr('title', tampil ? 'Sembunyikan password' : 'Tampilkan password');
+                $(this).find('.password-icon-show').prop('hidden', tampil);
+                $(this).find('.password-icon-hide').prop('hidden', !tampil);
+            });
+
             <?php if ($bukaModalRegister): ?>
             $('#modalBuatAkun').modal('show');
             <?php endif; ?>

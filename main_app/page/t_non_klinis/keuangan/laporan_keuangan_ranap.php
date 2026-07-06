@@ -119,7 +119,7 @@ ob_start(); ?>
         .keu-ranap-scroll::-webkit-scrollbar{height:14px}
         .keu-ranap-scroll::-webkit-scrollbar-thumb{background:#8b97aa;border-radius:999px;border:2px solid #eef2f7}
         .keu-ranap-scroll .dataTables_wrapper{width:max-content;min-width:100%;max-width:none}
-        .keu-ranap-scroll .dataTables_wrapper>.row{width:100%;min-width:7565px;max-width:none;margin-left:0;margin-right:0;position:relative;z-index:12;background:#fff;padding:6px 0;display:flex;align-items:center;flex-wrap:nowrap}
+        .keu-ranap-scroll .dataTables_wrapper>.row{width:100%;min-width:7675px;max-width:none;margin-left:0;margin-right:0;position:relative;z-index:12;background:#fff;padding:6px 0;display:flex;align-items:center;flex-wrap:nowrap}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"],.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]{padding-left:0;padding-right:0;max-width:none}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:first-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:first-child{flex:1 0 auto}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{position:sticky;right:0;z-index:16;flex:0 0 auto;width:auto!important;max-width:calc(100vw - 96px);background:#fff;padding-left:12px!important;box-shadow:-14px 0 18px -18px rgba(15,23,42,.85)}
@@ -130,7 +130,7 @@ ob_start(); ?>
         .keu-ranap-scroll .dataTables_info{padding-top:8px;font-size:13px;white-space:normal}
         .keu-ranap-scroll .dataTables_paginate{padding-top:4px;font-size:13px;text-align:right!important}
         .keu-ranap-scroll .dataTables_paginate .pagination{justify-content:flex-end!important;flex-wrap:wrap}
-        .keu-ranap-table{min-width:7565px;width:7565px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
+        .keu-ranap-table{min-width:7675px;width:7675px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
         .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle!important;border:1px solid #111!important;padding:6px 8px!important;line-height:1.25}
         .keu-ranap-table thead th{background:#d9e2f3!important;color:#000!important;text-align:center;font-size:13px;font-weight:800;white-space:normal;line-height:1.15}
         .keu-ranap-table thead tr:first-child th{background:#cfd8e8!important}
@@ -148,6 +148,7 @@ ob_start(); ?>
         .keu-ranap-table .col-ket-visite{width:280px;min-width:280px;max-width:280px;overflow:hidden;text-overflow:ellipsis}
         .keu-ranap-table .col-ket-telp{width:280px;min-width:280px;max-width:280px;overflow:hidden;text-overflow:ellipsis}
         .keu-ranap-table .col-kamar{width:132px;min-width:132px;max-width:132px}
+        .keu-ranap-table .col-lama-dirawat{width:110px;min-width:110px;max-width:110px;text-align:center}
         .keu-ranap-table .col-sep{width:190px;min-width:190px;max-width:190px;overflow:hidden;text-overflow:ellipsis;text-align:left}
         .keu-ranap-table .col-obat-dasar{width:140px;min-width:140px;max-width:140px}
         .keu-ranap-table .col-obat-margin{width:112px;min-width:112px;max-width:112px}
@@ -171,9 +172,9 @@ ob_start(); ?>
         .keu-rawat-btn:hover{background:#174f94;color:#fff}
         @media (max-width: 991.98px){
             .keu-ranap-scroll{margin-left:-8px;margin-right:-8px;width:calc(100% + 16px);max-width:calc(100% + 16px)}
-            .keu-ranap-scroll .dataTables_wrapper>.row{min-width:7565px;padding-left:8px;padding-right:8px}
+            .keu-ranap-scroll .dataTables_wrapper>.row{min-width:7675px;padding-left:8px;padding-right:8px}
             .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{max-width:calc(100vw - 24px);padding-right:8px!important}
-            .keu-ranap-table{min-width:7565px;width:7565px!important}
+            .keu-ranap-table{min-width:7675px;width:7675px!important}
             .keu-ranap-table th,.keu-ranap-table td{padding:5px 7px!important}
             .keu-ranap-table thead th,.keu-ranap-table tbody td{font-size:12px}
             .keu-rawat-btn{font-size:11px;padding:3px 7px}
@@ -193,6 +194,7 @@ ob_start(); ?>
                 <col style="width:190px">
                 <col style="width:230px">
                 <col style="width:132px">
+                <col style="width:110px">
                 <col style="width:88px">
                 <col style="width:124px">
                 <col style="width:104px">
@@ -245,6 +247,7 @@ ob_start(); ?>
                     <th rowspan="2" class="col-status">Status Pulang</th>
                     <th rowspan="2" class="col-dpjp">DPJP</th>
                     <th rowspan="2" class="col-kamar">Kamar</th>
+                    <th rowspan="2" class="col-lama-dirawat">Lama Dirawat</th>
                     <th rowspan="2" class="col-claim">CLAIM</th>
                     <th rowspan="2" class="keu-action-cell">Hitung</th>
                     <th colspan="21">Jasa Dokter</th>
@@ -301,7 +304,7 @@ ob_start(); ?>
             </thead>
             <tbody>
                 <?php if (empty($rows)): ?>
-                    <tr><td colspan="57" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
+                    <tr><td colspan="58" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
                 <?php else: foreach ($rows as $row): ?>
                     <?php
                     $hasHitung = isset($row['has_hitung']) && (int) $row['has_hitung'] === 1;
@@ -329,6 +332,7 @@ ob_start(); ?>
                         <td><?php echo htmlspecialchars($row['status_pulang'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="col-dpjp" title="<?php echo htmlspecialchars($row['dpjp'] ?: '-', ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($row['dpjp'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars($row['kamar'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td class="col-lama-dirawat"><?php echo $row['lama_dirawat'] === null ? '-' : (int) $row['lama_dirawat']; ?></td>
                         <td class="col-claim"><?php echo aptd_currency($row['claim']); ?></td>
                         <td class="keu-action-cell">
                             <form method="post" style="margin:0;">

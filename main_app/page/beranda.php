@@ -327,7 +327,7 @@ $levelBeranda = isset($levelLogin) ? $levelLogin : '-';
                     <div class="beranda-visual">
                         <div class="beranda-orbit">
                             <div class="beranda-logo-wrap">
-                                <img src="../assets/assets-admin/img/logo1.png" alt="Logo RSPI">
+                                <img src="../assets/assets-admin/img/logo1.png?v=20260706" alt="Logo Pelita Insani Martapura">
                             </div>
                             <div class="beranda-mini-card beranda-mini-top">
                                 <small>Monitoring</small>
