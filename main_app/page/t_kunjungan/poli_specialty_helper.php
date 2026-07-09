@@ -1,7 +1,23 @@
 <?php
 
+function aptd_poli_specialty_excluded_codes()
+{
+    return ['IGDK', 'U0014', 'U0056', 'U0062', 'U0078'];
+}
+
+function aptd_poli_specialty_exclusion_sql($mysqli, $column = 'rp.kd_poli')
+{
+    $codes = aptd_poli_specialty_excluded_codes();
+    $escaped = array_map(function ($code) use ($mysqli) {
+        return "'" . $mysqli->real_escape_string($code) . "'";
+    }, $codes);
+
+    return $column . ' NOT IN (' . implode(',', $escaped) . ')';
+}
+
 function aptd_poli_specialty_mapping($mysqli)
 {
+    $exclusionSql = aptd_poli_specialty_exclusion_sql($mysqli, 'p.kd_poli');
     $sql = "SELECT DISTINCT
                 s.nm_sps,
                 p.kd_poli
@@ -10,6 +26,7 @@ function aptd_poli_specialty_mapping($mysqli)
             INNER JOIN dokter d ON d.kd_dokter = j.kd_dokter
             INNER JOIN spesialis s ON s.kd_sps = d.kd_sps
             WHERE p.status = '1'
+              AND $exclusionSql
               AND s.nm_sps IS NOT NULL
               AND TRIM(s.nm_sps) <> ''
             ORDER BY s.nm_sps ASC, p.kd_poli ASC";
@@ -41,15 +58,42 @@ function aptd_poli_specialty_mapping($mysqli)
         }
     }
 
-    // Entitas emergency tidak memiliki relasi jadwal/spesialis pada master SIMRS.
-    $emergencyFallback = [
-        'IGD' => ['IGDK', 'U0009'],
-        'PONEK RALAN' => ['U0074'],
-        'PONEK RANAP' => ['U0056'],
+    // Poli ralan valid yang tidak selalu memiliki jadwal tetap diarahkan ke spesialis master.
+    $manualSpecialtyFallback = [
+        'S0016' => [
+            'default_name' => 'Umum',
+            'codes' => ['U0009', 'U0071'],
+        ],
+        'S0001' => [
+            'default_name' => 'Obgyn',
+            'codes' => ['U0074'],
+        ],
     ];
+
+    $specialtyNames = [];
+    $specialtyCodes = array_keys($manualSpecialtyFallback);
+    if (!empty($specialtyCodes)) {
+        $escapedSpecialties = array_map(function ($code) use ($mysqli) {
+            return "'" . $mysqli->real_escape_string($code) . "'";
+        }, $specialtyCodes);
+        $specialtyResult = $mysqli->query(
+            "SELECT kd_sps, nm_sps
+             FROM spesialis
+             WHERE kd_sps IN (" . implode(',', $escapedSpecialties) . ")"
+        );
+        if ($specialtyResult) {
+            while ($row = $specialtyResult->fetch_assoc()) {
+                $name = trim((string) $row['nm_sps']);
+                if ($name !== '') {
+                    $specialtyNames[$row['kd_sps']] = $name;
+                }
+            }
+        }
+    }
+
     $fallbackCodes = [];
-    foreach ($emergencyFallback as $codes) {
-        foreach ($codes as $code) {
+    foreach ($manualSpecialtyFallback as $fallback) {
+        foreach ($fallback['codes'] as $code) {
             $fallbackCodes[$code] = $code;
         }
     }
@@ -62,6 +106,7 @@ function aptd_poli_specialty_mapping($mysqli)
             "SELECT kd_poli
              FROM poliklinik
              WHERE status = '1'
+               AND " . aptd_poli_specialty_exclusion_sql($mysqli, 'kd_poli') . "
                AND kd_poli IN (" . implode(',', $escapedCodes) . ")"
         );
         $activeFallbackCodes = [];
@@ -69,8 +114,15 @@ function aptd_poli_specialty_mapping($mysqli)
             $activeFallbackCodes[$row['kd_poli']] = true;
         }
 
-        foreach ($emergencyFallback as $groupName => $codes) {
-            foreach ($codes as $code) {
+        foreach ($groups as $groupName => $codes) {
+            foreach ($fallbackCodes as $code) {
+                unset($groups[$groupName][$code]);
+            }
+        }
+
+        foreach ($manualSpecialtyFallback as $kdSps => $fallback) {
+            $groupName = isset($specialtyNames[$kdSps]) ? $specialtyNames[$kdSps] : $fallback['default_name'];
+            foreach ($fallback['codes'] as $code) {
                 if (!isset($activeFallbackCodes[$code])) {
                     continue;
                 }
@@ -83,6 +135,10 @@ function aptd_poli_specialty_mapping($mysqli)
     }
 
     foreach ($groups as $groupName => $codes) {
+        if (empty($codes)) {
+            unset($groups[$groupName]);
+            continue;
+        }
         $groups[$groupName] = array_values($codes);
         sort($groups[$groupName], SORT_NATURAL | SORT_FLAG_CASE);
     }
@@ -96,6 +152,20 @@ function aptd_poli_specialty_selected_group(array $groups, $requested, $preferre
     $requested = trim((string) $requested);
     if ($requested !== '' && isset($groups[$requested])) {
         return $requested;
+    }
+
+    $aliases = [
+        'KANDUNGAN' => ['Obgyn', 'Obstetri dan Ginekologi', 'Obstetri & Ginekologi'],
+    ];
+    $aliasKey = strtoupper($requested);
+    if (isset($aliases[$aliasKey])) {
+        foreach ($aliases[$aliasKey] as $aliasTarget) {
+            foreach (array_keys($groups) as $groupName) {
+                if (strcasecmp($aliasTarget, $groupName) === 0) {
+                    return $groupName;
+                }
+            }
+        }
     }
 
     foreach (array_keys($groups) as $groupName) {

@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'keuangan', 'moneta'];
+$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'keuangan', 'moneta', 'farmasi'];
 
 $namaLengkap = isset($_POST['nama_lengkap']) ? trim($_POST['nama_lengkap']) : '';
 $username = isset($_POST['username']) ? trim($_POST['username']) : '';

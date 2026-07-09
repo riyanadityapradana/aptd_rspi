@@ -29,7 +29,9 @@ function aptd_keu_ranap_inacbg_tariff_sql()
 {
     return "
         SELECT igr.no_rawat,
-               CAST(TRIM(igr.tariff) AS DECIMAL(16,2)) AS tariff
+               CAST(TRIM(igr.tariff) AS DECIMAL(16,2)) AS tariff,
+               IFNULL(igr.datetime, '1000-01-01 00:00:00') AS tariff_datetime,
+               IFNULL(igr.no_sep, '') AS tariff_no_sep
         FROM tb_inacbg_grouping_result igr
         LEFT JOIN tb_inacbg_grouping_result newer
           ON newer.no_rawat = igr.no_rawat
@@ -48,9 +50,176 @@ function aptd_keu_ranap_inacbg_tariff_sql()
     ";
 }
 
-function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
+function aptd_keu_ranap_history_claim_sql()
 {
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
+    $historyBaseSql = "
+        SELECT diag.no_rawat,
+               diag.code,
+               tariff.tariff,
+               tariff.tariff_datetime,
+               tariff.tariff_no_sep
+        FROM tb_inacbg_diagnose diag
+        INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = diag.no_rawat
+        WHERE diag.prioritas = 1
+    ";
+
+    return "
+        SELECT current_diag.no_rawat,
+               current_diag.kd_penyakit AS claim_history_diagnose_code,
+               history_pick.no_rawat AS claim_history_no_rawat,
+               history_pick.tariff AS claim_history
+        FROM (
+            SELECT no_rawat, MAX(kd_penyakit) AS kd_penyakit
+            FROM diagnosa_pasien
+            WHERE prioritas = 1
+            GROUP BY no_rawat
+        ) current_diag
+        INNER JOIN ($historyBaseSql) history_pick
+            ON history_pick.code = current_diag.kd_penyakit
+           AND history_pick.no_rawat <> current_diag.no_rawat
+        LEFT JOIN ($historyBaseSql) newer
+            ON newer.code = current_diag.kd_penyakit
+           AND newer.no_rawat <> current_diag.no_rawat
+           AND (
+                newer.tariff_datetime > history_pick.tariff_datetime
+             OR (
+                    newer.tariff_datetime = history_pick.tariff_datetime
+                AND newer.no_rawat > history_pick.no_rawat
+             )
+           )
+        WHERE newer.no_rawat IS NULL
+    ";
+}
+
+function aptd_keu_ranap_claim_select_sql()
+{
+    return "
+        CASE
+            WHEN COALESCE(manual.claim_selected, 0) > 0 THEN manual.claim_selected
+            WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
+            WHEN COALESCE(inacbg.tariff, 0) > 0 THEN inacbg.tariff
+            ELSE 0
+        END
+    ";
+}
+
+function aptd_keu_ranap_claim_source_sql()
+{
+    return "
+        CASE
+            WHEN COALESCE(manual.claim_selected, 0) > 0 AND IFNULL(manual.claim_source, '') <> '' THEN manual.claim_source
+            WHEN COALESCE(manual.claim_selected, 0) > 0 THEN 'manual'
+            WHEN COALESCE(manual.jum_claim, 0) > 0 THEN 'manual'
+            WHEN COALESCE(inacbg.tariff, 0) > 0 THEN 'inacbg_current'
+            ELSE 'none'
+        END
+    ";
+}
+
+function aptd_keu_ranap_claim_source_label($source, $claimUsed = 0, $claimHistory = 0)
+{
+    $source = trim((string) $source);
+    if ($source === 'manual') {
+        return 'Manual Keuangan';
+    }
+    if ($source === 'inacbg_current') {
+        return 'Aktual INA-CBG';
+    }
+    if ($source === 'history_diagnose') {
+        return 'Riwayat Diagnosa';
+    }
+    if ((float) $claimUsed <= 0 && (float) $claimHistory > 0) {
+        return 'Perlu Review';
+    }
+    return 'Belum Ada';
+}
+
+function aptd_keu_ranap_apply_history_claims(mysqli $mysqli, array &$rows)
+{
+    if (empty($rows)) {
+        return;
+    }
+
+    $codes = [];
+    foreach ($rows as $index => $row) {
+        $rows[$index]['claim_history'] = isset($row['claim_history']) ? (float) $row['claim_history'] : 0;
+        $rows[$index]['claim_history_no_rawat'] = isset($row['claim_history_no_rawat']) ? (string) $row['claim_history_no_rawat'] : '';
+        $code = isset($row['claim_history_diagnose_code']) ? trim((string) $row['claim_history_diagnose_code']) : '';
+        if ($code !== '') {
+            $codes[$code] = true;
+        }
+    }
+
+    if (empty($codes)) {
+        return;
+    }
+
+    $escapedCodes = [];
+    foreach (array_keys($codes) as $code) {
+        $escapedCodes[] = "'" . $mysqli->real_escape_string($code) . "'";
+    }
+
+    $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
+    $sql = "
+        SELECT diag.code,
+               diag.no_rawat,
+               tariff.tariff,
+               tariff.tariff_datetime
+        FROM tb_inacbg_diagnose diag
+        INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = diag.no_rawat
+        WHERE diag.prioritas = 1
+          AND diag.code IN (" . implode(',', $escapedCodes) . ")
+        ORDER BY diag.code ASC, tariff.tariff_datetime DESC, diag.no_rawat DESC";
+
+    $candidates = [];
+    $result = $mysqli->query($sql);
+    while ($history = $result->fetch_assoc()) {
+        $code = (string) $history['code'];
+        if (!isset($candidates[$code])) {
+            $candidates[$code] = [];
+        }
+        $candidates[$code][] = [
+            'no_rawat' => (string) $history['no_rawat'],
+            'tariff' => (float) $history['tariff'],
+        ];
+    }
+
+    foreach ($rows as $index => $row) {
+        $code = isset($row['claim_history_diagnose_code']) ? trim((string) $row['claim_history_diagnose_code']) : '';
+        $currentNoRawat = isset($row['no_rawat']) ? (string) $row['no_rawat'] : '';
+        if ($code === '' || empty($candidates[$code])) {
+            $rows[$index]['claim_source_label'] = aptd_keu_ranap_claim_source_label(
+                isset($row['claim_source']) ? $row['claim_source'] : '',
+                isset($row['claim']) ? (float) $row['claim'] : 0,
+                isset($rows[$index]['claim_history']) ? (float) $rows[$index]['claim_history'] : 0
+            );
+            continue;
+        }
+
+        foreach ($candidates[$code] as $candidate) {
+            if ($candidate['no_rawat'] === $currentNoRawat || $candidate['tariff'] <= 0) {
+                continue;
+            }
+
+            $rows[$index]['claim_history'] = $candidate['tariff'];
+            $rows[$index]['claim_history_no_rawat'] = $candidate['no_rawat'];
+            break;
+        }
+
+        $rows[$index]['claim_source_label'] = aptd_keu_ranap_claim_source_label(
+            isset($row['claim_source']) ? $row['claim_source'] : '',
+            isset($row['claim']) ? (float) $row['claim'] : 0,
+            isset($rows[$index]['claim_history']) ? (float) $rows[$index]['claim_history'] : 0
+        );
+    }
+}
+
+function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
+{
+    aptd_keu_ranap_ensure_cache_schema($mysqli);
+    $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
+    $claimSelectSql = aptd_keu_ranap_claim_select_sql();
     $sql = "
         SELECT
             rp.no_rawat,
@@ -68,10 +237,12 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
                 MAX(NULLIF(bs.nmdpdjp, '')),
                 MAX(NULLIF(reg_dpjp.nm_dokter, ''))
             ) AS dpjp,
-            CASE
-                WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
-                ELSE COALESCE(inacbg.tariff, 0)
-            END AS claim
+            $claimSelectSql AS claim,
+            COALESCE(manual.claim_selected, 0) AS claim_selected,
+            COALESCE(inacbg.tariff, 0) AS claim_actual,
+            COALESCE(manual.claim_history, 0) AS claim_history,
+            COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
+            MAX(dp_current.kd_penyakit) AS claim_history_diagnose_code
         FROM kamar_inap ki
         INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
         INNER JOIN pasien p ON p.no_rkm_medis = rp.no_rkm_medis
@@ -81,8 +252,14 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
         LEFT JOIN maping_dokter_dpjpvclaim mdpjp ON mdpjp.kd_dokter_bpjs = NULLIF(bs.kddpjp, '')
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
+        LEFT JOIN diagnosa_pasien dp_current ON dp_current.no_rawat = rp.no_rawat AND dp_current.prioritas = 1
         LEFT JOIN (
-            SELECT no_rawat, MAX(jum_claim) AS jum_claim
+            SELECT no_rawat,
+                   MAX(jum_claim) AS jum_claim,
+                   MAX(claim_selected) AS claim_selected,
+                   MAX(claim_source) AS claim_source,
+                   MAX(claim_history) AS claim_history,
+                   MAX(claim_history_no_rawat) AS claim_history_no_rawat
             FROM lap_keuangan_bpjs
             GROUP BY no_rawat
         ) manual ON manual.no_rawat = rp.no_rawat
@@ -91,7 +268,7 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
           AND rp.status_lanjut = 'Ranap'
           AND rp.kd_pj = 'BPJ'
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
-        GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.jum_claim, inacbg.tariff
+        GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.jum_claim, manual.claim_selected, manual.claim_history, manual.claim_history_no_rawat, inacbg.tariff
         ORDER BY tanggal_masuk ASC, rp.no_rawat ASC";
 
     $stmt = $mysqli->prepare($sql);
@@ -105,6 +282,7 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
     }
 
     $stmt->close();
+    aptd_keu_ranap_apply_history_claims($mysqli, $rows);
     return $rows;
 }
 
@@ -114,6 +292,8 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
     $onlyNoRawat = trim((string) $onlyNoRawat);
     $filterSql = aptd_keu_ranap_filter_sql($mysqli, $startDate, $endDate, $onlyNoRawat);
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
+    $claimSelectSql = aptd_keu_ranap_claim_select_sql();
+    $claimSourceSql = aptd_keu_ranap_claim_source_sql();
     $singleFilterSql = $onlyNoRawat !== '' ? " AND rp.no_rawat = ?" : "";
 
     $sql = "
@@ -148,11 +328,14 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
             GROUP_CONCAT(DISTINCT ki.kd_kamar ORDER BY ki.tgl_masuk, ki.jam_masuk SEPARATOR ', ') AS kamar,
             MAX(IFNULL(bs.no_sep, '')) AS no_sep,
             MAX(IFNULL(bs.nmdiagnosaawal, '')) AS diagnosa_sep,
-            CASE
-                WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
-                ELSE COALESCE(inacbg.tariff, 0)
-            END AS claim,
+            $claimSelectSql AS claim,
             COALESCE(manual.jum_claim, 0) AS manual_claim,
+            COALESCE(manual.claim_selected, 0) AS claim_selected_raw,
+            COALESCE(inacbg.tariff, 0) AS claim_actual,
+            COALESCE(manual.claim_history, 0) AS claim_history,
+            COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
+            MAX(dp_current.kd_penyakit) AS claim_history_diagnose_code,
+            $claimSourceSql AS claim_source,
             COALESCE(manual.jum_jdoperator, 0) AS manual_jd_operator,
             COALESCE(ugd.dokter_ugd, 0) AS dokter_ugd,
             COALESCE(visit.visit_items, '') AS visit_items,
@@ -166,10 +349,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
                 WHEN COALESCE(hd.hd_count, 0) <= 0 THEN 0
                 ELSE 150000 + ((COALESCE(hd.hd_count, 0) - 1) * 100000)
             END AS hd,
-            (CASE
-                WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
-                ELSE COALESCE(inacbg.tariff, 0)
-            END * 0.15) AS jk,
+            ($claimSelectSql * 0.15) AS jk,
             COALESCE(bhp.bhp, 0) AS bhp,
             COALESCE(obat.total_harga_dasar_obat, 0) AS total_harga_dasar_obat,
             COALESCE(obat.markup_obat_bhp, 0) AS markup_obat_bhp,
@@ -217,8 +397,15 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
         LEFT JOIN dokter sep_dokter_all ON sep_dokter_all.kd_dokter = mdpjp.kd_dokter
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
         LEFT JOIN spesialis sep_sps ON sep_sps.kd_sps = sep_dokter.kd_sps
+        LEFT JOIN diagnosa_pasien dp_current ON dp_current.no_rawat = rp.no_rawat AND dp_current.prioritas = 1
         LEFT JOIN (
-            SELECT no_rawat, MAX(jum_claim) AS jum_claim, MAX(jum_jdoperator) AS jum_jdoperator
+            SELECT no_rawat,
+                   MAX(jum_claim) AS jum_claim,
+                   MAX(jum_jdoperator) AS jum_jdoperator,
+                   MAX(claim_selected) AS claim_selected,
+                   MAX(claim_source) AS claim_source,
+                   MAX(claim_history) AS claim_history,
+                   MAX(claim_history_no_rawat) AS claim_history_no_rawat
             FROM lap_keuangan_bpjs
             GROUP BY no_rawat
         ) manual ON manual.no_rawat = rp.no_rawat
@@ -576,7 +763,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
           AND rp.kd_pj = 'BPJ'
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
         GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur,
-                 manual.jum_claim, manual.jum_jdoperator, inacbg.tariff, ugd.dokter_ugd, visit.visit_items, telp.telp_items, usg.jd_usg, rad.jd_rontgen,
+                 manual.jum_claim, manual.jum_jdoperator, manual.claim_selected, manual.claim_source, manual.claim_history, manual.claim_history_no_rawat, inacbg.tariff, ugd.dokter_ugd, visit.visit_items, telp.telp_items, usg.jd_usg, rad.jd_rontgen,
                  lab.jd_lab, lab.jd_pa, hd.hd_count, bhp.bhp, obat.total_harga_dasar_obat, obat.markup_obat_bhp, obat.obat, lab.lab_pk, lab.lab_pa,
                  usg.rad_usg, rad.rontgen, fisio.fisio_items, ekg.ekg, ekg.count_ekg, darah.darah, darah.jumlah_darah,
                  makan.makan_jumlah, makan.makan_harga, makan.makan_kali, bhp_penunjang.phototherapy, oksigen.oksigen,
@@ -630,6 +817,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
     }
 
     $stmt->close();
+    aptd_keu_ranap_apply_history_claims($mysqli, $rows);
     return $rows;
 }
 
@@ -766,6 +954,22 @@ function aptd_keu_ranap_ensure_cache_schema(mysqli $mysqli)
         $existing[$row['Field']] = strtolower($row['Type']);
     }
 
+    $claimColumns = [
+        'claim_source' => "VARCHAR(30) NULL",
+        'claim_selected' => "DECIMAL(16,2) NULL",
+        'claim_actual' => "DECIMAL(16,2) NULL",
+        'claim_history' => "DECIMAL(16,2) NULL",
+        'claim_history_no_rawat' => "VARCHAR(20) NULL",
+        'claim_history_diagnose_code' => "VARCHAR(20) NULL",
+        'claim_selected_at' => "DATETIME NULL",
+        'claim_selected_by' => "VARCHAR(50) NULL",
+    ];
+    foreach ($claimColumns as $column => $definition) {
+        if (!isset($existing[$column])) {
+            $mysqli->query("ALTER TABLE lap_keuangan_bpjs ADD COLUMN $column $definition");
+        }
+    }
+
     foreach (aptd_keu_ranap_cache_columns() as $column => $definition) {
         if (!isset($existing[$column])) {
             $mysqli->query("ALTER TABLE lap_keuangan_bpjs ADD COLUMN $column $definition");
@@ -781,6 +985,8 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
 {
     aptd_keu_ranap_ensure_cache_schema($mysqli);
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
+    $claimSelectSql = aptd_keu_ranap_claim_select_sql();
+    $claimSourceSql = aptd_keu_ranap_claim_source_sql();
 
     $selectCache = '';
     foreach (aptd_keu_ranap_cache_map() as $key => $column) {
@@ -815,10 +1021,14 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
                 MAX(NULLIF(bs.tglsep, '0000-00-00'))
             ) AS lama_dirawat,
             MAX(IFNULL(bs.nmdiagnosaawal, '')) AS diagnosa_sep,
-            CASE
-                WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
-                ELSE COALESCE(inacbg.tariff, 0)
-            END AS claim,
+            $claimSelectSql AS claim,
+            COALESCE(manual.jum_claim, 0) AS manual_claim,
+            COALESCE(manual.claim_selected, 0) AS claim_selected_raw,
+            COALESCE(inacbg.tariff, 0) AS claim_actual,
+            COALESCE(manual.claim_history, 0) AS claim_history,
+            COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
+            MAX(dp_current.kd_penyakit) AS claim_history_diagnose_code,
+            $claimSourceSql AS claim_source,
             manual.calculated_at,
             CASE WHEN manual.calculated_at IS NULL THEN 0 ELSE 1 END AS has_hitung
             $selectCache
@@ -831,13 +1041,14 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
         LEFT JOIN maping_dokter_dpjpvclaim mdpjp ON mdpjp.kd_dokter_bpjs = NULLIF(bs.kddpjp, '')
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
+        LEFT JOIN diagnosa_pasien dp_current ON dp_current.no_rawat = rp.no_rawat AND dp_current.prioritas = 1
         LEFT JOIN lap_keuangan_bpjs manual ON manual.no_rawat = rp.no_rawat
         LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
         WHERE ki.tgl_masuk BETWEEN ? AND ?
           AND rp.status_lanjut = 'Ranap'
           AND rp.kd_pj = 'BPJ'
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
-        GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.no_rawat, manual.jum_claim, inacbg.tariff
+        GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.no_rawat, manual.jum_claim, manual.claim_selected, manual.claim_source, manual.claim_history, manual.claim_history_no_rawat, inacbg.tariff
         ORDER BY tanggal_masuk ASC, rp.no_rawat ASC";
 
     $stmt = $mysqli->prepare($sql);
@@ -847,15 +1058,22 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
 
     $rows = [];
     while ($row = $result->fetch_assoc()) {
+        $row['claim_source_label'] = aptd_keu_ranap_claim_source_label(
+            isset($row['claim_source']) ? $row['claim_source'] : '',
+            isset($row['claim']) ? (float) $row['claim'] : 0,
+            isset($row['claim_history']) ? (float) $row['claim_history'] : 0
+        );
         $rows[] = $row;
     }
 
     $stmt->close();
+    aptd_keu_ranap_apply_history_claims($mysqli, $rows);
     return $rows;
 }
 
 function aptd_keu_ranap_save_manual(mysqli $mysqli, $noRawat, $claim, $jdOperator, $allowClaimUpdate = true)
 {
+    aptd_keu_ranap_ensure_cache_schema($mysqli);
     $noRawat = trim($noRawat);
     if ($noRawat === '') {
         return ['success' => false, 'message' => 'No rawat tidak boleh kosong.'];
@@ -877,15 +1095,17 @@ function aptd_keu_ranap_save_manual(mysqli $mysqli, $noRawat, $claim, $jdOperato
 
     if ($exists) {
         if ($allowClaimUpdate) {
-            $stmt = $mysqli->prepare('UPDATE lap_keuangan_bpjs SET jum_claim = ?, jum_jdoperator = ? WHERE no_rawat = ?');
-            $stmt->bind_param('dds', $claim, $jdOperator, $noRawat);
+            $stmt = $mysqli->prepare("UPDATE lap_keuangan_bpjs SET jum_claim = ?, jum_jdoperator = ?, claim_selected = ?, claim_source = 'manual', claim_selected_at = NOW() WHERE no_rawat = ?");
+            $stmt->bind_param('ddds', $claim, $jdOperator, $claim, $noRawat);
         } else {
             $stmt = $mysqli->prepare('UPDATE lap_keuangan_bpjs SET jum_jdoperator = ? WHERE no_rawat = ?');
             $stmt->bind_param('ds', $jdOperator, $noRawat);
         }
     } else {
-        $stmt = $mysqli->prepare('INSERT INTO lap_keuangan_bpjs (no_rawat, jum_claim, jum_jdoperator) VALUES (?, ?, ?)');
-        $stmt->bind_param('sdd', $noRawat, $claim, $jdOperator);
+        $source = $allowClaimUpdate ? 'manual' : 'none';
+        $selectedClaim = $allowClaimUpdate ? $claim : 0;
+        $stmt = $mysqli->prepare('INSERT INTO lap_keuangan_bpjs (no_rawat, jum_claim, jum_jdoperator, claim_selected, claim_source, claim_selected_at) VALUES (?, ?, ?, ?, ?, NOW())');
+        $stmt->bind_param('sddds', $noRawat, $claim, $jdOperator, $selectedClaim, $source);
     }
 
     $stmt->execute();
@@ -896,6 +1116,7 @@ function aptd_keu_ranap_save_manual(mysqli $mysqli, $noRawat, $claim, $jdOperato
 
 function aptd_keu_ranap_save_claim(mysqli $mysqli, $noRawat, $claim, $allowClaimUpdate = true)
 {
+    aptd_keu_ranap_ensure_cache_schema($mysqli);
     $noRawat = trim($noRawat);
     if ($noRawat === '') {
         return ['success' => false, 'message' => 'No rawat tidak boleh kosong.'];
@@ -914,18 +1135,204 @@ function aptd_keu_ranap_save_claim(mysqli $mysqli, $noRawat, $claim, $allowClaim
     $check->close();
 
     if ($exists) {
-        $stmt = $mysqli->prepare('UPDATE lap_keuangan_bpjs SET jum_claim = ? WHERE no_rawat = ?');
-        $stmt->bind_param('ds', $claim, $noRawat);
+        $stmt = $mysqli->prepare("UPDATE lap_keuangan_bpjs SET jum_claim = ?, claim_selected = ?, claim_source = 'manual', claim_selected_at = NOW() WHERE no_rawat = ?");
+        $stmt->bind_param('dds', $claim, $claim, $noRawat);
     } else {
         $jdOperator = 0;
-        $stmt = $mysqli->prepare('INSERT INTO lap_keuangan_bpjs (no_rawat, jum_claim, jum_jdoperator) VALUES (?, ?, ?)');
-        $stmt->bind_param('sdd', $noRawat, $claim, $jdOperator);
+        $stmt = $mysqli->prepare("INSERT INTO lap_keuangan_bpjs (no_rawat, jum_claim, jum_jdoperator, claim_selected, claim_source, claim_selected_at) VALUES (?, ?, ?, ?, 'manual', NOW())");
+        $stmt->bind_param('sddd', $noRawat, $claim, $jdOperator, $claim);
     }
 
     $stmt->execute();
     $stmt->close();
 
     return ['success' => true, 'message' => 'Data claim berhasil disimpan.'];
+}
+
+function aptd_keu_ranap_find_history_claim(mysqli $mysqli, $noRawat)
+{
+    aptd_keu_ranap_ensure_cache_schema($mysqli);
+    $noRawat = trim((string) $noRawat);
+    if ($noRawat === '') {
+        return null;
+    }
+
+    $codeStmt = $mysqli->prepare('SELECT MAX(kd_penyakit) AS kd_penyakit FROM diagnosa_pasien WHERE no_rawat = ? AND prioritas = 1');
+    $codeStmt->bind_param('s', $noRawat);
+    $codeStmt->execute();
+    $codeRow = $codeStmt->get_result()->fetch_assoc();
+    $codeStmt->close();
+
+    $diagnoseCode = $codeRow && isset($codeRow['kd_penyakit']) ? trim((string) $codeRow['kd_penyakit']) : '';
+    if ($diagnoseCode === '') {
+        return null;
+    }
+
+    $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
+    $sql = "
+        SELECT tariff.tariff AS claim_history,
+               diag.no_rawat AS claim_history_no_rawat,
+               diag.code AS claim_history_diagnose_code
+        FROM tb_inacbg_diagnose diag
+        INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = diag.no_rawat
+        WHERE diag.prioritas = 1
+          AND diag.code = ?
+          AND diag.no_rawat <> ?
+        ORDER BY tariff.tariff_datetime DESC, diag.no_rawat DESC
+        LIMIT 1";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('ss', $diagnoseCode, $noRawat);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$row || (float) $row['claim_history'] <= 0) {
+        return null;
+    }
+
+    return $row;
+}
+
+function aptd_keu_ranap_use_history_claim(mysqli $mysqli, $noRawat, $username = '')
+{
+    aptd_keu_ranap_ensure_cache_schema($mysqli);
+    $noRawat = trim((string) $noRawat);
+    if ($noRawat === '') {
+        return ['success' => false, 'message' => 'No rawat tidak boleh kosong.'];
+    }
+
+    $history = aptd_keu_ranap_find_history_claim($mysqli, $noRawat);
+    if (!$history) {
+        return ['success' => false, 'message' => 'Klaim riwayat diagnosa belum tersedia untuk no rawat ini.'];
+    }
+
+    $claim = (float) $history['claim_history'];
+    $historyNoRawat = (string) $history['claim_history_no_rawat'];
+    $diagnoseCode = (string) $history['claim_history_diagnose_code'];
+    $username = trim((string) $username);
+
+    $check = $mysqli->prepare('SELECT COUNT(*) AS total FROM lap_keuangan_bpjs WHERE no_rawat = ?');
+    $check->bind_param('s', $noRawat);
+    $check->execute();
+    $exists = ((int) $check->get_result()->fetch_assoc()['total']) > 0;
+    $check->close();
+
+    if ($exists) {
+        $stmt = $mysqli->prepare("
+            UPDATE lap_keuangan_bpjs
+            SET claim_selected = ?,
+                claim_source = 'history_diagnose',
+                claim_history = ?,
+                claim_history_no_rawat = ?,
+                claim_history_diagnose_code = ?,
+                claim_selected_at = NOW(),
+                claim_selected_by = ?
+            WHERE no_rawat = ?");
+        $stmt->bind_param('ddssss', $claim, $claim, $historyNoRawat, $diagnoseCode, $username, $noRawat);
+    } else {
+        $zero = 0;
+        $stmt = $mysqli->prepare("
+            INSERT INTO lap_keuangan_bpjs
+                (no_rawat, jum_claim, jum_jdoperator, claim_selected, claim_source, claim_history, claim_history_no_rawat, claim_history_diagnose_code, claim_selected_at, claim_selected_by)
+            VALUES
+                (?, ?, ?, ?, 'history_diagnose', ?, ?, ?, NOW(), ?)");
+        $stmt->bind_param('sddddsss', $noRawat, $zero, $zero, $claim, $claim, $historyNoRawat, $diagnoseCode, $username);
+    }
+
+    $stmt->execute();
+    $stmt->close();
+
+    return ['success' => true, 'message' => 'Klaim riwayat berhasil dipakai untuk ' . $noRawat . '. Silakan lanjutkan Hitung.'];
+}
+
+function aptd_keu_ranap_persist_effective_claim(mysqli $mysqli, array $row)
+{
+    aptd_keu_ranap_ensure_cache_schema($mysqli);
+    $noRawat = isset($row['no_rawat']) ? trim((string) $row['no_rawat']) : '';
+    $claim = isset($row['claim']) ? (float) $row['claim'] : 0;
+    $source = isset($row['claim_source']) ? trim((string) $row['claim_source']) : 'none';
+    $selectedRaw = isset($row['claim_selected_raw']) ? (float) $row['claim_selected_raw'] : 0;
+    if ($noRawat === '' || $claim <= 0 || $selectedRaw > 0) {
+        return;
+    }
+
+    if ($source !== 'manual' && $source !== 'inacbg_current') {
+        return;
+    }
+
+    $actual = isset($row['claim_actual']) ? (float) $row['claim_actual'] : 0;
+    $history = isset($row['claim_history']) ? (float) $row['claim_history'] : 0;
+    $historyNoRawat = isset($row['claim_history_no_rawat']) ? (string) $row['claim_history_no_rawat'] : '';
+    $diagnoseCode = isset($row['claim_history_diagnose_code']) ? (string) $row['claim_history_diagnose_code'] : '';
+
+    $check = $mysqli->prepare('SELECT COUNT(*) AS total FROM lap_keuangan_bpjs WHERE no_rawat = ?');
+    $check->bind_param('s', $noRawat);
+    $check->execute();
+    $exists = ((int) $check->get_result()->fetch_assoc()['total']) > 0;
+    $check->close();
+
+    if ($exists) {
+        $stmt = $mysqli->prepare("
+            UPDATE lap_keuangan_bpjs
+            SET claim_selected = ?,
+                claim_source = ?,
+                claim_actual = ?,
+                claim_history = ?,
+                claim_history_no_rawat = ?,
+                claim_history_diagnose_code = ?,
+                claim_selected_at = NOW()
+            WHERE no_rawat = ?");
+        $stmt->bind_param('dsddsss', $claim, $source, $actual, $history, $historyNoRawat, $diagnoseCode, $noRawat);
+    } else {
+        $zero = 0;
+        $stmt = $mysqli->prepare("
+            INSERT INTO lap_keuangan_bpjs
+                (no_rawat, jum_claim, jum_jdoperator, claim_selected, claim_source, claim_actual, claim_history, claim_history_no_rawat, claim_history_diagnose_code, claim_selected_at)
+            VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param('sdddsddss', $noRawat, $zero, $zero, $claim, $source, $actual, $history, $historyNoRawat, $diagnoseCode);
+    }
+
+    $stmt->execute();
+    $stmt->close();
+}
+
+function aptd_keu_ranap_promote_actual_claim_for_calculation(mysqli $mysqli, array $row)
+{
+    aptd_keu_ranap_ensure_cache_schema($mysqli);
+
+    $noRawat = isset($row['no_rawat']) ? trim((string) $row['no_rawat']) : '';
+    $source = isset($row['claim_source']) ? trim((string) $row['claim_source']) : '';
+    $actual = isset($row['claim_actual']) ? (float) $row['claim_actual'] : 0;
+
+    if ($noRawat === '' || $source !== 'history_diagnose' || $actual <= 0) {
+        return $row;
+    }
+
+    $history = isset($row['claim_history']) ? (float) $row['claim_history'] : 0;
+    $historyNoRawat = isset($row['claim_history_no_rawat']) ? (string) $row['claim_history_no_rawat'] : '';
+    $diagnoseCode = isset($row['claim_history_diagnose_code']) ? (string) $row['claim_history_diagnose_code'] : '';
+
+    $stmt = $mysqli->prepare("
+        UPDATE lap_keuangan_bpjs
+        SET claim_selected = ?,
+            claim_source = 'inacbg_current',
+            claim_actual = ?,
+            claim_history = ?,
+            claim_history_no_rawat = ?,
+            claim_history_diagnose_code = ?,
+            claim_selected_at = NOW()
+        WHERE no_rawat = ?");
+    $stmt->bind_param('dddsss', $actual, $actual, $history, $historyNoRawat, $diagnoseCode, $noRawat);
+    $stmt->execute();
+    $stmt->close();
+
+    $row['claim'] = $actual;
+    $row['claim_selected_raw'] = $actual;
+    $row['claim_source'] = 'inacbg_current';
+    $row['claim_source_label'] = aptd_keu_ranap_claim_source_label('inacbg_current', $actual, $history);
+
+    return $row;
 }
 
 function aptd_keu_ranap_calculate_and_store(mysqli $mysqli, $noRawat, $startDate, $endDate)
@@ -942,13 +1349,14 @@ function aptd_keu_ranap_calculate_and_store(mysqli $mysqli, $noRawat, $startDate
         return ['success' => false, 'message' => 'Data pasien tidak ditemukan pada periode yang dipilih.'];
     }
 
-    $row = $rows[0];
+    $row = aptd_keu_ranap_promote_actual_claim_for_calculation($mysqli, $rows[0]);
     $claim = isset($row['claim']) ? (float) $row['claim'] : 0;
     if ($claim <= 0) {
-        return ['success' => false, 'message' => 'Claim manual dan tarif INA-CBG belum tersedia untuk no rawat ini.'];
+        return ['success' => false, 'message' => 'Claim dipakai belum tersedia. Pilih klaim aktual atau pakai klaim riwayat terlebih dahulu.'];
     }
 
     $row['claim'] = $claim;
+    aptd_keu_ranap_persist_effective_claim($mysqli, $row);
     $row['jk'] = $claim * 0.15;
     $row['jd_dpjp'] = aptd_keu_ranap_calculate_dpjp_fee($row);
     $row['ket_dpjp'] = aptd_keu_ranap_dpjp_condition($row);
@@ -975,6 +1383,17 @@ function aptd_keu_ranap_store_calculation(mysqli $mysqli, array $row)
     $columns = array_values($map);
     $values = [];
     foreach ($map as $key => $column) {
+        $values[] = isset($row[$key]) ? $row[$key] : '';
+    }
+
+    $claimContextMap = [
+        'claim_actual' => 'claim_actual',
+        'claim_history' => 'claim_history',
+        'claim_history_no_rawat' => 'claim_history_no_rawat',
+        'claim_history_diagnose_code' => 'claim_history_diagnose_code',
+    ];
+    foreach ($claimContextMap as $key => $column) {
+        $columns[] = $column;
         $values[] = isset($row[$key]) ? $row[$key] : '';
     }
 

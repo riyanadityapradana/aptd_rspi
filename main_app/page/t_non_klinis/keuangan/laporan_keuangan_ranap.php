@@ -8,10 +8,11 @@ $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
 $canEditClaim = in_array($levelLogin, ['admin', 'rekammedis'], true);
 $canCalculateKeuangan = in_array($levelLogin, ['admin', 'keuangan'], true);
 $isReportRowAction = (isset($_POST['calculate_keu_row']) && $_POST['calculate_keu_row'] === '1')
-    || (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1');
+    || (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1')
+    || (isset($_POST['use_history_claim']) && $_POST['use_history_claim'] === '1');
 if ($isReportRowAction) {
     $reportPage = isset($_POST['report_page']) ? max(0, (int) $_POST['report_page']) : 0;
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+} elseif (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $reportPage = 0;
 } else {
     $reportPage = isset($_GET['report_page']) ? max(0, (int) $_GET['report_page']) : 0;
@@ -41,6 +42,22 @@ if (isset($_POST['calculate_keu_row']) && $_POST['calculate_keu_row'] === '1') {
         );
     } else {
         $saveMessage = ['success' => false, 'message' => 'Level Anda tidak memiliki akses untuk menghitung data keuangan.'];
+    }
+    $_SESSION['keu_ranap_flash'] = $saveMessage;
+    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year) . '&report_page=' . rawurlencode($reportPage);
+    echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
+    echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '"></noscript>';
+    return;
+}
+if (isset($_POST['use_history_claim']) && $_POST['use_history_claim'] === '1') {
+    if ($canCalculateKeuangan) {
+        $saveMessage = aptd_keu_ranap_use_history_claim(
+            $mysqli,
+            isset($_POST['history_no_rawat']) ? $_POST['history_no_rawat'] : '',
+            isset($_SESSION['username']) ? $_SESSION['username'] : ''
+        );
+    } else {
+        $saveMessage = ['success' => false, 'message' => 'Level Anda tidak memiliki akses untuk memilih klaim riwayat.'];
     }
     $_SESSION['keu_ranap_flash'] = $saveMessage;
     $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year) . '&report_page=' . rawurlencode($reportPage);
@@ -81,7 +98,7 @@ ob_start(); ?>
 ob_start(); ?>
 <section class="analytics-cards">
     <div class="analytics-card"><div class="analytics-k">Pasien BPJS Ranap</div><div class="analytics-v"><?php echo aptd_number($summary['jumlah_pasien']); ?></div><div class="analytics-s"><?php echo htmlspecialchars($monthLabels[$month] . ' ' . $year, ENT_QUOTES, 'UTF-8'); ?></div></div>
-    <div class="analytics-card"><div class="analytics-k">Total Claim</div><div class="analytics-v"><?php echo aptd_currency($summary['total_claim']); ?></div><div class="analytics-s">Manual / fallback INA-CBG</div></div>
+    <div class="analytics-card"><div class="analytics-k">Total Claim</div><div class="analytics-v"><?php echo aptd_currency($summary['total_claim']); ?></div><div class="analytics-s">Claim dipakai</div></div>
     <div class="analytics-card"><div class="analytics-k">Total Jasa Dokter</div><div class="analytics-v"><?php echo aptd_currency($summary['total_jasa_dokter']); ?></div><div class="analytics-s">Akumulasi kolom jasa dokter</div></div>
     <div class="analytics-card"><div class="analytics-k">Total Obat</div><div class="analytics-v"><?php echo aptd_currency($summary['total_obat']); ?></div><div class="analytics-s">Akumulasi biaya obat pasien</div></div>
 </section>
@@ -101,7 +118,7 @@ ob_start(); ?>
         </div>
         <span class="analytics-pill"><?php echo htmlspecialchars($startDate . ' s.d. ' . $endDate, ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
-    <div class="analytics-note">Filter awal mengikuti arahan gambar: pasien rawat inap BPJS, ada di <code>kamar_inap</code>, dan status pulang bukan <code>Pindah Kamar</code>. CLAIM manual diprioritaskan; jika belum tersedia, sistem memakai tarif INA-CBG. Perhitungan detail dijalankan per nomor rawat melalui tombol <code>Hitung</code>.</div>
+    <div class="analytics-note">Filter awal mengikuti arahan gambar: pasien rawat inap BPJS, ada di <code>kamar_inap</code>, dan status pulang bukan <code>Pindah Kamar</code>. Perhitungan memakai <code>Claim Dipakai</code>; klaim riwayat diagnosa hanya menjadi referensi sampai dipilih melalui tombol <code>Pakai Riwayat</code>.</div>
 </section>
 <?php $panels = ob_get_clean();
 
@@ -119,7 +136,7 @@ ob_start(); ?>
         .keu-ranap-scroll::-webkit-scrollbar{height:14px}
         .keu-ranap-scroll::-webkit-scrollbar-thumb{background:#8b97aa;border-radius:999px;border:2px solid #eef2f7}
         .keu-ranap-scroll .dataTables_wrapper{width:max-content;min-width:100%;max-width:none}
-        .keu-ranap-scroll .dataTables_wrapper>.row{width:100%;min-width:7675px;max-width:none;margin-left:0;margin-right:0;position:relative;z-index:12;background:#fff;padding:6px 0;display:flex;align-items:center;flex-wrap:nowrap}
+        .keu-ranap-scroll .dataTables_wrapper>.row{width:100%;min-width:8050px;max-width:none;margin-left:0;margin-right:0;position:relative;z-index:12;background:#fff;padding:6px 0;display:flex;align-items:center;flex-wrap:nowrap}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"],.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]{padding-left:0;padding-right:0;max-width:none}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:first-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:first-child{flex:1 0 auto}
         .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{position:sticky;right:0;z-index:16;flex:0 0 auto;width:auto!important;max-width:calc(100vw - 96px);background:#fff;padding-left:12px!important;box-shadow:-14px 0 18px -18px rgba(15,23,42,.85)}
@@ -130,7 +147,7 @@ ob_start(); ?>
         .keu-ranap-scroll .dataTables_info{padding-top:8px;font-size:13px;white-space:normal}
         .keu-ranap-scroll .dataTables_paginate{padding-top:4px;font-size:13px;text-align:right!important}
         .keu-ranap-scroll .dataTables_paginate .pagination{justify-content:flex-end!important;flex-wrap:wrap}
-        .keu-ranap-table{min-width:7675px;width:7675px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
+        .keu-ranap-table{min-width:8050px;width:8050px!important;margin:0!important;white-space:nowrap;border-collapse:separate!important;border-spacing:0;table-layout:fixed;background:#fff;color:#000}
         .keu-ranap-table th,.keu-ranap-table td{vertical-align:middle!important;border:1px solid #111!important;padding:6px 8px!important;line-height:1.25}
         .keu-ranap-table thead th{background:#d9e2f3!important;color:#000!important;text-align:center;font-size:13px;font-weight:800;white-space:normal;line-height:1.15}
         .keu-ranap-table thead tr:first-child th{background:#cfd8e8!important}
@@ -153,13 +170,14 @@ ob_start(); ?>
         .keu-ranap-table .col-obat-dasar{width:140px;min-width:140px;max-width:140px}
         .keu-ranap-table .col-obat-margin{width:112px;min-width:112px;max-width:112px}
         .keu-ranap-table .num{width:104px;min-width:104px;text-align:right}
-        .keu-ranap-table .col-claim{width:88px;min-width:88px;max-width:88px;text-align:right}
+        .keu-ranap-table .col-claim{width:108px;min-width:108px;max-width:108px;text-align:right}
+        .keu-ranap-table .col-claim-source{width:126px;min-width:126px;max-width:126px;text-align:center;white-space:normal}
         .keu-ranap-table .flag{width:72px;min-width:72px;text-align:center}
         .keu-ranap-table .col-ket-tindakan{width:260px;min-width:260px;max-width:260px;overflow:hidden;text-overflow:ellipsis;text-align:left}
         .keu-ranap-table .margin-negative{color:#b91c1c;font-weight:800}
         .keu-ranap-table .margin-positive{color:#166534;font-weight:800}
-        .keu-action-cell{width:124px;min-width:124px;max-width:124px;text-align:center;padding-left:6px!important;padding-right:6px!important}
-        .keu-calc-btn{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:24px;border:0;border-radius:4px;background:#15803d;color:#fff;font-size:11px;font-weight:800;padding:2px 9px;cursor:pointer;line-height:1}
+        .keu-action-cell{width:132px;min-width:132px;max-width:132px;text-align:center;padding-left:6px!important;padding-right:6px!important}
+        .keu-calc-btn{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:24px;border:0;border-radius:4px;background:#15803d;color:#fff;font-size:11px;font-weight:800;padding:2px 9px;cursor:pointer;line-height:1;white-space:nowrap}
         .keu-calc-btn:hover{background:#166534;color:#fff}
         .keu-calc-btn:disabled{background:#9ca3af;cursor:not-allowed}
         .keu-not-counted{font-weight:700;color:#64748b;text-align:left!important;background:#f8fafc!important}
@@ -172,9 +190,9 @@ ob_start(); ?>
         .keu-rawat-btn:hover{background:#174f94;color:#fff}
         @media (max-width: 991.98px){
             .keu-ranap-scroll{margin-left:-8px;margin-right:-8px;width:calc(100% + 16px);max-width:calc(100% + 16px)}
-            .keu-ranap-scroll .dataTables_wrapper>.row{min-width:7675px;padding-left:8px;padding-right:8px}
+            .keu-ranap-scroll .dataTables_wrapper>.row{min-width:8050px;padding-left:8px;padding-right:8px}
             .keu-ranap-scroll .dataTables_wrapper>.row>[class^="col-"]:last-child,.keu-ranap-scroll .dataTables_wrapper>.row>[class*=" col-"]:last-child{max-width:calc(100vw - 24px);padding-right:8px!important}
-            .keu-ranap-table{min-width:7675px;width:7675px!important}
+            .keu-ranap-table{min-width:8050px;width:8050px!important}
             .keu-ranap-table th,.keu-ranap-table td{padding:5px 7px!important}
             .keu-ranap-table thead th,.keu-ranap-table tbody td{font-size:12px}
             .keu-rawat-btn{font-size:11px;padding:3px 7px}
@@ -195,8 +213,11 @@ ob_start(); ?>
                 <col style="width:230px">
                 <col style="width:132px">
                 <col style="width:110px">
-                <col style="width:88px">
-                <col style="width:124px">
+                <col style="width:108px">
+                <col style="width:108px">
+                <col style="width:108px">
+                <col style="width:126px">
+                <col style="width:132px">
                 <col style="width:104px">
                 <col style="width:104px">
                 <col style="width:230px">
@@ -248,8 +269,11 @@ ob_start(); ?>
                     <th rowspan="2" class="col-dpjp">DPJP</th>
                     <th rowspan="2" class="col-kamar">Kamar</th>
                     <th rowspan="2" class="col-lama-dirawat">Lama Dirawat</th>
-                    <th rowspan="2" class="col-claim">CLAIM</th>
-                    <th rowspan="2" class="keu-action-cell">Hitung</th>
+                    <th rowspan="2" class="col-claim">CLAIM DIPAKAI</th>
+                    <th rowspan="2" class="col-claim">CLAIM AKTUAL</th>
+                    <th rowspan="2" class="col-claim">CLAIM RIWAYAT</th>
+                    <th rowspan="2" class="col-claim-source">SUMBER</th>
+                    <th rowspan="2" class="keu-action-cell">AKSI</th>
                     <th colspan="21">Jasa Dokter</th>
                     <th rowspan="2" class="num">JK</th>
                     <th rowspan="2" class="num">BHP</th>
@@ -304,11 +328,15 @@ ob_start(); ?>
             </thead>
             <tbody>
                 <?php if (empty($rows)): ?>
-                    <tr><td colspan="58" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
+                    <tr><td colspan="61" class="analytics-empty">Tidak ada data pada periode ini.</td></tr>
                 <?php else: foreach ($rows as $row): ?>
                     <?php
                     $hasHitung = isset($row['has_hitung']) && (int) $row['has_hitung'] === 1;
                     $canHitungRow = $canCalculateKeuangan && (float) $row['claim'] > 0;
+                    $canUseHistoryRow = $canCalculateKeuangan
+                        && (float) $row['claim'] <= 0
+                        && (float) $row['claim_actual'] <= 0
+                        && (float) $row['claim_history'] > 0;
                     ?>
                     <tr>
                         <td class="col-rawat">
@@ -334,20 +362,34 @@ ob_start(); ?>
                         <td><?php echo htmlspecialchars($row['kamar'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="col-lama-dirawat"><?php echo $row['lama_dirawat'] === null ? '-' : (int) $row['lama_dirawat']; ?></td>
                         <td class="col-claim"><?php echo aptd_currency($row['claim']); ?></td>
+                        <td class="col-claim"><?php echo aptd_currency($row['claim_actual']); ?></td>
+                        <td class="col-claim" title="<?php echo htmlspecialchars($row['claim_history_no_rawat'] ? 'Riwayat: ' . $row['claim_history_no_rawat'] : '', ENT_QUOTES, 'UTF-8'); ?>"><?php echo aptd_currency($row['claim_history']); ?></td>
+                        <td class="col-claim-source"><?php echo htmlspecialchars($row['claim_source_label'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="keu-action-cell">
-                            <form method="post" style="margin:0;">
-                                <input type="hidden" name="calculate_keu_row" value="1">
-                                <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
-                                <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
-                                <input type="hidden" name="report_page" class="keu-report-page" value="<?php echo (int) $reportPage; ?>">
-                                <input type="hidden" name="calculate_no_rawat" value="<?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?>">
-                                <button type="submit"
-                                        class="keu-calc-btn"
-                                        title="<?php echo !$canHitungRow ? 'CLAIM belum tersedia' : ($hasHitung ? 'Hitung ulang data keuangan' : 'Hitung data keuangan'); ?>"
-                                        <?php echo $canHitungRow ? '' : 'disabled aria-disabled="true"'; ?>>
-                                    <?php echo $hasHitung ? 'Hitung Ulang' : 'Hitung'; ?>
-                                </button>
-                            </form>
+                            <?php if ($canUseHistoryRow): ?>
+                                <form method="post" style="margin:0;">
+                                    <input type="hidden" name="use_history_claim" value="1">
+                                    <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
+                                    <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
+                                    <input type="hidden" name="report_page" class="keu-report-page" value="<?php echo (int) $reportPage; ?>">
+                                    <input type="hidden" name="history_no_rawat" value="<?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    <button type="submit" class="keu-calc-btn" title="Pakai estimasi klaim dari riwayat diagnosa">Pakai Riwayat</button>
+                                </form>
+                            <?php else: ?>
+                                <form method="post" style="margin:0;">
+                                    <input type="hidden" name="calculate_keu_row" value="1">
+                                    <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
+                                    <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
+                                    <input type="hidden" name="report_page" class="keu-report-page" value="<?php echo (int) $reportPage; ?>">
+                                    <input type="hidden" name="calculate_no_rawat" value="<?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    <button type="submit"
+                                            class="keu-calc-btn"
+                                            title="<?php echo !$canHitungRow ? 'Claim Dipakai belum tersedia' : ($hasHitung ? 'Hitung ulang data keuangan' : 'Hitung data keuangan'); ?>"
+                                            <?php echo $canHitungRow ? '' : 'disabled aria-disabled="true"'; ?>>
+                                        <?php echo $hasHitung ? 'Hitung Ulang' : 'Hitung'; ?>
+                                    </button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                         <?php if (!$hasHitung): ?>
                             <td class="keu-not-counted">Belum dihitung</td>

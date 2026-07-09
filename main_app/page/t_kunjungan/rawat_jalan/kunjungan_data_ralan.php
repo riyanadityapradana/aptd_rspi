@@ -92,6 +92,7 @@ foreach ($specialtyGroups as $poli_name => $poli_codes) {
         foreach ($penjamin as $kd_pj => $label) {
             $sql = "SELECT COUNT(*) as jml FROM reg_periksa rp
                     WHERE rp.kd_poli IN ($poli_codes_str)
+                    AND " . aptd_poli_specialty_exclusion_sql($conn, 'rp.kd_poli') . "
                     AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')
                     AND rp.kd_pj = '$kd_pj'
                     AND rp.stts = 'Sudah'

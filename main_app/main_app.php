@@ -162,6 +162,7 @@ $menuDataKlinis = [
         ['page' => '10_penyakit_ralan', 'label' => '10 Besar Penyakit Rawat Jalan'],
         ['page' => '10_penyakit_ralan_perpoli', 'label' => '10 Besar Penyakit Rawat Jalan Perpoli'],
         ['page' => '10_penyakit_ugd_ponek', 'label' => '10 Penyakit Terbanyak UGD & Ponek'],
+        ['page' => 'laporan_bulanan_hais', 'label' => 'Laporan Bulanan Data HAIs'],
     ],
 ];
 
@@ -175,6 +176,11 @@ $menuDataNonKlinis = [
     ],
     [
         ['page' => 'laporan_keuangan_ranap', 'label' => 'Laporan Keuangan Rawat Inap'],
+    ],
+    [
+        ['page' => 'rekap_tindakan_lab', 'label' => 'Rekap Tindakan Pemeriksaan Laboratorium'],
+        ['page' => 'rekap_tindakan_radiologi', 'label' => 'Rekap Tindakan Pemeriksaan Radiologi'],
+        ['page' => 'rekap_tindakan_operasi', 'label' => 'Rekap Tindakan Operasi/Bedah'],
     ],
     [
         ['page' => 'kunjungan_data_perpoli', 'label' => 'Kunjungan Rawat Jalan Perpoli'],

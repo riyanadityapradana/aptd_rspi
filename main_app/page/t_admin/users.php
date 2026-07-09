@@ -1,7 +1,7 @@
 <?php
 require_once dirname(dirname(dirname(__DIR__))) . '/config/koneksi.php';
 
-$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'moneta', 'keuangan', 'direktur'];
+$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'moneta', 'keuangan', 'direktur', 'farmasi'];
 $levelLabels = [
     'admin' => 'Admin',
     'manajemen' => 'Manajemen',
@@ -14,6 +14,7 @@ $levelLabels = [
     'moneta' => 'Moneta',
     'keuangan' => 'Keuangan',
     'direktur' => 'Direktur',
+    'farmasi' => 'Farmasi',
 ];
 $message = '';
 $error = '';

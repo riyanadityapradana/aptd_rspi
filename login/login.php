@@ -501,7 +501,7 @@ unset(
                             <label for="register_level">Level</label>
                             <select class="form-control" id="register_level" name="level" required>
                                 <?php
-                                $opsiLevel = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'keuangan', 'moneta'];
+                                $opsiLevel = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'keuangan', 'moneta', 'farmasi'];
                                 foreach ($opsiLevel as $opsi):
                                     $selected = $registerOld['level'] === $opsi ? 'selected' : '';
                                 ?>

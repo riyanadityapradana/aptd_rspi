@@ -72,6 +72,7 @@ foreach ($specialtyGroups as $poli_name => $poli_codes) {
         foreach ($penjamin as $kd_pj => $label) {
             $sql = "SELECT COUNT(*) AS jml FROM reg_periksa rp
                     WHERE rp.kd_poli IN ($poli_codes_str)
+                      AND " . aptd_poli_specialty_exclusion_sql($conn, 'rp.kd_poli') . "
                       AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')
                       AND rp.kd_pj = '$kd_pj'
                       AND rp.stts = 'Sudah'
@@ -102,6 +103,7 @@ foreach ($weeks as $week) {
         SUM(CASE WHEN rp.kd_pj='A96' THEN 1 ELSE 0 END) AS pancar
         FROM reg_periksa rp
         WHERE rp.stts = 'Sudah'
+          AND " . aptd_poli_specialty_exclusion_sql($conn, 'rp.kd_poli') . "
           AND EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')
           AND rp.status_bayar = 'Sudah Bayar'
           AND rp.no_rkm_medis NOT IN (SELECT no_rkm_medis FROM pasien WHERE LOWER(nm_pasien) LIKE '%test%')

@@ -46,6 +46,7 @@ $sql = "SELECT selected.kd_penyakit, p.nm_penyakit, COUNT(*) AS jumlah_kasus
               AND d.status = 'Ralan'
               AND UPPER(d.kd_penyakit) NOT LIKE 'Z%'
               AND r.kd_poli IN ($placeholders)
+              AND " . aptd_poli_specialty_exclusion_sql($conn, 'r.kd_poli') . "
               AND EXISTS (
                   SELECT 1
                   FROM poliklinik pl

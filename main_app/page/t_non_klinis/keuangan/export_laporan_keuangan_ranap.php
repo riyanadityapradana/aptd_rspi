@@ -35,7 +35,11 @@ echo '<th rowspan="2">Status Pulang</th>';
 echo '<th rowspan="2">DPJP</th>';
 echo '<th rowspan="2">Kamar</th>';
 echo '<th rowspan="2">Lama Dirawat</th>';
-echo '<th rowspan="2">CLAIM</th>';
+echo '<th rowspan="2">CLAIM DIPAKAI</th>';
+echo '<th rowspan="2">CLAIM AKTUAL</th>';
+echo '<th rowspan="2">CLAIM RIWAYAT</th>';
+echo '<th rowspan="2">SUMBER</th>';
+echo '<th rowspan="2">AKSI</th>';
 echo '<th colspan="21">Jasa Dokter</th>';
 echo '<th rowspan="2">JK</th>';
 echo '<th rowspan="2">BHP</th>';
@@ -77,6 +81,10 @@ foreach ($rows as $row) {
         $row['kamar'] ?: '-',
         $row['lama_dirawat'] === null ? '-' : (int) $row['lama_dirawat'],
         $row['claim'],
+        $row['claim_actual'],
+        $row['claim_history'],
+        $row['claim_source_label'],
+        ((float) $row['claim'] > 0 ? (!empty($row['has_hitung']) ? 'Hitung Ulang' : 'Hitung') : (((float) $row['claim_actual'] <= 0 && (float) $row['claim_history'] > 0) ? 'Pakai Riwayat' : 'Tidak Aktif')),
     ];
 
     if (empty($row['has_hitung'])) {

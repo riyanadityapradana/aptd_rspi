@@ -36,6 +36,7 @@ if (!empty($poli_codes)) {
 
     $whereParts = [
         'rp.kd_poli IN (' . $poli_codes_str . ')',
+        aptd_poli_specialty_exclusion_sql($mysqli, 'rp.kd_poli'),
         "EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')",
         "rp.stts = 'Sudah'",
         "rp.status_bayar = 'Sudah Bayar'",
