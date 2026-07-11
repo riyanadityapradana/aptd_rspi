@@ -126,9 +126,6 @@ $menuKunjunganRanap = [
         ['page' => 'kunjungan_data_berdasarkanusia_ranap', 'label' => 'Kunjungan Pasien Rawat Inap Berdasarkan Usia'],
         ['page' => 'kunjungan_data_kecamatan_ranap', 'label' => 'Kunjungan Pasien Rawat Inap Berdasarkan Kecamatan'],
     ],
-    [
-        ['page' => 'rl32_ranap', 'label' => 'RL 3.2 Ranap'],
-    ],
 ];
 
 $menuPenyakit = [
@@ -169,7 +166,6 @@ $menuDataKlinis = [
 $menuDataNonKlinis = [
     [
         ['page' => 'diare_data', 'label' => 'Data Pasien Diagnosa Diare'],
-        ['page' => 'rekap_pasien_baru_lama', 'label' => 'Rekap Pasien Baru vs Lama'],
         ['page' => 'top_10_dokter_pasien', 'label' => 'Top 10 Dokter Paling Banyak Pasien'],
         ['page' => 'pasien_rujukan_masuk_keluar', 'label' => 'Pasien Rujukan Masuk / Keluar'],
         ['page' => 'kunjungan_wilayah_visual', 'label' => 'Kunjungan Berdasarkan Kecamatan/Kabupaten'],
@@ -189,6 +185,13 @@ $menuDataNonKlinis = [
     [
         ['page' => 'indikator_rawat_inap', 'label' => 'Dashboard BOR, LOS, TOI, BTO'],
         ['page' => 'readme_indikator_rawat_inap', 'label' => 'README BOR, LOS, TOI, BTO'],
+    ],
+];
+
+$menuSirs = [
+    [
+        ['page' => 'rl32_ranap', 'label' => 'RL 3.2 Ranap'],
+        ['page' => 'rl34_pengunjung', 'label' => 'RL 3.4 Rekapitulasi Pengunjung'],
     ],
 ];
 
@@ -247,6 +250,7 @@ $menuAdmin = [
                     <?php renderDropdownMenu('navbarDropdownPenyakit', 'Master Penyakit', $menuPenyakit, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownDataKlinis', 'Data Klinis', $menuDataKlinis, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownDataNonKlinis', 'Data Non Klinis', $menuDataNonKlinis, $page); ?>
+                    <?php renderDropdownMenu('navbarDropdownSirs', 'SIRS 6.3', $menuSirs, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownAdmin', 'Admin', $menuAdmin, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownGizi', 'Master Gizi', $menuGizi, $page); ?>
                 </ul>

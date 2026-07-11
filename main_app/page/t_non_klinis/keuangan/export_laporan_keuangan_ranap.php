@@ -20,131 +20,165 @@ header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-echo '<table border="1" style="border-collapse:collapse;font-size:11px;">';
-echo '<thead>';
-echo '<tr style="background:#cfd8e8;font-weight:bold;text-align:center;">';
-echo '<th rowspan="2">No Rawat</th>';
-echo '<th rowspan="2">No RM</th>';
-echo '<th rowspan="2">Nama Pasien</th>';
-echo '<th rowspan="2">SEP</th>';
-echo '<th rowspan="2">Diagnosa Awal</th>';
-echo '<th rowspan="2">Diagnosa Akhir</th>';
-echo '<th rowspan="2">Tanggal Masuk</th>';
-echo '<th rowspan="2">Tanggal Keluar</th>';
-echo '<th rowspan="2">Status Pulang</th>';
-echo '<th rowspan="2">DPJP</th>';
-echo '<th rowspan="2">Kamar</th>';
-echo '<th rowspan="2">Lama Dirawat</th>';
-echo '<th rowspan="2">CLAIM DIPAKAI</th>';
-echo '<th rowspan="2">CLAIM AKTUAL</th>';
-echo '<th rowspan="2">CLAIM RIWAYAT</th>';
-echo '<th rowspan="2">SUMBER</th>';
-echo '<th rowspan="2">AKSI</th>';
-echo '<th colspan="21">Jasa Dokter</th>';
-echo '<th rowspan="2">JK</th>';
-echo '<th rowspan="2">BHP</th>';
-echo '<th rowspan="2">OBAT</th>';
-echo '<th rowspan="2">Total Harga Dasar</th>';
-echo '<th rowspan="2">15% Dasar</th>';
-echo '<th colspan="7">Penunjang</th>';
-echo '<th colspan="3">MAKAN</th>';
-echo '<th rowspan="2">Phototherapy</th>';
-echo '<th rowspan="2">Oksigen</th>';
-echo '<th rowspan="2">Spirometri</th>';
-echo '<th rowspan="2">TOTAL</th>';
-echo '<th rowspan="2">MARGIN</th>';
-echo '<th colspan="3">Keterangan</th>';
-echo '</tr>';
-echo '<tr style="background:#d9e2f3;font-weight:bold;text-align:center;">';
+function aptd_keu_ranap_export_xml($value)
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+}
+
+function aptd_keu_ranap_export_cell($value, $type = 'text', $style = '')
+{
+    $styleAttr = $style !== '' ? ' ss:StyleID="' . aptd_keu_ranap_export_xml($style) . '"' : '';
+    if ($value === '' || $value === null || ($type !== 'text' && $value === '-')) {
+        return '<Cell' . $styleAttr . '/>';
+    }
+
+    if ($type === 'number' || $type === 'integer') {
+        $number = is_numeric($value) ? (float) $value : aptd_keu_ranap_parse_number($value);
+        if ($type === 'integer') {
+            $number = (int) round($number);
+        }
+
+        return '<Cell' . $styleAttr . '><Data ss:Type="Number">' . aptd_keu_ranap_export_xml($number) . '</Data></Cell>';
+    }
+
+    return '<Cell' . $styleAttr . '><Data ss:Type="String">' . aptd_keu_ranap_export_xml($value) . '</Data></Cell>';
+}
+
+function aptd_keu_ranap_export_header_cell($value)
+{
+    return '<Cell ss:StyleID="Header"><Data ss:Type="String">' . aptd_keu_ranap_export_xml($value) . '</Data></Cell>';
+}
+
+echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+echo '<?mso-application progid="Excel.Sheet"?>' . "\n";
+echo '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">';
+echo '<Styles>';
+echo '<Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style>';
+echo '<Style ss:ID="Header"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Font ss:Bold="1"/><Interior ss:Color="#D9E2F3" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>';
+echo '<Style ss:ID="Text"><NumberFormat ss:Format="@"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>';
+echo '<Style ss:ID="General"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>';
+echo '<Style ss:ID="Number"><NumberFormat ss:Format="0.00"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>';
+echo '<Style ss:ID="Integer"><NumberFormat ss:Format="0"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>';
+echo '</Styles>';
+echo '<Worksheet ss:Name="laporan_keuangan_ranap_' . aptd_keu_ranap_export_xml($year . '_' . str_pad($month, 2, '0', STR_PAD_LEFT)) . '">';
+echo '<Table>';
+echo '<Row>';
 $headers = [
+    'No Rawat',
+    'No RM',
+    'Nama Pasien',
+    'SEP',
+    'Diagnosa Awal',
+    'Diagnosa Akhir',
+    'Tanggal Masuk',
+    'Tanggal Keluar',
+    'Status Pulang',
+    'DPJP',
+    'Kamar',
+    'Lama Dirawat',
+    'CLAIM DIPAKAI',
+    'CLAIM AKTUAL',
+    'CLAIM RIWAYAT',
+    'SUMBER',
+    'AKSI',
     'Dokter UGD', 'JD DPJP', 'Ket. JD DPJP', 'JD Operator', 'JD Anestesi', 'Ket. JD Anestesi', 'JD Anak', 'Ket. JD Anak', 'JD Visite', 'JD Visite Umum', 'JD Visite Spesialis', 'JD Visite Pengganti', 'Ket. JD Visite', 'JD Telp', 'JD Telpon Pengganti', 'Ket. JD Telp', 'JD USG',
-    'JD Rontgen', 'JD Lab', 'JD PA', 'HD', 'LAB PK', 'LAB PA', 'Rad USG', 'Rontgen', 'Fisio', 'EKG',
-    'Darah', 'Jumlah', 'Harga', 'Kali', 'DARAH', 'ALBUMIN', 'TINDAKAN'
+    'JD Rontgen', 'JD Lab', 'JD PA', 'HD', 'JK', 'BHP', 'OBAT', 'Total Harga Dasar', '15% Dasar', 'LAB PK', 'LAB PA', 'Rad USG', 'Rontgen', 'Fisio', 'EKG',
+    'Darah', 'Jumlah Makan', 'Harga Makan', 'Kali Makan', 'Phototherapy', 'Oksigen', 'Spirometri', 'TOTAL', 'MARGIN', 'DARAH', 'ALBUMIN', 'TINDAKAN'
 ];
 foreach ($headers as $header) {
-    echo '<th>' . htmlspecialchars($header, ENT_QUOTES, 'UTF-8') . '</th>';
+    echo aptd_keu_ranap_export_header_cell($header);
 }
-echo '</tr></thead><tbody>';
+echo '</Row>';
 
 foreach ($rows as $row) {
     $baseValues = [
-        $row['no_rawat'],
-        $row['no_rkm_medis'],
-        $row['nama_pasien_umur'],
-        $row['no_sep'] ?: '-',
-        $row['diagnosa_awal'] ?: $row['diagnosa_sep'],
-        $row['diagnosa_akhir'] ?: '-',
-        $row['tanggal_masuk'],
-        $row['tanggal_keluar'] ?: '-',
-        $row['status_pulang'],
-        $row['dpjp'] ?: '-',
-        $row['kamar'] ?: '-',
-        $row['lama_dirawat'] === null ? '-' : (int) $row['lama_dirawat'],
-        $row['claim'],
-        $row['claim_actual'],
-        $row['claim_history'],
-        $row['claim_source_label'],
-        ((float) $row['claim'] > 0 ? (!empty($row['has_hitung']) ? 'Hitung Ulang' : 'Hitung') : (((float) $row['claim_actual'] <= 0 && (float) $row['claim_history'] > 0) ? 'Pakai Riwayat' : 'Tidak Aktif')),
+        ['value' => $row['no_rawat'], 'type' => 'identifier'],
+        ['value' => $row['no_rkm_medis'], 'type' => 'identifier'],
+        ['value' => $row['nama_pasien_umur'], 'type' => 'text'],
+        ['value' => $row['no_sep'] ?: '-', 'type' => 'identifier'],
+        ['value' => $row['diagnosa_awal'] ?: $row['diagnosa_sep'], 'type' => 'text'],
+        ['value' => $row['diagnosa_akhir'] ?: '-', 'type' => 'text'],
+        ['value' => $row['tanggal_masuk'], 'type' => 'text'],
+        ['value' => $row['tanggal_keluar'] ?: '-', 'type' => 'text'],
+        ['value' => $row['status_pulang'], 'type' => 'text'],
+        ['value' => $row['dpjp'] ?: '-', 'type' => 'text'],
+        ['value' => $row['kamar'] ?: '-', 'type' => 'text'],
+        ['value' => $row['lama_dirawat'] === null ? '' : (int) $row['lama_dirawat'], 'type' => 'integer'],
+        ['value' => $row['claim'], 'type' => 'number'],
+        ['value' => $row['claim_actual'], 'type' => 'number'],
+        ['value' => $row['claim_history'], 'type' => 'number'],
+        ['value' => $row['claim_source_label'], 'type' => 'text'],
+        ['value' => ((float) $row['claim'] > 0 ? (!empty($row['has_hitung']) ? 'Hitung Ulang' : 'Hitung') : (((float) $row['claim_actual'] <= 0 && (float) $row['claim_history'] > 0) ? 'Pakai Riwayat' : 'Tidak Aktif')), 'type' => 'text'],
     ];
 
     if (empty($row['has_hitung'])) {
-        $values = array_merge($baseValues, array_fill(0, 44, ''));
+        $values = array_merge($baseValues, array_fill(0, 44, ['value' => '', 'type' => 'text']));
     } else {
         $values = array_merge($baseValues, [
-        $row['dokter_ugd'],
-        $row['jd_dpjp'],
-        $row['ket_dpjp'],
-        $row['jd_operator'],
-        $row['jd_anestesi'],
-        $row['ket_anestesi'],
-        $row['jd_anak'],
-        $row['ket_anak'],
-        $row['jd_visit'],
-        $row['jd_visit_umum'],
-        $row['jd_visit_spesialis'],
-        $row['jd_visit_pengganti'],
-        $row['ket_visit'],
-        $row['jd_telpon'],
-        $row['jd_telpon_pengganti'],
-        $row['ket_telpon'],
-        $row['jd_usg'],
-        $row['jd_rontgen'],
-        $row['jd_lab'],
-        $row['jd_pa'],
-        $row['hd'],
-        $row['jk'],
-        $row['bhp'],
-        $row['obat'],
-        $row['total_harga_dasar_obat'],
-        $row['markup_obat_bhp'],
-        $row['lab_pk'],
-        $row['lab_pa'],
-        $row['rad_usg'],
-        $row['rontgen'],
-        $row['fisio'],
-        $row['ekg'],
-        $row['darah'],
-        $row['makan_jumlah'],
-        $row['makan_harga'],
-        $row['makan_kali'],
-        $row['phototherapy'],
-        $row['oksigen'],
-        $row['spirometri'],
-        $row['total_biaya_laporan'],
-        $row['margin'],
-        $row['ket_darah'],
-        $row['ket_albumin'],
-        $row['ket_tindakan'],
+        ['value' => $row['dokter_ugd'], 'type' => 'number'],
+        ['value' => $row['jd_dpjp'], 'type' => 'number'],
+        ['value' => $row['ket_dpjp'], 'type' => 'text'],
+        ['value' => $row['jd_operator'], 'type' => 'number'],
+        ['value' => $row['jd_anestesi'], 'type' => 'number'],
+        ['value' => $row['ket_anestesi'], 'type' => 'text'],
+        ['value' => $row['jd_anak'], 'type' => 'number'],
+        ['value' => $row['ket_anak'], 'type' => 'text'],
+        ['value' => $row['jd_visit'], 'type' => 'number'],
+        ['value' => $row['jd_visit_umum'], 'type' => 'number'],
+        ['value' => $row['jd_visit_spesialis'], 'type' => 'number'],
+        ['value' => $row['jd_visit_pengganti'], 'type' => 'number'],
+        ['value' => $row['ket_visit'], 'type' => 'text'],
+        ['value' => $row['jd_telpon'], 'type' => 'number'],
+        ['value' => $row['jd_telpon_pengganti'], 'type' => 'number'],
+        ['value' => $row['ket_telpon'], 'type' => 'text'],
+        ['value' => $row['jd_usg'], 'type' => 'number'],
+        ['value' => $row['jd_rontgen'], 'type' => 'number'],
+        ['value' => $row['jd_lab'], 'type' => 'number'],
+        ['value' => $row['jd_pa'], 'type' => 'number'],
+        ['value' => $row['hd'], 'type' => 'number'],
+        ['value' => $row['jk'], 'type' => 'number'],
+        ['value' => $row['bhp'], 'type' => 'number'],
+        ['value' => $row['obat'], 'type' => 'number'],
+        ['value' => $row['total_harga_dasar_obat'], 'type' => 'number'],
+        ['value' => $row['markup_obat_bhp'], 'type' => 'number'],
+        ['value' => $row['lab_pk'], 'type' => 'number'],
+        ['value' => $row['lab_pa'], 'type' => 'number'],
+        ['value' => $row['rad_usg'], 'type' => 'number'],
+        ['value' => $row['rontgen'], 'type' => 'number'],
+        ['value' => $row['fisio'], 'type' => 'number'],
+        ['value' => $row['ekg'], 'type' => 'number'],
+        ['value' => $row['darah'], 'type' => 'number'],
+        ['value' => $row['makan_jumlah'], 'type' => 'number'],
+        ['value' => $row['makan_harga'], 'type' => 'number'],
+        ['value' => $row['makan_kali'], 'type' => 'integer'],
+        ['value' => $row['phototherapy'], 'type' => 'number'],
+        ['value' => $row['oksigen'], 'type' => 'number'],
+        ['value' => $row['spirometri'], 'type' => 'number'],
+        ['value' => $row['total_biaya_laporan'], 'type' => 'number'],
+        ['value' => $row['margin'], 'type' => 'number'],
+        ['value' => $row['ket_darah'], 'type' => 'integer'],
+        ['value' => $row['ket_albumin'], 'type' => 'integer'],
+        ['value' => $row['ket_tindakan'], 'type' => 'text'],
         ]);
     }
 
-    echo '<tr>';
-    foreach ($values as $value) {
-        echo '<td>' . htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8') . '</td>';
+    echo '<Row>';
+    foreach ($values as $cell) {
+        $style = 'General';
+        if ($cell['type'] === 'identifier') {
+            $style = 'Text';
+        } elseif ($cell['type'] === 'number') {
+            $style = 'Number';
+        } elseif ($cell['type'] === 'integer') {
+            $style = 'Integer';
+        }
+        echo aptd_keu_ranap_export_cell($cell['value'], $cell['type'], $style);
     }
-    echo '</tr>';
+    echo '</Row>';
 }
 
-echo '</tbody></table>';
+echo '</Table>';
+echo '</Worksheet>';
+echo '</Workbook>';
 exit;
 ?>

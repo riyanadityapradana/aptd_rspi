@@ -59,7 +59,6 @@ function aptd_get_routes()
         'kode_penyakit_ab_ranap' => 'page/t_klinis/t_kode_penyakit/rawat_inap/kode_penyakit_ab_ranap.php',
         'export_kode_penyakit_ab_ranap' => 'page/t_klinis/t_kode_penyakit/rawat_inap/export_kode_penyakit_ab_ranap.php',
 
-        'rekap_pasien_baru_lama' => 'page/t_non_klinis/umum/rekap_pasien_baru_lama.php',
         'top_10_dokter_pasien' => 'page/t_non_klinis/umum/top_10_dokter_pasien.php',
         'indikator_rawat_inap' => 'page/t_non_klinis/indikator_rawat_inap.php',
         'bor_rawat_inap' => 'page/t_non_klinis/bor_rawat_inap.php',
@@ -76,6 +75,7 @@ function aptd_get_routes()
         'input_data_claim' => 'page/t_non_klinis/keuangan/input_data_claim.php',
         'export_laporan_keuangan_ranap' => 'page/t_non_klinis/keuangan/export_laporan_keuangan_ranap.php',
         'rl32_ranap' => 'page/t_rl_32/rl_32_ranap.php',
+        'rl34_pengunjung' => 'page/t_rl_34/rl_34_pengunjung.php',
         'users_admin' => 'page/t_admin/users.php',
     ];
 }
@@ -94,7 +94,7 @@ function aptd_get_access_map()
             '10_penyakit_ralan', '10_penyakit_ralan_perpoli', '10_penyakit_ugd_ponek', 'export_10_penyakit_ugd_ponek', 'laporan_bulanan_hais', 'export_laporan_bulanan_hais', '10_penyakit_bedah_ralan', '10_penyakit_non_bedah_ralan',
             '10_penyakit_ranap', '10_penyakit_bedah_ranap', '10_penyakit_non_bedah_ranap',
             'data_pasien_kode_penyakit_bedah_ralan', 'data_pasien_kode_penyakit_non_bedah_ralan', 'data_pasien_kode_penyakit_bedah_ranap', 'data_pasien_kode_penyakit_non_bedah_ranap', 'kode_penyakit_ab_ranap', 'export_kode_penyakit_ab_ranap', 'export_kode_penyakit',
-            'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'indikator_rawat_inap', 'bor_rawat_inap', 'los_klinis_rawat_inap', 'toi_rawat_inap', 'bto_rawat_inap', 'readme_indikator_rawat_inap', 'rekap_tindakan_operasi', 'rekap_tindakan_lab', 'rekap_tindakan_radiologi', 'pasien_rujukan_masuk_keluar', 'kunjungan_wilayah_visual', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap',
+            'top_10_dokter_pasien', 'indikator_rawat_inap', 'bor_rawat_inap', 'los_klinis_rawat_inap', 'toi_rawat_inap', 'bto_rawat_inap', 'readme_indikator_rawat_inap', 'rekap_tindakan_operasi', 'rekap_tindakan_lab', 'rekap_tindakan_radiologi', 'pasien_rujukan_masuk_keluar', 'kunjungan_wilayah_visual', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap',
         ],
         'kepegawaian' => [
             'beranda', 'kunjungan_data_ralan', 'kunjungan_data_perpoli', 'kunjungan_data_per_minggu', 'top_10_poli_ralan',
@@ -113,14 +113,14 @@ function aptd_get_access_map()
             'pasien_rujukan_masuk_keluar',
         ],
         'users' => ['beranda'],
-        'rekammedis' => ['beranda', 'rl32_ranap', 'input_data_claim'],
+        'rekammedis' => ['beranda', 'rl32_ranap', 'rl34_pengunjung', 'input_data_claim'],
         'keuangan' => ['beranda', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap', 'input_data_claim'],
-        'moneta' => ['beranda', 'rekap_pasien_baru_lama', 'top_10_dokter_pasien', 'kunjungan_wilayah_visual'],
+        'moneta' => ['beranda', 'top_10_dokter_pasien', 'kunjungan_wilayah_visual'],
         'gizi' => ['beranda', 'adime_gizi', 'export_adime_gizi', 'kunjungan_usia_ranap_gizi', 'export_kunjungan_usia_ranap_gizi'],
         'farmasi' => ['beranda', 'kode_penyakit_ab_ranap', 'export_kode_penyakit_ab_ranap'],
     ];
 
-    $accessMap['direktur'] = $accessMap['manajemen'];
+    $accessMap['direktur'] = array_merge($accessMap['manajemen'], ['rl32_ranap', 'rl34_pengunjung']);
 
     return $accessMap;
 }
