@@ -103,6 +103,11 @@ foreach ($report['raw_rows'] as $item) {
 if ($rawRow > 2) $rawSheet->getStyle('A1:D' . ($rawRow - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
 foreach (range('A', 'D') as $col) $rawSheet->getColumnDimension($col)->setAutoSize(true);
 
+foreach ($spreadsheet->getAllSheets() as $worksheet) {
+    $worksheet->getProtection()->setSheet(true);
+    $worksheet->getProtection()->setPassword('ITRSPI25');
+}
+
 $spreadsheet->setActiveSheetIndex(0);
 $filename = 'kunjungan_kecamatan_ranap_' . date('Ymd_His') . '.xlsx';
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

@@ -62,24 +62,24 @@ function aptd_keu_ranap_history_claim_sql()
         FROM tb_inacbg_diagnose diag
         INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = diag.no_rawat
         WHERE diag.prioritas = 1
+          AND diag.status = 'Ranap'
     ";
 
     return "
         SELECT current_diag.no_rawat,
-               current_diag.kd_penyakit AS claim_history_diagnose_code,
+               current_diag.kode_icd AS claim_history_diagnose_code,
                history_pick.no_rawat AS claim_history_no_rawat,
                history_pick.tariff AS claim_history
         FROM (
-            SELECT no_rawat, MAX(kd_penyakit) AS kd_penyakit
-            FROM diagnosa_pasien
-            WHERE prioritas = 1
-            GROUP BY no_rawat
+            SELECT nomor_rawat AS no_rawat, kode_icd
+            FROM diagnosa_sementara
+            WHERE TRIM(IFNULL(kode_icd, '')) <> ''
         ) current_diag
         INNER JOIN ($historyBaseSql) history_pick
-            ON history_pick.code = current_diag.kd_penyakit
+            ON history_pick.code = current_diag.kode_icd
            AND history_pick.no_rawat <> current_diag.no_rawat
         LEFT JOIN ($historyBaseSql) newer
-            ON newer.code = current_diag.kd_penyakit
+            ON newer.code = current_diag.kode_icd
            AND newer.no_rawat <> current_diag.no_rawat
            AND (
                 newer.tariff_datetime > history_pick.tariff_datetime
@@ -148,6 +148,14 @@ function aptd_keu_ranap_apply_history_claims(mysqli $mysqli, array &$rows)
         $code = isset($row['claim_history_diagnose_code']) ? trim((string) $row['claim_history_diagnose_code']) : '';
         if ($code !== '') {
             $codes[$code] = true;
+        } else {
+            $rows[$index]['claim_history'] = 0;
+            $rows[$index]['claim_history_no_rawat'] = '';
+            $rows[$index]['claim_source_label'] = aptd_keu_ranap_claim_source_label(
+                isset($row['claim_source']) ? $row['claim_source'] : '',
+                isset($row['claim']) ? (float) $row['claim'] : 0,
+                0
+            );
         }
     }
 
@@ -169,6 +177,7 @@ function aptd_keu_ranap_apply_history_claims(mysqli $mysqli, array &$rows)
         FROM tb_inacbg_diagnose diag
         INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = diag.no_rawat
         WHERE diag.prioritas = 1
+          AND diag.status = 'Ranap'
           AND diag.code IN (" . implode(',', $escapedCodes) . ")
         ORDER BY diag.code ASC, tariff.tariff_datetime DESC, diag.no_rawat DESC";
 
@@ -242,7 +251,7 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
             COALESCE(inacbg.tariff, 0) AS claim_actual,
             COALESCE(manual.claim_history, 0) AS claim_history,
             COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
-            MAX(dp_current.kd_penyakit) AS claim_history_diagnose_code
+            MAX(ds_current.kode_icd) AS claim_history_diagnose_code
         FROM kamar_inap ki
         INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
         INNER JOIN pasien p ON p.no_rkm_medis = rp.no_rkm_medis
@@ -252,7 +261,7 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
         LEFT JOIN maping_dokter_dpjpvclaim mdpjp ON mdpjp.kd_dokter_bpjs = NULLIF(bs.kddpjp, '')
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
-        LEFT JOIN diagnosa_pasien dp_current ON dp_current.no_rawat = rp.no_rawat AND dp_current.prioritas = 1
+        LEFT JOIN diagnosa_sementara ds_current ON ds_current.nomor_rawat = rp.no_rawat
         LEFT JOIN (
             SELECT no_rawat,
                    MAX(jum_claim) AS jum_claim,
@@ -334,7 +343,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
             COALESCE(inacbg.tariff, 0) AS claim_actual,
             COALESCE(manual.claim_history, 0) AS claim_history,
             COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
-            MAX(dp_current.kd_penyakit) AS claim_history_diagnose_code,
+            MAX(ds_current.kode_icd) AS claim_history_diagnose_code,
             $claimSourceSql AS claim_source,
             COALESCE(manual.jum_jdoperator, 0) AS manual_jd_operator,
             COALESCE(ugd.dokter_ugd, 0) AS dokter_ugd,
@@ -397,7 +406,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
         LEFT JOIN dokter sep_dokter_all ON sep_dokter_all.kd_dokter = mdpjp.kd_dokter
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
         LEFT JOIN spesialis sep_sps ON sep_sps.kd_sps = sep_dokter.kd_sps
-        LEFT JOIN diagnosa_pasien dp_current ON dp_current.no_rawat = rp.no_rawat AND dp_current.prioritas = 1
+        LEFT JOIN diagnosa_sementara ds_current ON ds_current.nomor_rawat = rp.no_rawat
         LEFT JOIN (
             SELECT no_rawat,
                    MAX(jum_claim) AS jum_claim,
@@ -1027,7 +1036,7 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
             COALESCE(inacbg.tariff, 0) AS claim_actual,
             COALESCE(manual.claim_history, 0) AS claim_history,
             COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
-            MAX(dp_current.kd_penyakit) AS claim_history_diagnose_code,
+            MAX(ds_current.kode_icd) AS claim_history_diagnose_code,
             $claimSourceSql AS claim_source,
             manual.calculated_at,
             CASE WHEN manual.calculated_at IS NULL THEN 0 ELSE 1 END AS has_hitung
@@ -1041,7 +1050,7 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
         LEFT JOIN maping_dokter_dpjpvclaim mdpjp ON mdpjp.kd_dokter_bpjs = NULLIF(bs.kddpjp, '')
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
-        LEFT JOIN diagnosa_pasien dp_current ON dp_current.no_rawat = rp.no_rawat AND dp_current.prioritas = 1
+        LEFT JOIN diagnosa_sementara ds_current ON ds_current.nomor_rawat = rp.no_rawat
         LEFT JOIN lap_keuangan_bpjs manual ON manual.no_rawat = rp.no_rawat
         LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
         WHERE ki.tgl_masuk BETWEEN ? AND ?
@@ -1157,13 +1166,13 @@ function aptd_keu_ranap_find_history_claim(mysqli $mysqli, $noRawat)
         return null;
     }
 
-    $codeStmt = $mysqli->prepare('SELECT MAX(kd_penyakit) AS kd_penyakit FROM diagnosa_pasien WHERE no_rawat = ? AND prioritas = 1');
+    $codeStmt = $mysqli->prepare("SELECT kode_icd FROM diagnosa_sementara WHERE nomor_rawat = ? AND TRIM(IFNULL(kode_icd, '')) <> '' LIMIT 1");
     $codeStmt->bind_param('s', $noRawat);
     $codeStmt->execute();
     $codeRow = $codeStmt->get_result()->fetch_assoc();
     $codeStmt->close();
 
-    $diagnoseCode = $codeRow && isset($codeRow['kd_penyakit']) ? trim((string) $codeRow['kd_penyakit']) : '';
+    $diagnoseCode = $codeRow && isset($codeRow['kode_icd']) ? trim((string) $codeRow['kode_icd']) : '';
     if ($diagnoseCode === '') {
         return null;
     }
@@ -1176,6 +1185,7 @@ function aptd_keu_ranap_find_history_claim(mysqli $mysqli, $noRawat)
         FROM tb_inacbg_diagnose diag
         INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = diag.no_rawat
         WHERE diag.prioritas = 1
+          AND diag.status = 'Ranap'
           AND diag.code = ?
           AND diag.no_rawat <> ?
         ORDER BY tariff.tariff_datetime DESC, diag.no_rawat DESC

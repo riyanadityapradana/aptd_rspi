@@ -88,6 +88,11 @@ foreach (range('A', 'I') as $col) {
     $sheet->getColumnDimension($col)->setAutoSize(true);
 }
 
+foreach ($spreadsheet->getAllSheets() as $worksheet) {
+    $worksheet->getProtection()->setSheet(true);
+    $worksheet->getProtection()->setPassword('ITRSPI25');
+}
+
 $filename = 'monitoring_adime_gizi_' . date('Ymd_His') . '.xlsx';
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment;filename="' . $filename . '"');

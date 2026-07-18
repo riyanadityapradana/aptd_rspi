@@ -137,6 +137,11 @@ if (class_exists('PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
     foreach (range('A','P') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
     if($lastRow >= 5) $sheet->setAutoFilter("A4:P$lastRow");
 
+    foreach ($spreadsheet->getAllSheets() as $worksheet) {
+        $worksheet->getProtection()->setSheet(true);
+        $worksheet->getProtection()->setPassword('ITRSPI25');
+    }
+
     $status_suffix = ($filter_status !== 'all' && $filter_status !== '') ? '_' . str_replace(' ', '_', $filter_status) : '';
     $filename = "Data_Pasien_Diare_" . $month_name . "_" . $filter_year . $status_suffix . ".xlsx";
     // clear any stray buffer before headers

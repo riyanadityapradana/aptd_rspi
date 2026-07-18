@@ -169,6 +169,11 @@ $ringkasanSheet->setCellValue('C5', $total_dewasa);
 $ringkasanSheet->getStyle('A3:C5')->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
 foreach (range('A', 'C') as $col) $ringkasanSheet->getColumnDimension($col)->setAutoSize(true);
 
+foreach ($spreadsheet->getAllSheets() as $worksheet) {
+    $worksheet->getProtection()->setSheet(true);
+    $worksheet->getProtection()->setPassword('ITRSPI25');
+}
+
 $spreadsheet->setActiveSheetIndex(0);
 $filename = 'Rekap_Kode_Penyakit_AB_Ranap_' . date('Ymd_His') . '.xlsx';
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

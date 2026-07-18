@@ -101,6 +101,11 @@ for ($col = 'B'; $col <= 'F'; $col++) {
     $sheet->getStyle($col.$rowNum)->getFont()->setBold(true);
 }
 
+foreach ($spreadsheet->getAllSheets() as $worksheet) {
+    $worksheet->getProtection()->setSheet(true);
+    $worksheet->getProtection()->setPassword('ITRSPI25');
+}
+
 // Output
 $filename = 'rekap_kunjungan_perkab_' . date('Ymd_His') . '.xlsx';
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

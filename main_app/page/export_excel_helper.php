@@ -207,11 +207,25 @@ function aptd_excel_add_pie_chart_sheet($spreadsheet, $sheetTitle, $chartTitle, 
     return $sheet;
 }
 
+function aptd_excel_protect_workbook($spreadsheet, $password = 'ITRSPI25')
+{
+    if (!aptd_excel_bootstrap() || !$spreadsheet) {
+        return;
+    }
+
+    foreach ($spreadsheet->getAllSheets() as $sheet) {
+        $sheet->getProtection()->setSheet(true);
+        $sheet->getProtection()->setPassword($password);
+    }
+}
+
 function aptd_excel_output($spreadsheet, $filename)
 {
     if (!aptd_excel_bootstrap() || !$spreadsheet) {
         return false;
     }
+
+    aptd_excel_protect_workbook($spreadsheet);
 
     while (ob_get_level() > 0) {
         ob_end_clean();

@@ -124,6 +124,11 @@ try {
         ob_end_clean();
     }
 
+    foreach ($spreadsheet->getAllSheets() as $worksheet) {
+        $worksheet->getProtection()->setSheet(true);
+        $worksheet->getProtection()->setPassword('ITRSPI25');
+    }
+
     $filename = 'RL3.2_Pelayanan_Rawat_Inap_' . $tahun . '_' . str_pad((string) $bulan, 2, '0', STR_PAD_LEFT) . '.xlsx';
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment;filename="' . $filename . '"');

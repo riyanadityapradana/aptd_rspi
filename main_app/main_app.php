@@ -169,6 +169,8 @@ $menuDataNonKlinis = [
         ['page' => 'top_10_dokter_pasien', 'label' => 'Top 10 Dokter Paling Banyak Pasien'],
         ['page' => 'pasien_rujukan_masuk_keluar', 'label' => 'Pasien Rujukan Masuk / Keluar'],
         ['page' => 'kunjungan_wilayah_visual', 'label' => 'Kunjungan Berdasarkan Kecamatan/Kabupaten'],
+        ['page' => 'kunjungan_kecamatan_mingguan_ralan', 'label' => 'Kunjungan Ralan Per Minggu Berdasarkan Kecamatan'],
+        ['page' => 'kunjungan_kecamatan_mingguan_ranap', 'label' => 'Kunjungan Ranap Per Minggu Berdasarkan Kecamatan'],
     ],
     [
         ['page' => 'laporan_keuangan_ranap', 'label' => 'Laporan Keuangan Rawat Inap'],
@@ -247,6 +249,7 @@ $menuAdmin = [
                     <?php renderDropdownMenu('navbarDropdownRalan', 'Master Kunjungan Ralan', $menuKunjunganRalan, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownRanap', 'Master Kunjungan Ranap', $menuKunjunganRanap, $page); ?>
                     <?php if ($levelLogin === 'rekammedis') { renderMenuLink('input_data_claim', 'Input Data Claim', $page); } ?>
+                    <?php if ($levelLogin === 'perawat') { renderMenuLink('diagnosa_awal_sementara_ranap', 'Input Diagnosa Awal', $page); } ?>
                     <?php renderDropdownMenu('navbarDropdownPenyakit', 'Master Penyakit', $menuPenyakit, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownDataKlinis', 'Data Klinis', $menuDataKlinis, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownDataNonKlinis', 'Data Non Klinis', $menuDataNonKlinis, $page); ?>

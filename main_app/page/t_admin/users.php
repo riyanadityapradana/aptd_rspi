@@ -1,7 +1,7 @@
 <?php
 require_once dirname(dirname(dirname(__DIR__))) . '/config/koneksi.php';
 
-$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'moneta', 'keuangan', 'direktur', 'farmasi'];
+$allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'moneta', 'keuangan', 'pemasaran', 'direktur', 'farmasi', 'perawat'];
 $levelLabels = [
     'admin' => 'Admin',
     'manajemen' => 'Manajemen',
@@ -15,6 +15,8 @@ $levelLabels = [
     'keuangan' => 'Keuangan',
     'direktur' => 'Direktur',
     'farmasi' => 'Farmasi',
+    'pemasaran' => 'Pemasaran',
+    'perawat' => 'Perawat',
 ];
 $message = '';
 $error = '';
@@ -153,7 +155,7 @@ while ($row = $result->fetch_assoc()) {
     .user-you{display:inline-flex;margin-left:7px;padding:3px 7px;border-radius:999px;background:#daf5e4;color:#14723a;font-size:10px;font-weight:800;vertical-align:middle}
     .user-level{display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
     .level-admin{background:#ffead4;color:#9b4809}.level-moneta{background:#dcecff;color:#15578f}.level-direktur{background:#efe0ff;color:#5c2788}
-    .level-keuangan{background:#dcf5ea;color:#176747}.level-rekammedis{background:#fff2c9;color:#815d00}.level-default{background:#e8edf4;color:#48617f}
+    .level-keuangan{background:#dcf5ea;color:#176747}.level-rekammedis{background:#fff2c9;color:#815d00}.level-pemasaran{background:#ffe5f0;color:#9a2c5a}.level-perawat{background:#e4f7ff;color:#126276}.level-default{background:#e8edf4;color:#48617f}
     .user-actions{display:flex;justify-content:center;gap:6px}
     .user-action-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:29px;padding:0 10px;border-radius:6px;background:#fff;font-size:12px;font-weight:700;white-space:nowrap}
     .user-edit-btn{border:1px solid #8fc7f2;color:#1769a7}.user-edit-btn:hover{background:#edf7ff;color:#125685}
@@ -225,7 +227,7 @@ while ($row = $result->fetch_assoc()) {
                         <?php foreach ($users as $index => $user): ?>
                             <?php
                             $isCurrentUser = (int) $user['id_users'] === $currentUserId;
-                            $levelClass = in_array($user['level'], ['admin', 'moneta', 'direktur', 'keuangan', 'rekammedis'], true)
+                            $levelClass = in_array($user['level'], ['admin', 'moneta', 'direktur', 'keuangan', 'rekammedis', 'pemasaran', 'perawat'], true)
                                 ? 'level-' . $user['level']
                                 : 'level-default';
                             ?>
