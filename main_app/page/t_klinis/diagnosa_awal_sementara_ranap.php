@@ -1,16 +1,19 @@
 <?php
 require_once __DIR__ . '/diagnosa_awal_sementara_ranap_helper.php';
 
-list($month, $year, $startDate, $endDate) = aptd_diag_awal_ranap_date_filter();
-$monthLabels = aptd_month_labels_local();
+list($month, $year, $startDate, $endDate, $filterBy, $filterValid, $filterMessage) = aptd_diag_awal_ranap_date_filter();
+$filterInfo = aptd_diag_awal_ranap_filter_info_label($startDate, $endDate, $filterBy);
+$filterQuery = aptd_diag_awal_ranap_filter_query($startDate, $endDate, $filterBy);
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
 $namaLogin = isset($_SESSION['nama_lengkap']) ? $_SESSION['nama_lengkap'] : '';
 $canInputDiagnosa = $levelLogin === 'perawat' || $levelLogin === 'admin';
 $saveMessage = null;
 
+$requestMethod = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+
 if (isset($_POST['save_diagnosa_awal_sementara']) && $_POST['save_diagnosa_awal_sementara'] === '1') {
     $diagnosaPage = isset($_POST['diagnosa_page']) ? max(0, (int) $_POST['diagnosa_page']) : 0;
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+} elseif ($requestMethod === 'POST') {
     $diagnosaPage = 0;
 } else {
     $diagnosaPage = isset($_GET['diagnosa_page']) ? max(0, (int) $_GET['diagnosa_page']) : 0;
@@ -29,7 +32,7 @@ if (isset($_POST['save_diagnosa_awal_sementara']) && $_POST['save_diagnosa_awal_
     }
 
     $_SESSION['diagnosa_awal_ranap_flash'] = $saveMessage;
-    $redirectUrl = 'main_app.php?page=diagnosa_awal_sementara_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year) . '&diagnosa_page=' . rawurlencode($diagnosaPage);
+    $redirectUrl = 'main_app.php?page=diagnosa_awal_sementara_ranap&' . $filterQuery . '&diagnosa_page=' . rawurlencode($diagnosaPage);
     echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
     echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '"></noscript>';
     return;
@@ -40,7 +43,7 @@ if (isset($_SESSION['diagnosa_awal_ranap_flash'])) {
     unset($_SESSION['diagnosa_awal_ranap_flash']);
 }
 
-$rows = aptd_diag_awal_ranap_fetch_rows($mysqli, $startDate, $endDate);
+$rows = $filterValid ? aptd_diag_awal_ranap_fetch_rows($mysqli, $startDate, $endDate, $filterBy) : [];
 ?>
 
 <section class="diag-panel">
@@ -49,29 +52,39 @@ $rows = aptd_diag_awal_ranap_fetch_rows($mysqli, $startDate, $endDate);
             <?php echo htmlspecialchars($saveMessage['message'], ENT_QUOTES, 'UTF-8'); ?>
         </div>
     <?php endif; ?>
+    <?php if (!$filterValid): ?>
+        <div class="alert alert-danger mb-3" id="info">
+            <?php echo htmlspecialchars($filterMessage, ENT_QUOTES, 'UTF-8'); ?>
+        </div>
+    <?php endif; ?>
 
     <div class="diag-head">
         <div>
             <h2>Input Diagnosa Awal Sementara Ranap</h2>
             <p>Form khusus perawat untuk memilih satu kode ICD diagnosa awal sementara pada pasien rawat inap BPJS.</p>
         </div>
-        <form method="post" class="diag-filter">
-            <select name="month" class="form-control form-control-sm">
-                <?php foreach ($monthLabels as $n => $label): ?>
-                    <option value="<?php echo $n; ?>" <?php echo $month === $n ? 'selected' : ''; ?>><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <select name="year" class="form-control form-control-sm">
-                <?php for ($y = 2020; $y <= ((int) date('Y') + 1); $y++): ?>
-                    <option value="<?php echo $y; ?>" <?php echo $year === $y ? 'selected' : ''; ?>><?php echo $y; ?></option>
-                <?php endfor; ?>
-            </select>
+        <form method="post" class="diag-filter" id="diagFilterForm">
+            <div class="diag-filter-field">
+                <label for="start_date"><strong>Tanggal Awal</strong></label>
+                <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="<?php echo htmlspecialchars($startDate, ENT_QUOTES, 'UTF-8'); ?>" required>
+            </div>
+            <div class="diag-filter-field">
+                <label for="end_date"><strong>Tanggal Akhir</strong></label>
+                <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="<?php echo htmlspecialchars($endDate, ENT_QUOTES, 'UTF-8'); ?>" required>
+            </div>
+            <div class="diag-filter-field diag-date-mode">
+                <label><strong>Acuan Tanggal</strong></label>
+                <div class="diag-radio-group">
+                    <label class="diag-radio"><input type="radio" name="filter_by" value="masuk" <?php echo $filterBy === 'masuk' ? 'checked' : ''; ?>> Tanggal Masuk</label>
+                    <label class="diag-radio"><input type="radio" name="filter_by" value="keluar" <?php echo $filterBy === 'keluar' ? 'checked' : ''; ?>> Tanggal Keluar</label>
+                </div>
+            </div>
             <button type="submit" class="btn btn-primary btn-sm">Tampilkan</button>
         </form>
     </div>
 
     <div class="diag-note">
-        Halaman ini hanya menampilkan identitas pasien rawat inap dan data SEP. Tidak ada nominal claim atau kalkulasi biaya yang ditarik pada fitur ini.
+        Filter aktif: <strong><?php echo htmlspecialchars($filterInfo, ENT_QUOTES, 'UTF-8'); ?></strong>. Halaman ini hanya menampilkan identitas pasien rawat inap dan data SEP. Tidak ada nominal claim atau kalkulasi biaya yang ditarik pada fitur ini.
     </div>
 
     <style>
@@ -79,8 +92,14 @@ $rows = aptd_diag_awal_ranap_fetch_rows($mysqli, $startDate, $endDate);
         .diag-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}
         .diag-head h2{margin:0;color:#123d73;font-size:22px;font-weight:800}
         .diag-head p{margin:4px 0 0;color:#55729d;font-size:13px}
-        .diag-filter{display:flex;gap:8px;align-items:center}
-        .diag-filter .form-control{width:auto;min-width:110px}
+        .diag-filter{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+        .diag-filter-field{display:grid;gap:4px}
+        .diag-filter-field label{margin:0;color:#123d73;font-size:12px}
+        .diag-filter .form-control{width:auto;min-width:150px}
+        .diag-date-mode{min-width:240px}
+        .diag-radio-group{display:flex;gap:14px;align-items:center;min-height:31px}
+        .diag-radio{display:inline-flex;gap:6px;align-items:center;margin:0;font-size:13px;color:#123d73;white-space:nowrap}
+        .diag-radio input{margin:0}
         .diag-note{border:1px solid #ffd580;background:#fff8e7;color:#8a5b00;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px}
         .diag-table-wrap{overflow-x:auto;padding-bottom:10px}
         .diag-table{min-width:1540px;width:1540px!important;margin:0!important;table-layout:fixed;background:#fff;color:#000;border-collapse:separate!important;border-spacing:0}
@@ -191,8 +210,9 @@ $rows = aptd_diag_awal_ranap_fetch_rows($mysqli, $startDate, $endDate);
     <div class="modal-dialog" role="document">
         <form method="post" class="modal-content">
             <input type="hidden" name="save_diagnosa_awal_sementara" value="1">
-            <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
-            <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
+            <input type="hidden" name="start_date" value="<?php echo htmlspecialchars($startDate, ENT_QUOTES, 'UTF-8'); ?>">
+            <input type="hidden" name="end_date" value="<?php echo htmlspecialchars($endDate, ENT_QUOTES, 'UTF-8'); ?>">
+            <input type="hidden" name="filter_by" value="<?php echo htmlspecialchars($filterBy, ENT_QUOTES, 'UTF-8'); ?>">
             <input type="hidden" name="diagnosa_page" id="diagnosa_page" value="<?php echo (int) $diagnosaPage; ?>">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalDiagnosaAwalLabel">Input Diagnosa Awal Sementara</h5>
@@ -243,10 +263,19 @@ $rows = aptd_diag_awal_ranap_fetch_rows($mysqli, $startDate, $endDate);
         document.addEventListener('DOMContentLoaded', function() {
             if (!window.jQuery) { return; }
 
+            $('#diagFilterForm').on('submit', function(event) {
+                var startDate = $('#start_date').val();
+                var endDate = $('#end_date').val();
+                if (startDate && endDate && endDate < startDate) {
+                    event.preventDefault();
+                    alert('Tanggal Akhir tidak boleh lebih kecil dari Tanggal Awal.');
+                }
+            });
+
             var tableSelector = '#tableDiagnosaAwalRanap';
             var targetPage = <?php echo (int) $diagnosaPage; ?>;
             var pageLength = 10;
-            var storageKey = 'aptd_diag_awal_ranap_page_<?php echo (int) $year; ?>_<?php echo (int) $month; ?>';
+            var storageKey = 'aptd_diag_awal_ranap_page_<?php echo htmlspecialchars(preg_replace('/[^0-9a-z_]/i', '_', $filterBy . '_' . $startDate . '_' . $endDate), ENT_QUOTES, 'UTF-8'); ?>';
             var storedPage = parseInt(window.sessionStorage ? (sessionStorage.getItem(storageKey) || '0') : '0', 10);
             if (targetPage <= 0 && storedPage > 0) {
                 targetPage = storedPage;

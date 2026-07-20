@@ -3,21 +3,84 @@ require_once dirname(__DIR__) . '/t_non_klinis/report_helper.php';
 
 function aptd_diag_awal_ranap_date_filter()
 {
-    $month = isset($_POST['month']) ? (int) $_POST['month'] : (isset($_GET['month']) ? (int) $_GET['month'] : (int) date('n'));
-    $year = isset($_POST['year']) ? (int) $_POST['year'] : (isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y'));
+    $today = date('Y-m-d');
+    $defaultStart = date('Y-m-01');
+    $filterBy = isset($_POST['filter_by']) ? $_POST['filter_by'] : (isset($_GET['filter_by']) ? $_GET['filter_by'] : 'masuk');
+    $filterBy = aptd_diag_awal_ranap_normalize_filter_by($filterBy);
+    $hasDateRange = isset($_POST['start_date']) || isset($_POST['end_date']) || isset($_GET['start_date']) || isset($_GET['end_date']);
 
-    if ($month < 1 || $month > 12) {
-        $month = (int) date('n');
+    if ($hasDateRange) {
+        $startDate = isset($_POST['start_date']) ? $_POST['start_date'] : (isset($_GET['start_date']) ? $_GET['start_date'] : $defaultStart);
+        $endDate = isset($_POST['end_date']) ? $_POST['end_date'] : (isset($_GET['end_date']) ? $_GET['end_date'] : $today);
+    } else {
+        $startDate = $defaultStart;
+        $endDate = $today;
     }
 
-    if ($year < 2020 || $year > ((int) date('Y') + 1)) {
-        $year = (int) date('Y');
+    if (!aptd_diag_awal_ranap_is_valid_date($startDate)) {
+        $startDate = $defaultStart;
     }
 
-    $startDate = sprintf('%04d-%02d-01', $year, $month);
-    $endDate = date('Y-m-t', strtotime($startDate));
+    if (!aptd_diag_awal_ranap_is_valid_date($endDate)) {
+        $endDate = $today;
+    }
 
-    return [$month, $year, $startDate, $endDate];
+    $month = (int) date('n', strtotime($startDate));
+    $year = (int) date('Y', strtotime($startDate));
+    $isValid = strtotime($endDate) >= strtotime($startDate);
+    $message = $isValid ? '' : 'Tanggal Akhir tidak boleh lebih kecil dari Tanggal Awal.';
+
+    return [$month, $year, $startDate, $endDate, $filterBy, $isValid, $message];
+}
+
+function aptd_diag_awal_ranap_is_valid_date($date)
+{
+    $date = trim((string) $date);
+    $parsed = DateTime::createFromFormat('Y-m-d', $date);
+    return $parsed && $parsed->format('Y-m-d') === $date;
+}
+
+function aptd_diag_awal_ranap_normalize_filter_by($filterBy)
+{
+    $filterBy = strtolower(trim((string) $filterBy));
+    return $filterBy === 'keluar' ? 'keluar' : 'masuk';
+}
+
+function aptd_diag_awal_ranap_filter_mode_label($filterBy)
+{
+    return aptd_diag_awal_ranap_normalize_filter_by($filterBy) === 'keluar' ? 'Tanggal Keluar' : 'Tanggal Masuk';
+}
+
+function aptd_diag_awal_ranap_filter_range_label($startDate, $endDate)
+{
+    return date('d-M-Y', strtotime($startDate)) . ' s.d. ' . date('d-M-Y', strtotime($endDate));
+}
+
+function aptd_diag_awal_ranap_filter_info_label($startDate, $endDate, $filterBy)
+{
+    return 'Menampilkan data berdasarkan ' . aptd_diag_awal_ranap_filter_mode_label($filterBy) . ': ' . aptd_diag_awal_ranap_filter_range_label($startDate, $endDate);
+}
+
+function aptd_diag_awal_ranap_filter_query($startDate, $endDate, $filterBy)
+{
+    return 'start_date=' . rawurlencode($startDate) . '&end_date=' . rawurlencode($endDate) . '&filter_by=' . rawurlencode(aptd_diag_awal_ranap_normalize_filter_by($filterBy));
+}
+
+function aptd_diag_awal_ranap_date_where_sql($filterBy)
+{
+    if (aptd_diag_awal_ranap_normalize_filter_by($filterBy) === 'keluar') {
+        return "
+          EXISTS (
+              SELECT 1
+              FROM kamar_inap kif
+              WHERE kif.no_rawat = rp.no_rawat
+                AND NULLIF(kif.tgl_keluar, '0000-00-00') BETWEEN ? AND ?
+                AND kif.stts_pulang <> '-'
+                AND kif.stts_pulang <> 'Pindah Kamar'
+          )";
+    }
+
+    return "rp.tgl_registrasi BETWEEN ? AND ?";
 }
 
 function aptd_diag_awal_ranap_ensure_schema(mysqli $mysqli)
@@ -40,9 +103,11 @@ function aptd_diag_awal_ranap_ensure_schema(mysqli $mysqli)
     ");
 }
 
-function aptd_diag_awal_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
+function aptd_diag_awal_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $filterBy = 'masuk')
 {
     aptd_diag_awal_ranap_ensure_schema($mysqli);
+    $dateWhereSql = aptd_diag_awal_ranap_date_where_sql($filterBy);
+    $orderSql = aptd_diag_awal_ranap_normalize_filter_by($filterBy) === 'keluar' ? 'tanggal_keluar ASC, rp.no_rawat ASC' : 'tanggal_masuk ASC, rp.no_rawat ASC';
 
     $sql = "
         SELECT
@@ -81,12 +146,12 @@ function aptd_diag_awal_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
         LEFT JOIN diagnosa_sementara ds ON ds.nomor_rawat = rp.no_rawat
         LEFT JOIN penyakit py ON py.kd_penyakit = ds.kode_icd
-        WHERE ki.tgl_masuk BETWEEN ? AND ?
+        WHERE $dateWhereSql
           AND rp.status_lanjut = 'Ranap'
           AND rp.kd_pj = 'BPJ'
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
         GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur
-        ORDER BY tanggal_masuk ASC, rp.no_rawat ASC";
+        ORDER BY $orderSql";
 
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('ss', $startDate, $endDate);
