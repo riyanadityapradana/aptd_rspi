@@ -1,28 +1,135 @@
 <?php
 require_once dirname(__DIR__) . '/report_helper.php';
 
-function aptd_keu_ranap_date_filter()
+function aptd_keu_ranap_date_filter($defaultEndToday = true)
 {
-    $month = isset($_POST['month']) ? (int) $_POST['month'] : (isset($_GET['month']) ? (int) $_GET['month'] : (int) date('n'));
-    $year = isset($_POST['year']) ? (int) $_POST['year'] : (isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y'));
+    $today = date('Y-m-d');
+    $defaultStart = date('Y-m-01');
+    $filterBy = isset($_POST['filter_by']) ? $_POST['filter_by'] : (isset($_GET['filter_by']) ? $_GET['filter_by'] : 'masuk');
+    $filterBy = aptd_keu_ranap_normalize_filter_by($filterBy);
+    $hasDateRange = isset($_POST['start_date']) || isset($_POST['end_date']) || isset($_GET['start_date']) || isset($_GET['end_date']);
+    $hasMonthYear = isset($_POST['month']) || isset($_POST['year']) || isset($_GET['month']) || isset($_GET['year']);
 
-    if ($month < 1 || $month > 12) {
-        $month = (int) date('n');
+    if ($hasDateRange) {
+        $startDate = isset($_POST['start_date']) ? $_POST['start_date'] : (isset($_GET['start_date']) ? $_GET['start_date'] : $defaultStart);
+        $endDate = isset($_POST['end_date']) ? $_POST['end_date'] : (isset($_GET['end_date']) ? $_GET['end_date'] : $today);
+    } else {
+        $month = isset($_POST['month']) ? (int) $_POST['month'] : (isset($_GET['month']) ? (int) $_GET['month'] : (int) date('n'));
+        $year = isset($_POST['year']) ? (int) $_POST['year'] : (isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y'));
+
+        if ($month < 1 || $month > 12) {
+            $month = (int) date('n');
+        }
+
+        if ($year < 2020 || $year > ((int) date('Y') + 1)) {
+            $year = (int) date('Y');
+        }
+
+        $startDate = sprintf('%04d-%02d-01', $year, $month);
+        $endDate = ($hasMonthYear || !$defaultEndToday) ? date('Y-m-t', strtotime($startDate)) : $today;
     }
 
-    if ($year < 2020 || $year > ((int) date('Y') + 1)) {
-        $year = (int) date('Y');
+    if (!aptd_keu_ranap_is_valid_date($startDate)) {
+        $startDate = $defaultStart;
     }
 
-    $startDate = sprintf('%04d-%02d-01', $year, $month);
-    $endDate = date('Y-m-t', strtotime($startDate));
+    if (!aptd_keu_ranap_is_valid_date($endDate)) {
+        $endDate = $today;
+    }
 
-    return [$month, $year, $startDate, $endDate];
+    $month = (int) date('n', strtotime($startDate));
+    $year = (int) date('Y', strtotime($startDate));
+    $isValid = strtotime($endDate) >= strtotime($startDate);
+    $message = $isValid ? '' : 'Tanggal Akhir tidak boleh lebih kecil dari Tanggal Awal.';
+
+    return [$month, $year, $startDate, $endDate, $filterBy, $isValid, $message];
 }
 
-function aptd_keu_ranap_export_url($month, $year)
+function aptd_keu_ranap_is_valid_date($date)
 {
-    return 'page/t_non_klinis/keuangan/export_laporan_keuangan_ranap.php?month=' . rawurlencode($month) . '&year=' . rawurlencode($year);
+    $date = trim((string) $date);
+    $parsed = DateTime::createFromFormat('Y-m-d', $date);
+    return $parsed && $parsed->format('Y-m-d') === $date;
+}
+
+function aptd_keu_ranap_normalize_filter_by($filterBy)
+{
+    $filterBy = strtolower(trim((string) $filterBy));
+    return $filterBy === 'keluar' ? 'keluar' : 'masuk';
+}
+
+function aptd_keu_ranap_filter_mode_label($filterBy)
+{
+    return aptd_keu_ranap_normalize_filter_by($filterBy) === 'keluar' ? 'Tanggal Keluar' : 'Tanggal Masuk';
+}
+
+function aptd_keu_ranap_filter_range_label($startDate, $endDate)
+{
+    return date('d-M-Y', strtotime($startDate)) . ' s.d. ' . date('d-M-Y', strtotime($endDate));
+}
+
+function aptd_keu_ranap_filter_info_label($startDate, $endDate, $filterBy)
+{
+    return 'Menampilkan data berdasarkan ' . aptd_keu_ranap_filter_mode_label($filterBy) . ': ' . aptd_keu_ranap_filter_range_label($startDate, $endDate);
+}
+
+function aptd_keu_ranap_filter_query($startDate, $endDate, $filterBy)
+{
+    return 'start_date=' . rawurlencode($startDate) . '&end_date=' . rawurlencode($endDate) . '&filter_by=' . rawurlencode(aptd_keu_ranap_normalize_filter_by($filterBy));
+}
+
+function aptd_keu_ranap_export_url($startDate, $endDate = null, $filterBy = 'masuk')
+{
+    if (is_numeric($startDate) && is_numeric($endDate)) {
+        $month = (int) $startDate;
+        $year = (int) $endDate;
+        $startDate = sprintf('%04d-%02d-01', $year, $month);
+        $endDate = date('Y-m-t', strtotime($startDate));
+    } elseif ($endDate === null) {
+        $month = (int) $startDate;
+        $year = (int) date('Y');
+        $startDate = sprintf('%04d-%02d-01', $year, $month);
+        $endDate = date('Y-m-t', strtotime($startDate));
+    }
+
+    return 'page/t_non_klinis/keuangan/export_laporan_keuangan_ranap.php?' . aptd_keu_ranap_filter_query($startDate, $endDate, $filterBy);
+}
+
+function aptd_keu_ranap_date_where_sql($filterBy)
+{
+    if (aptd_keu_ranap_normalize_filter_by($filterBy) === 'keluar') {
+        return "
+          EXISTS (
+              SELECT 1
+              FROM kamar_inap kif
+              WHERE kif.no_rawat = rp.no_rawat
+                AND NULLIF(kif.tgl_keluar, '0000-00-00') BETWEEN ? AND ?
+                AND kif.stts_pulang <> '-'
+                AND kif.stts_pulang <> 'Pindah Kamar'
+          )";
+    }
+
+    return "rp.tgl_registrasi BETWEEN ? AND ?";
+}
+
+function aptd_keu_ranap_date_filter_literal(mysqli $mysqli, $startDate, $endDate, $filterBy)
+{
+    $startDate = $mysqli->real_escape_string($startDate);
+    $endDate = $mysqli->real_escape_string($endDate);
+
+    if (aptd_keu_ranap_normalize_filter_by($filterBy) === 'keluar') {
+        return "
+          EXISTS (
+              SELECT 1
+              FROM kamar_inap kif
+              WHERE kif.no_rawat = rp.no_rawat
+                AND NULLIF(kif.tgl_keluar, '0000-00-00') BETWEEN '$startDate' AND '$endDate'
+                AND kif.stts_pulang <> '-'
+                AND kif.stts_pulang <> 'Pindah Kamar'
+          )";
+    }
+
+    return "rp.tgl_registrasi BETWEEN '$startDate' AND '$endDate'";
 }
 
 function aptd_keu_ranap_inacbg_tariff_sql()
@@ -54,15 +161,16 @@ function aptd_keu_ranap_history_claim_sql()
 {
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
     $historyBaseSql = "
-        SELECT diag.no_rawat,
-               diag.code,
+        SELECT dp.no_rawat,
+               dp.kd_penyakit AS code,
                tariff.tariff,
                tariff.tariff_datetime,
                tariff.tariff_no_sep
-        FROM tb_inacbg_diagnose diag
-        INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = diag.no_rawat
-        WHERE diag.prioritas = 1
-          AND diag.status = 'Ranap'
+        FROM diagnosa_pasien dp
+        INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = dp.no_rawat
+        WHERE dp.prioritas = 1
+          AND dp.status = 'Ranap'
+          AND TRIM(IFNULL(dp.kd_penyakit, '')) <> ''
     ";
 
     return "
@@ -71,9 +179,21 @@ function aptd_keu_ranap_history_claim_sql()
                history_pick.no_rawat AS claim_history_no_rawat,
                history_pick.tariff AS claim_history
         FROM (
-            SELECT nomor_rawat AS no_rawat, kode_icd
-            FROM diagnosa_sementara
-            WHERE TRIM(IFNULL(kode_icd, '')) <> ''
+            SELECT rp.no_rawat,
+                   COALESCE(
+                       MAX(NULLIF(TRIM(dp_current.kd_penyakit), '')),
+                       MAX(NULLIF(TRIM(ds_current.kode_icd), ''))
+                   ) AS kode_icd
+            FROM reg_periksa rp
+            LEFT JOIN diagnosa_pasien dp_current
+              ON dp_current.no_rawat = rp.no_rawat
+             AND dp_current.prioritas = 1
+             AND dp_current.status = 'Ranap'
+            LEFT JOIN diagnosa_sementara ds_current
+              ON ds_current.nomor_rawat = rp.no_rawat
+            WHERE rp.status_lanjut = 'Ranap'
+            GROUP BY rp.no_rawat
+            HAVING kode_icd IS NOT NULL AND kode_icd <> ''
         ) current_diag
         INNER JOIN ($historyBaseSql) history_pick
             ON history_pick.code = current_diag.kode_icd
@@ -170,16 +290,17 @@ function aptd_keu_ranap_apply_history_claims(mysqli $mysqli, array &$rows)
 
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
     $sql = "
-        SELECT diag.code,
-               diag.no_rawat,
+        SELECT dp.kd_penyakit AS code,
+               dp.no_rawat,
                tariff.tariff,
                tariff.tariff_datetime
-        FROM tb_inacbg_diagnose diag
-        INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = diag.no_rawat
-        WHERE diag.prioritas = 1
-          AND diag.status = 'Ranap'
-          AND diag.code IN (" . implode(',', $escapedCodes) . ")
-        ORDER BY diag.code ASC, tariff.tariff_datetime DESC, diag.no_rawat DESC";
+        FROM diagnosa_pasien dp
+        INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = dp.no_rawat
+        WHERE dp.prioritas = 1
+          AND dp.status = 'Ranap'
+          AND TRIM(IFNULL(dp.kd_penyakit, '')) <> ''
+          AND dp.kd_penyakit IN (" . implode(',', $escapedCodes) . ")
+        ORDER BY dp.kd_penyakit ASC, tariff.tariff_datetime DESC, dp.no_rawat DESC";
 
     $candidates = [];
     $result = $mysqli->query($sql);
@@ -224,11 +345,13 @@ function aptd_keu_ranap_apply_history_claims(mysqli $mysqli, array &$rows)
     }
 }
 
-function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
+function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate, $filterBy = 'masuk')
 {
     aptd_keu_ranap_ensure_cache_schema($mysqli);
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
     $claimSelectSql = aptd_keu_ranap_claim_select_sql();
+    $dateWhereSql = aptd_keu_ranap_date_where_sql($filterBy);
+    $orderSql = aptd_keu_ranap_normalize_filter_by($filterBy) === 'keluar' ? 'tanggal_keluar ASC, rp.no_rawat ASC' : 'tanggal_masuk ASC, rp.no_rawat ASC';
     $sql = "
         SELECT
             rp.no_rawat,
@@ -251,7 +374,10 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
             COALESCE(inacbg.tariff, 0) AS claim_actual,
             COALESCE(manual.claim_history, 0) AS claim_history,
             COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
-            MAX(ds_current.kode_icd) AS claim_history_diagnose_code
+            COALESCE(
+                MAX(NULLIF(TRIM(dp_current.kd_penyakit), '')),
+                MAX(NULLIF(TRIM(ds_current.kode_icd), ''))
+            ) AS claim_history_diagnose_code
         FROM kamar_inap ki
         INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
         INNER JOIN pasien p ON p.no_rkm_medis = rp.no_rkm_medis
@@ -261,6 +387,10 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
         LEFT JOIN maping_dokter_dpjpvclaim mdpjp ON mdpjp.kd_dokter_bpjs = NULLIF(bs.kddpjp, '')
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
+        LEFT JOIN diagnosa_pasien dp_current
+          ON dp_current.no_rawat = rp.no_rawat
+         AND dp_current.prioritas = 1
+         AND dp_current.status = 'Ranap'
         LEFT JOIN diagnosa_sementara ds_current ON ds_current.nomor_rawat = rp.no_rawat
         LEFT JOIN (
             SELECT no_rawat,
@@ -273,12 +403,12 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
             GROUP BY no_rawat
         ) manual ON manual.no_rawat = rp.no_rawat
         LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
-        WHERE ki.tgl_masuk BETWEEN ? AND ?
+        WHERE $dateWhereSql
           AND rp.status_lanjut = 'Ranap'
           AND rp.kd_pj = 'BPJ'
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
         GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.jum_claim, manual.claim_selected, manual.claim_history, manual.claim_history_no_rawat, inacbg.tariff
-        ORDER BY tanggal_masuk ASC, rp.no_rawat ASC";
+        ORDER BY $orderSql";
 
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('ss', $startDate, $endDate);
@@ -295,15 +425,17 @@ function aptd_keu_ranap_fetch_claim_rows(mysqli $mysqli, $startDate, $endDate)
     return $rows;
 }
 
-function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNoRawat = '')
+function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNoRawat = '', $filterBy = 'masuk')
 {
     $mysqli->query('SET SESSION group_concat_max_len = 1048576');
     $onlyNoRawat = trim((string) $onlyNoRawat);
-    $filterSql = aptd_keu_ranap_filter_sql($mysqli, $startDate, $endDate, $onlyNoRawat);
+    $filterSql = aptd_keu_ranap_filter_sql($mysqli, $startDate, $endDate, $onlyNoRawat, $filterBy);
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
     $claimSelectSql = aptd_keu_ranap_claim_select_sql();
     $claimSourceSql = aptd_keu_ranap_claim_source_sql();
     $singleFilterSql = $onlyNoRawat !== '' ? " AND rp.no_rawat = ?" : "";
+    $dateWhereSql = aptd_keu_ranap_date_where_sql($filterBy);
+    $orderSql = aptd_keu_ranap_normalize_filter_by($filterBy) === 'keluar' ? 'tanggal_keluar ASC, rp.no_rawat ASC' : 'tanggal_masuk ASC, rp.no_rawat ASC';
 
     $sql = "
         SELECT
@@ -343,7 +475,10 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
             COALESCE(inacbg.tariff, 0) AS claim_actual,
             COALESCE(manual.claim_history, 0) AS claim_history,
             COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
-            MAX(ds_current.kode_icd) AS claim_history_diagnose_code,
+            COALESCE(
+                MAX(NULLIF(TRIM(dp_current.kd_penyakit), '')),
+                MAX(NULLIF(TRIM(ds_current.kode_icd), ''))
+            ) AS claim_history_diagnose_code,
             $claimSourceSql AS claim_source,
             COALESCE(manual.jum_jdoperator, 0) AS manual_jd_operator,
             COALESCE(ugd.dokter_ugd, 0) AS dokter_ugd,
@@ -406,6 +541,10 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
         LEFT JOIN dokter sep_dokter_all ON sep_dokter_all.kd_dokter = mdpjp.kd_dokter
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
         LEFT JOIN spesialis sep_sps ON sep_sps.kd_sps = sep_dokter.kd_sps
+        LEFT JOIN diagnosa_pasien dp_current
+          ON dp_current.no_rawat = rp.no_rawat
+         AND dp_current.prioritas = 1
+         AND dp_current.status = 'Ranap'
         LEFT JOIN diagnosa_sementara ds_current ON ds_current.nomor_rawat = rp.no_rawat
         LEFT JOIN (
             SELECT no_rawat,
@@ -766,7 +905,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
              LEFT JOIN dokter d_operator1 ON d_operator1.kd_dokter = o.operator1
             GROUP BY o.no_rawat
         ) ok ON ok.no_rawat = rp.no_rawat
-        WHERE ki.tgl_masuk BETWEEN ? AND ?
+        WHERE $dateWhereSql
           $singleFilterSql
           AND rp.status_lanjut = 'Ranap'
           AND rp.kd_pj = 'BPJ'
@@ -780,7 +919,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
                  ok.jd_anestesi, ok.jd_anak, ok.jd_dokter_umum, ok.has_operasi, ok.has_partus,
                  ok.has_phaco, ok.has_phaco_anestesi, ok.has_phaco_tanpa_anestesi, ok.operator1_codes, ok.operator1_names,
                  ok.has_jd_anak_sc, ok.has_jd_anak_partus, ok.jd_anak_package_names, ok.tindakan_operasi
-        ORDER BY tanggal_masuk ASC, rp.no_rawat ASC";
+        ORDER BY $orderSql";
 
     $stmt = $mysqli->prepare($sql);
     if ($onlyNoRawat !== '') {
@@ -830,18 +969,17 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
     return $rows;
 }
 
-function aptd_keu_ranap_filter_sql(mysqli $mysqli, $startDate, $endDate, $onlyNoRawat = '')
+function aptd_keu_ranap_filter_sql(mysqli $mysqli, $startDate, $endDate, $onlyNoRawat = '', $filterBy = 'masuk')
 {
-    $startDate = $mysqli->real_escape_string($startDate);
-    $endDate = $mysqli->real_escape_string($endDate);
     $onlyNoRawat = $mysqli->real_escape_string(trim((string) $onlyNoRawat));
     $singleFilter = $onlyNoRawat !== '' ? " AND rp.no_rawat = '$onlyNoRawat'" : "";
+    $dateWhereSql = aptd_keu_ranap_date_filter_literal($mysqli, $startDate, $endDate, $filterBy);
 
     return "
         SELECT DISTINCT ki.no_rawat
         FROM kamar_inap ki
         INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
-        WHERE ki.tgl_masuk BETWEEN '$startDate' AND '$endDate'
+        WHERE $dateWhereSql
           $singleFilter
           AND rp.status_lanjut = 'Ranap'
           AND rp.kd_pj = 'BPJ'
@@ -990,12 +1128,14 @@ function aptd_keu_ranap_ensure_cache_schema(mysqli $mysqli)
     }
 }
 
-function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
+function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate, $filterBy = 'masuk')
 {
     aptd_keu_ranap_ensure_cache_schema($mysqli);
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
     $claimSelectSql = aptd_keu_ranap_claim_select_sql();
     $claimSourceSql = aptd_keu_ranap_claim_source_sql();
+    $dateWhereSql = aptd_keu_ranap_date_where_sql($filterBy);
+    $orderSql = aptd_keu_ranap_normalize_filter_by($filterBy) === 'keluar' ? 'tanggal_keluar ASC, rp.no_rawat ASC' : 'tanggal_masuk ASC, rp.no_rawat ASC';
 
     $selectCache = '';
     foreach (aptd_keu_ranap_cache_map() as $key => $column) {
@@ -1036,7 +1176,10 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
             COALESCE(inacbg.tariff, 0) AS claim_actual,
             COALESCE(manual.claim_history, 0) AS claim_history,
             COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
-            MAX(ds_current.kode_icd) AS claim_history_diagnose_code,
+            COALESCE(
+                MAX(NULLIF(TRIM(dp_current.kd_penyakit), '')),
+                MAX(NULLIF(TRIM(ds_current.kode_icd), ''))
+            ) AS claim_history_diagnose_code,
             $claimSourceSql AS claim_source,
             manual.calculated_at,
             CASE WHEN manual.calculated_at IS NULL THEN 0 ELSE 1 END AS has_hitung
@@ -1050,15 +1193,19 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate)
         LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
         LEFT JOIN maping_dokter_dpjpvclaim mdpjp ON mdpjp.kd_dokter_bpjs = NULLIF(bs.kddpjp, '')
         LEFT JOIN dokter sep_dokter ON sep_dokter.kd_dokter = mdpjp.kd_dokter AND sep_dokter.status = '1'
+        LEFT JOIN diagnosa_pasien dp_current
+          ON dp_current.no_rawat = rp.no_rawat
+         AND dp_current.prioritas = 1
+         AND dp_current.status = 'Ranap'
         LEFT JOIN diagnosa_sementara ds_current ON ds_current.nomor_rawat = rp.no_rawat
         LEFT JOIN lap_keuangan_bpjs manual ON manual.no_rawat = rp.no_rawat
         LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
-        WHERE ki.tgl_masuk BETWEEN ? AND ?
+        WHERE $dateWhereSql
           AND rp.status_lanjut = 'Ranap'
           AND rp.kd_pj = 'BPJ'
           AND (ki.stts_pulang IS NULL OR ki.stts_pulang = '-' OR ki.stts_pulang <> 'Pindah Kamar')
         GROUP BY rp.no_rawat, rp.no_rkm_medis, p.nm_pasien, rp.umurdaftar, rp.sttsumur, manual.no_rawat, manual.jum_claim, manual.claim_selected, manual.claim_source, manual.claim_history, manual.claim_history_no_rawat, inacbg.tariff
-        ORDER BY tanggal_masuk ASC, rp.no_rawat ASC";
+        ORDER BY $orderSql";
 
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('ss', $startDate, $endDate);
@@ -1166,7 +1313,21 @@ function aptd_keu_ranap_find_history_claim(mysqli $mysqli, $noRawat)
         return null;
     }
 
-    $codeStmt = $mysqli->prepare("SELECT kode_icd FROM diagnosa_sementara WHERE nomor_rawat = ? AND TRIM(IFNULL(kode_icd, '')) <> '' LIMIT 1");
+    $codeStmt = $mysqli->prepare("
+        SELECT COALESCE(
+                   MAX(NULLIF(TRIM(dp.kd_penyakit), '')),
+                   MAX(NULLIF(TRIM(ds.kode_icd), ''))
+               ) AS kode_icd
+        FROM reg_periksa rp
+        LEFT JOIN diagnosa_pasien dp
+          ON dp.no_rawat = rp.no_rawat
+         AND dp.prioritas = 1
+         AND dp.status = 'Ranap'
+        LEFT JOIN diagnosa_sementara ds
+          ON ds.nomor_rawat = rp.no_rawat
+        WHERE rp.no_rawat = ?
+          AND rp.status_lanjut = 'Ranap'
+    ");
     $codeStmt->bind_param('s', $noRawat);
     $codeStmt->execute();
     $codeRow = $codeStmt->get_result()->fetch_assoc();
@@ -1180,15 +1341,15 @@ function aptd_keu_ranap_find_history_claim(mysqli $mysqli, $noRawat)
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
     $sql = "
         SELECT tariff.tariff AS claim_history,
-               diag.no_rawat AS claim_history_no_rawat,
-               diag.code AS claim_history_diagnose_code
-        FROM tb_inacbg_diagnose diag
-        INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = diag.no_rawat
-        WHERE diag.prioritas = 1
-          AND diag.status = 'Ranap'
-          AND diag.code = ?
-          AND diag.no_rawat <> ?
-        ORDER BY tariff.tariff_datetime DESC, diag.no_rawat DESC
+               dp.no_rawat AS claim_history_no_rawat,
+               dp.kd_penyakit AS claim_history_diagnose_code
+        FROM diagnosa_pasien dp
+        INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = dp.no_rawat
+        WHERE dp.prioritas = 1
+          AND dp.status = 'Ranap'
+          AND dp.kd_penyakit = ?
+          AND dp.no_rawat <> ?
+        ORDER BY tariff.tariff_datetime DESC, dp.no_rawat DESC
         LIMIT 1";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('ss', $diagnoseCode, $noRawat);
@@ -1345,7 +1506,7 @@ function aptd_keu_ranap_promote_actual_claim_for_calculation(mysqli $mysqli, arr
     return $row;
 }
 
-function aptd_keu_ranap_calculate_and_store(mysqli $mysqli, $noRawat, $startDate, $endDate)
+function aptd_keu_ranap_calculate_and_store(mysqli $mysqli, $noRawat, $startDate, $endDate, $filterBy = 'masuk')
 {
     aptd_keu_ranap_ensure_cache_schema($mysqli);
 
@@ -1354,7 +1515,7 @@ function aptd_keu_ranap_calculate_and_store(mysqli $mysqli, $noRawat, $startDate
         return ['success' => false, 'message' => 'No rawat tidak boleh kosong.'];
     }
 
-    $rows = aptd_keu_ranap_fetch_rows($mysqli, $startDate, $endDate, $noRawat);
+    $rows = aptd_keu_ranap_fetch_rows($mysqli, $startDate, $endDate, $noRawat, $filterBy);
     if (empty($rows)) {
         return ['success' => false, 'message' => 'Data pasien tidak ditemukan pada periode yang dipilih.'];
     }

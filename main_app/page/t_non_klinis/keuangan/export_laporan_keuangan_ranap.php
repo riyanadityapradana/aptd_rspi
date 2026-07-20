@@ -11,9 +11,14 @@ if (!isset($_SESSION['login_aptd_rspi']) || $_SESSION['login_aptd_rspi'] !== tru
     exit('Anda tidak memiliki hak akses untuk export laporan ini.');
 }
 
-list($month, $year, $startDate, $endDate) = aptd_keu_ranap_date_filter();
-$rows = aptd_keu_ranap_fetch_report_rows($mysqli, $startDate, $endDate);
-$filename = 'laporan_keuangan_ranap_' . $year . '_' . str_pad($month, 2, '0', STR_PAD_LEFT) . '.xls';
+list($month, $year, $startDate, $endDate, $filterBy, $filterValid, $filterMessage) = aptd_keu_ranap_date_filter();
+if (!$filterValid) {
+    http_response_code(400);
+    exit($filterMessage);
+}
+
+$rows = aptd_keu_ranap_fetch_report_rows($mysqli, $startDate, $endDate, $filterBy);
+$filename = 'laporan_keuangan_ranap_' . aptd_keu_ranap_normalize_filter_by($filterBy) . '_' . str_replace('-', '', $startDate) . '_' . str_replace('-', '', $endDate) . '.xls';
 
 header('Content-Type: application/vnd.ms-excel; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -60,7 +65,8 @@ echo '<Style ss:ID="General"><Alignment ss:Vertical="Center" ss:WrapText="1"/><B
 echo '<Style ss:ID="Number"><NumberFormat ss:Format="0.00"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>';
 echo '<Style ss:ID="Integer"><NumberFormat ss:Format="0"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/></Borders></Style>';
 echo '</Styles>';
-echo '<Worksheet ss:Name="laporan_keuangan_ranap_' . aptd_keu_ranap_export_xml($year . '_' . str_pad($month, 2, '0', STR_PAD_LEFT)) . '">';
+$sheetName = 'ranap_' . aptd_keu_ranap_normalize_filter_by($filterBy) . '_' . str_replace('-', '', $startDate);
+echo '<Worksheet ss:Name="' . aptd_keu_ranap_export_xml(substr($sheetName, 0, 31)) . '">';
 echo '<Table>';
 echo '<Row>';
 $headers = [

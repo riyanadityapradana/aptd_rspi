@@ -1,8 +1,9 @@
 <?php
 require_once __DIR__ . '/laporan_keuangan_ranap_helper.php';
 
-list($month, $year, $startDate, $endDate) = aptd_keu_ranap_date_filter();
-$monthLabels = aptd_month_labels_local();
+list($month, $year, $startDate, $endDate, $filterBy, $filterValid, $filterMessage) = aptd_keu_ranap_date_filter();
+$filterInfo = aptd_keu_ranap_filter_info_label($startDate, $endDate, $filterBy);
+$filterQuery = aptd_keu_ranap_filter_query($startDate, $endDate, $filterBy);
 $saveMessage = null;
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
 $canEditClaim = in_array($levelLogin, ['admin', 'rekammedis'], true);
@@ -27,24 +28,27 @@ if (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1') {
         $canEditClaim
     );
     $_SESSION['keu_ranap_flash'] = $saveMessage;
-    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year) . '&report_page=' . rawurlencode($reportPage);
+    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&' . $filterQuery . '&report_page=' . rawurlencode($reportPage);
     echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
     echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '"></noscript>';
     return;
 }
 if (isset($_POST['calculate_keu_row']) && $_POST['calculate_keu_row'] === '1') {
-    if ($canCalculateKeuangan) {
+    if (!$filterValid) {
+        $saveMessage = ['success' => false, 'message' => $filterMessage];
+    } elseif ($canCalculateKeuangan) {
         $saveMessage = aptd_keu_ranap_calculate_and_store(
             $mysqli,
             isset($_POST['calculate_no_rawat']) ? $_POST['calculate_no_rawat'] : '',
             $startDate,
-            $endDate
+            $endDate,
+            $filterBy
         );
     } else {
         $saveMessage = ['success' => false, 'message' => 'Level Anda tidak memiliki akses untuk menghitung data keuangan.'];
     }
     $_SESSION['keu_ranap_flash'] = $saveMessage;
-    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year) . '&report_page=' . rawurlencode($reportPage);
+    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&' . $filterQuery . '&report_page=' . rawurlencode($reportPage);
     echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
     echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '"></noscript>';
     return;
@@ -60,7 +64,7 @@ if (isset($_POST['use_history_claim']) && $_POST['use_history_claim'] === '1') {
         $saveMessage = ['success' => false, 'message' => 'Level Anda tidak memiliki akses untuk memilih klaim riwayat.'];
     }
     $_SESSION['keu_ranap_flash'] = $saveMessage;
-    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&month=' . rawurlencode($month) . '&year=' . rawurlencode($year) . '&report_page=' . rawurlencode($reportPage);
+    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&' . $filterQuery . '&report_page=' . rawurlencode($reportPage);
     echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
     echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '"></noscript>';
     return;
@@ -69,35 +73,34 @@ if (isset($_SESSION['keu_ranap_flash'])) {
     $saveMessage = $_SESSION['keu_ranap_flash'];
     unset($_SESSION['keu_ranap_flash']);
 }
-$rows = aptd_keu_ranap_fetch_report_rows($mysqli, $startDate, $endDate);
+$rows = $filterValid ? aptd_keu_ranap_fetch_report_rows($mysqli, $startDate, $endDate, $filterBy) : [];
 $summary = aptd_keu_ranap_summary($rows);
 
 ob_start(); ?>
 <form method="post" class="analytics-filter">
     <div class="form-group mb-0">
-        <label for="month"><strong>Bulan</strong></label>
-        <select name="month" id="month" class="form-control form-control-sm">
-            <?php foreach ($monthLabels as $n => $label): ?>
-                <option value="<?php echo $n; ?>" <?php echo $month === $n ? 'selected' : ''; ?>><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></option>
-            <?php endforeach; ?>
-        </select>
+        <label for="start_date"><strong>Tanggal Awal</strong></label>
+        <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="<?php echo htmlspecialchars($startDate, ENT_QUOTES, 'UTF-8'); ?>" required>
     </div>
     <div class="form-group mb-0">
-        <label for="year"><strong>Tahun</strong></label>
-        <select name="year" id="year" class="form-control form-control-sm">
-            <?php for ($y = 2020; $y <= ((int) date('Y') + 1); $y++): ?>
-                <option value="<?php echo $y; ?>" <?php echo $year === $y ? 'selected' : ''; ?>><?php echo $y; ?></option>
-            <?php endfor; ?>
-        </select>
+        <label for="end_date"><strong>Tanggal Akhir</strong></label>
+        <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="<?php echo htmlspecialchars($endDate, ENT_QUOTES, 'UTF-8'); ?>" required>
+    </div>
+    <div class="form-group mb-0 keu-date-mode">
+        <label><strong>Acuan Tanggal</strong></label>
+        <div class="keu-radio-group">
+            <label class="keu-radio"><input type="radio" name="filter_by" value="masuk" <?php echo $filterBy === 'masuk' ? 'checked' : ''; ?>> Tanggal Masuk</label>
+            <label class="keu-radio"><input type="radio" name="filter_by" value="keluar" <?php echo $filterBy === 'keluar' ? 'checked' : ''; ?>> Tanggal Keluar</label>
+        </div>
     </div>
     <button type="submit" class="btn btn-primary btn-sm px-4">Tampilkan Data</button>
-    <a class="btn btn-success btn-sm px-4" href="<?php echo htmlspecialchars(aptd_keu_ranap_export_url($month, $year), ENT_QUOTES, 'UTF-8'); ?>">Export Excel</a>
+    <a class="btn btn-success btn-sm px-4" href="<?php echo htmlspecialchars(aptd_keu_ranap_export_url($startDate, $endDate, $filterBy), ENT_QUOTES, 'UTF-8'); ?>">Export Excel</a>
 </form>
 <?php $filters = ob_get_clean();
 
 ob_start(); ?>
 <section class="analytics-cards">
-    <div class="analytics-card"><div class="analytics-k">Pasien BPJS Ranap</div><div class="analytics-v"><?php echo aptd_number($summary['jumlah_pasien']); ?></div><div class="analytics-s"><?php echo htmlspecialchars($monthLabels[$month] . ' ' . $year, ENT_QUOTES, 'UTF-8'); ?></div></div>
+    <div class="analytics-card"><div class="analytics-k">Pasien BPJS Ranap</div><div class="analytics-v"><?php echo aptd_number($summary['jumlah_pasien']); ?></div><div class="analytics-s"><?php echo htmlspecialchars(aptd_keu_ranap_filter_mode_label($filterBy), ENT_QUOTES, 'UTF-8'); ?></div></div>
     <div class="analytics-card"><div class="analytics-k">Total Claim</div><div class="analytics-v"><?php echo aptd_currency($summary['total_claim']); ?></div><div class="analytics-s">Claim dipakai</div></div>
     <div class="analytics-card"><div class="analytics-k">Total Jasa Dokter</div><div class="analytics-v"><?php echo aptd_currency($summary['total_jasa_dokter']); ?></div><div class="analytics-s">Akumulasi kolom jasa dokter</div></div>
     <div class="analytics-card"><div class="analytics-k">Total Obat</div><div class="analytics-v"><?php echo aptd_currency($summary['total_obat']); ?></div><div class="analytics-s">Akumulasi biaya obat pasien</div></div>
@@ -111,14 +114,19 @@ ob_start(); ?>
             <?php echo htmlspecialchars($saveMessage['message'], ENT_QUOTES, 'UTF-8'); ?>
         </div>
     <?php endif; ?>
+    <?php if (!$filterValid): ?>
+        <div class="alert alert-danger mb-3" id="info">
+            <?php echo htmlspecialchars($filterMessage, ENT_QUOTES, 'UTF-8'); ?>
+        </div>
+    <?php endif; ?>
     <div class="analytics-head">
         <div>
             <h2 class="analytics-h">Catatan Query</h2>
             <p class="analytics-d">Kolom biaya dipisah di helper agar aturan perhitungan bisa ditambah bertahap seperti file Excel.</p>
         </div>
-        <span class="analytics-pill"><?php echo htmlspecialchars($startDate . ' s.d. ' . $endDate, ENT_QUOTES, 'UTF-8'); ?></span>
+        <span class="analytics-pill"><?php echo htmlspecialchars($filterInfo, ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
-    <div class="analytics-note">Filter awal mengikuti arahan gambar: pasien rawat inap BPJS, ada di <code>kamar_inap</code>, dan status pulang bukan <code>Pindah Kamar</code>. Perhitungan memakai <code>Claim Dipakai</code>; klaim riwayat diagnosa hanya menjadi referensi sampai dipilih melalui tombol <code>Pakai Riwayat</code>.</div>
+    <div class="analytics-note">Filter aktif: <strong><?php echo htmlspecialchars($filterInfo, ENT_QUOTES, 'UTF-8'); ?></strong>. Data tetap dibatasi pasien rawat inap BPJS, ada di <code>kamar_inap</code>, dan status pulang bukan <code>Pindah Kamar</code>. Perhitungan memakai <code>Claim Dipakai</code>; klaim riwayat diagnosa hanya menjadi referensi sampai dipilih melalui tombol <code>Pakai Riwayat</code>.</div>
 </section>
 <?php $panels = ob_get_clean();
 
@@ -131,6 +139,12 @@ ob_start(); ?>
         </div>
     </div>
     <style>
+        .analytics-filter{gap:12px;align-items:flex-end;flex-wrap:wrap}
+        .analytics-filter .form-control[type=date]{min-width:150px}
+        .keu-date-mode{min-width:240px}
+        .keu-radio-group{display:flex;gap:14px;align-items:center;min-height:31px}
+        .keu-radio{display:inline-flex;gap:6px;align-items:center;margin:0;font-size:13px;color:#123a63;white-space:nowrap}
+        .keu-radio input{margin:0}
         .keu-ranap-table-panel{overflow:hidden;max-width:100%}
         .keu-ranap-scroll{display:block;width:100%;max-width:100%;overflow-x:scroll;overflow-y:hidden;padding-bottom:12px;background:#fff}
         .keu-ranap-scroll::-webkit-scrollbar{height:14px}
@@ -369,8 +383,9 @@ ob_start(); ?>
                             <?php if ($canUseHistoryRow): ?>
                                 <form method="post" style="margin:0;">
                                     <input type="hidden" name="use_history_claim" value="1">
-                                    <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
-                                    <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
+                                    <input type="hidden" name="start_date" value="<?php echo htmlspecialchars($startDate, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <input type="hidden" name="end_date" value="<?php echo htmlspecialchars($endDate, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <input type="hidden" name="filter_by" value="<?php echo htmlspecialchars($filterBy, ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="report_page" class="keu-report-page" value="<?php echo (int) $reportPage; ?>">
                                     <input type="hidden" name="history_no_rawat" value="<?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?>">
                                     <button type="submit" class="keu-calc-btn" title="Pakai estimasi klaim dari riwayat diagnosa">Pakai Riwayat</button>
@@ -378,8 +393,9 @@ ob_start(); ?>
                             <?php else: ?>
                                 <form method="post" style="margin:0;">
                                     <input type="hidden" name="calculate_keu_row" value="1">
-                                    <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
-                                    <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
+                                    <input type="hidden" name="start_date" value="<?php echo htmlspecialchars($startDate, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <input type="hidden" name="end_date" value="<?php echo htmlspecialchars($endDate, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <input type="hidden" name="filter_by" value="<?php echo htmlspecialchars($filterBy, ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="report_page" class="keu-report-page" value="<?php echo (int) $reportPage; ?>">
                                     <input type="hidden" name="calculate_no_rawat" value="<?php echo htmlspecialchars($row['no_rawat'], ENT_QUOTES, 'UTF-8'); ?>">
                                     <button type="submit"
@@ -451,8 +467,9 @@ ob_start(); ?>
         <div class="modal-dialog" role="document">
             <form method="post" class="modal-content">
                 <input type="hidden" name="save_keu_manual" value="1">
-                <input type="hidden" name="month" value="<?php echo (int) $month; ?>">
-                <input type="hidden" name="year" value="<?php echo (int) $year; ?>">
+                <input type="hidden" name="start_date" value="<?php echo htmlspecialchars($startDate, ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="hidden" name="end_date" value="<?php echo htmlspecialchars($endDate, ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="hidden" name="filter_by" value="<?php echo htmlspecialchars($filterBy, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="report_page" class="keu-report-page" value="<?php echo (int) $reportPage; ?>">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalKeuManualLabel">Input Data Keuangan BPJS</h5>

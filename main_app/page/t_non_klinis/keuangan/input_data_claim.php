@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/laporan_keuangan_ranap_helper.php';
 
-list($month, $year, $startDate, $endDate) = aptd_keu_ranap_date_filter();
+list($month, $year, $startDate, $endDate) = aptd_keu_ranap_date_filter(false);
 $monthLabels = aptd_month_labels_local();
 $saveMessage = null;
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
