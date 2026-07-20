@@ -57,7 +57,7 @@ $rows = $filterValid ? aptd_diag_awal_ranap_fetch_rows($mysqli, $startDate, $end
             <?php echo htmlspecialchars($filterMessage, ENT_QUOTES, 'UTF-8'); ?>
         </div>
     <?php endif; ?>
-
+    <br>
     <div class="diag-head">
         <div>
             <h2>Input Diagnosa Awal Sementara Ranap</h2>
