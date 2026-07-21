@@ -174,6 +174,7 @@ $menuDataNonKlinis = [
     ],
     [
         ['page' => 'laporan_keuangan_ranap', 'label' => 'Laporan Keuangan Rawat Inap'],
+        ['page' => 'laporan_keuangan_ralan', 'label' => 'Laporan Keuangan Rawat Jalan'],
     ],
     [
         ['page' => 'rekap_tindakan_lab', 'label' => 'Rekap Tindakan Pemeriksaan Laboratorium'],
