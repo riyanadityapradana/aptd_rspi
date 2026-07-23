@@ -167,8 +167,6 @@ function aptd_keu_ralan_fetch_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli
     return $rows;
 }
 
-<<<<<<< HEAD
-=======
 function aptd_keu_ralan_pick_latest_history(array $candidatePool, $currentNoRawat)
 {
     if (empty($candidatePool)) {
@@ -194,7 +192,6 @@ function aptd_keu_ralan_pick_latest_history(array $candidatePool, $currentNoRawa
     return null;
 }
 
->>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
 function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
 {
     if (empty($rows)) {
@@ -227,10 +224,7 @@ function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
         $rows[$index]['target_diagnosis_source'] = $targetSource;
         $rows[$index]['claim_history'] = 0;
         $rows[$index]['claim_history_no_rawat'] = '';
-<<<<<<< HEAD
-=======
         $rows[$index]['claim_history_match_source'] = '';
->>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
         $rows[$index]['has_hitung'] = !empty($row['calculated_at']) ? 1 : 0;
 
         if ($targetCode !== '') {
@@ -311,10 +305,7 @@ function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
         }
     }
 
-<<<<<<< HEAD
-=======
     $unresolvedCodes = [];
->>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
     foreach ($rows as $index => $row) {
         $targetCode = $rows[$index]['target_diagnosis_code'];
         $targetPriority = $rows[$index]['target_diagnosis_priority'];
@@ -334,29 +325,6 @@ function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
             }
         }
 
-<<<<<<< HEAD
-        if (!empty($candidatePool)) {
-            usort($candidatePool, function ($left, $right) {
-                foreach (['visit_date', 'tariff_datetime', 'no_rawat'] as $field) {
-                    $comparison = strcmp((string) $right[$field], (string) $left[$field]);
-                    if ($comparison !== 0) {
-                        return $comparison;
-                    }
-                }
-                return 0;
-            });
-
-            foreach ($candidatePool as $candidate) {
-                if ($candidate['no_rawat'] === $row['no_rawat'] || $candidate['tariff'] <= 0) {
-                    continue;
-                }
-                $rows[$index]['claim_history'] = $candidate['tariff'];
-                $rows[$index]['claim_history_no_rawat'] = $candidate['no_rawat'];
-                break;
-            }
-        }
-
-=======
         $candidate = aptd_keu_ralan_pick_latest_history($candidatePool, $row['no_rawat']);
         if ($candidate !== null) {
             $rows[$index]['claim_history'] = $candidate['tariff'];
@@ -433,7 +401,6 @@ function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
     }
 
     foreach ($rows as $index => $row) {
->>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
         $actual = (float) $row['claim_actual'];
         $history = (float) $rows[$index]['claim_history'];
         if ($actual > 0) {
