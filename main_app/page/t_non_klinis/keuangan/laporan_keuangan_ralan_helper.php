@@ -167,6 +167,34 @@ function aptd_keu_ralan_fetch_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli
     return $rows;
 }
 
+<<<<<<< HEAD
+=======
+function aptd_keu_ralan_pick_latest_history(array $candidatePool, $currentNoRawat)
+{
+    if (empty($candidatePool)) {
+        return null;
+    }
+
+    usort($candidatePool, function ($left, $right) {
+        foreach (['visit_date', 'tariff_datetime', 'no_rawat'] as $field) {
+            $comparison = strcmp((string) $right[$field], (string) $left[$field]);
+            if ($comparison !== 0) {
+                return $comparison;
+            }
+        }
+        return 0;
+    });
+
+    foreach ($candidatePool as $candidate) {
+        if ((string) $candidate['no_rawat'] === (string) $currentNoRawat || (float) $candidate['tariff'] <= 0) {
+            continue;
+        }
+        return $candidate;
+    }
+    return null;
+}
+
+>>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
 function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
 {
     if (empty($rows)) {
@@ -199,6 +227,10 @@ function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
         $rows[$index]['target_diagnosis_source'] = $targetSource;
         $rows[$index]['claim_history'] = 0;
         $rows[$index]['claim_history_no_rawat'] = '';
+<<<<<<< HEAD
+=======
+        $rows[$index]['claim_history_match_source'] = '';
+>>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
         $rows[$index]['has_hitung'] = !empty($row['calculated_at']) ? 1 : 0;
 
         if ($targetCode !== '') {
@@ -279,6 +311,10 @@ function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
         }
     }
 
+<<<<<<< HEAD
+=======
+    $unresolvedCodes = [];
+>>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
     foreach ($rows as $index => $row) {
         $targetCode = $rows[$index]['target_diagnosis_code'];
         $targetPriority = $rows[$index]['target_diagnosis_priority'];
@@ -298,6 +334,7 @@ function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
             }
         }
 
+<<<<<<< HEAD
         if (!empty($candidatePool)) {
             usort($candidatePool, function ($left, $right) {
                 foreach (['visit_date', 'tariff_datetime', 'no_rawat'] as $field) {
@@ -319,6 +356,84 @@ function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
             }
         }
 
+=======
+        $candidate = aptd_keu_ralan_pick_latest_history($candidatePool, $row['no_rawat']);
+        if ($candidate !== null) {
+            $rows[$index]['claim_history'] = $candidate['tariff'];
+            $rows[$index]['claim_history_no_rawat'] = $candidate['no_rawat'];
+            $rows[$index]['claim_history_match_source'] = 'Diagnosa Pasien';
+        } elseif ($targetCode !== '') {
+            $unresolvedCodes[strtoupper(trim((string) $targetCode))] = $targetCode;
+        }
+    }
+
+    $sepHistoryCandidates = [];
+    if (!empty($unresolvedCodes)) {
+        $quotedCodes = [];
+        foreach ($unresolvedCodes as $code) {
+            $quotedCodes[] = "'" . $mysqli->real_escape_string(strtoupper(trim((string) $code))) . "'";
+        }
+
+        $sql = "
+            SELECT DISTINCT
+                   history_sep.diagawal AS diagnosis_code,
+                   history_sep.no_rawat,
+                   rp.tgl_registrasi,
+                   tariff.tariff,
+                   tariff.tariff_datetime
+            FROM bridging_sep history_sep
+            INNER JOIN reg_periksa rp ON rp.no_rawat = history_sep.no_rawat
+            INNER JOIN ($inacbgSql) tariff ON tariff.no_rawat = history_sep.no_rawat
+            WHERE history_sep.jnspelayanan = '2'
+              AND TRIM(IFNULL(history_sep.diagawal, '')) <> ''
+              AND history_sep.diagawal IN (" . implode(',', $quotedCodes) . ")
+              AND rp.status_lanjut = 'Ralan'
+              AND rp.stts <> 'Batal'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM kamar_inap history_ki
+                  WHERE history_ki.no_rawat = history_sep.no_rawat
+              )
+            ORDER BY diagnosis_code ASC,
+                     rp.tgl_registrasi DESC,
+                     tariff.tariff_datetime DESC,
+                     history_sep.no_rawat DESC";
+
+        $result = $mysqli->query($sql);
+        if (!$result) {
+            throw new RuntimeException('Fallback riwayat klaim SEP tidak dapat dimuat: ' . $mysqli->error);
+        }
+
+        while ($history = $result->fetch_assoc()) {
+            $key = strtoupper(trim((string) $history['diagnosis_code']));
+            if (!isset($sepHistoryCandidates[$key])) {
+                $sepHistoryCandidates[$key] = [];
+            }
+            $sepHistoryCandidates[$key][] = [
+                'no_rawat' => (string) $history['no_rawat'],
+                'tariff' => (float) $history['tariff'],
+                'visit_date' => (string) $history['tgl_registrasi'],
+                'tariff_datetime' => (string) $history['tariff_datetime'],
+            ];
+        }
+    }
+
+    foreach ($rows as $index => $row) {
+        $targetCode = strtoupper(trim((string) $rows[$index]['target_diagnosis_code']));
+        if ((float) $rows[$index]['claim_history'] > 0 || $targetCode === '' || empty($sepHistoryCandidates[$targetCode])) {
+            continue;
+        }
+
+        $candidate = aptd_keu_ralan_pick_latest_history($sepHistoryCandidates[$targetCode], $row['no_rawat']);
+        if ($candidate !== null) {
+            $rows[$index]['claim_history'] = $candidate['tariff'];
+            $rows[$index]['claim_history_no_rawat'] = $candidate['no_rawat'];
+            $rows[$index]['claim_history_match_source'] = 'SEP';
+        }
+    }
+
+    foreach ($rows as $index => $row) {
+>>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
         $actual = (float) $row['claim_actual'];
         $history = (float) $rows[$index]['claim_history'];
         if ($actual > 0) {

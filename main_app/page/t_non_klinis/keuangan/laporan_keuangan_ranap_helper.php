@@ -850,9 +850,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
                 FROM rawat_inap_dr rid
                 INNER JOIN ($filterSql) f ON f.no_rawat = rid.no_rawat
                 INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rid.kd_jenis_prw
-                WHERE rid.kd_jenis_prw = 'B-K.II.074'
-                   OR jpi.nm_perawatan LIKE '%Harga Darah%'
-                   OR jpi.nm_perawatan LIKE '%Darah%'
+                WHERE jpi.nm_perawatan LIKE '%Harga Darah%'
 
                 UNION ALL
 
@@ -862,9 +860,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
                 FROM rawat_inap_pr rip
                 INNER JOIN ($filterSql) f ON f.no_rawat = rip.no_rawat
                 INNER JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rip.kd_jenis_prw
-                WHERE rip.kd_jenis_prw = 'B-K.II.074'
-                   OR jpi.nm_perawatan LIKE '%Harga Darah%'
-                   OR jpi.nm_perawatan LIKE '%Darah%'
+                WHERE jpi.nm_perawatan LIKE '%Harga Darah%'
             ) darah_raw
             GROUP BY darah_raw.no_rawat
         ) darah ON darah.no_rawat = rp.no_rawat

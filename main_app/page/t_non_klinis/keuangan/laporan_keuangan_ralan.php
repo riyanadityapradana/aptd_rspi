@@ -135,6 +135,7 @@ ob_start(); ?>
         .keu-ralan-scroll::-webkit-scrollbar{height:14px}
         .keu-ralan-scroll::-webkit-scrollbar-thumb{background:#8b97aa;border-radius:999px;border:2px solid #eef2f7}
         .keu-ralan-scroll .dataTables_wrapper{width:max-content;min-width:100%;max-width:none}
+<<<<<<< HEAD
         .keu-ralan-table{width:2397px!important;min-width:2397px;table-layout:fixed;border-collapse:separate!important;border-spacing:0}
         .keu-ralan-table th,.keu-ralan-table td{box-sizing:border-box;vertical-align:middle!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .keu-ralan-table thead th{position:sticky;top:0;z-index:7;background:#343a40!important;color:#fff!important}
@@ -149,6 +150,33 @@ ob_start(); ?>
         .keu-ralan-table thead th:nth-child(-n+6){z-index:10;background:#343a40!important;color:#fff!important}
         .keu-ralan-table thead th:nth-child(-n+6),.keu-ralan-table tbody td:nth-child(-n+6){background-clip:padding-box}
         .keu-ralan-table tbody tr:hover td:nth-child(-n+6){background:#eceff3!important}
+=======
+        .keu-ralan-table{width:3552px!important;min-width:3552px;table-layout:fixed;border-collapse:separate!important;border-spacing:0}
+        .keu-ralan-table th,.keu-ralan-table td{box-sizing:border-box;vertical-align:middle!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .keu-ralan-table thead th{background:#343a40!important;color:#fff!important}
+        .keu-ralan-table thead tr:first-child>th.keu-jd-group{height:38px;background:#203a5f!important;border-bottom:2px solid #8ba4c7!important;letter-spacing:.2px}
+        .keu-ralan-table thead tr:nth-child(2)>th{height:52px;background:#34495e!important;white-space:normal;line-height:1.2;padding:7px 6px!important}
+        .keu-ralan-table .col-claim{min-width:116px;text-align:right}
+        .keu-ralan-table .col-claim-source{min-width:96px;text-align:center;font-weight:700}
+        .keu-ralan-table .keu-jd-cell{text-align:right;color:#64748b;background:#f8fafc}
+        .keu-ralan-table thead tr:first-child>th:nth-child(1),.keu-ralan-table tbody td:nth-child(1){width:130px;min-width:130px;max-width:130px;position:sticky;left:0;z-index:5;background:#fff!important}
+        .keu-ralan-table thead tr:first-child>th:nth-child(2),.keu-ralan-table tbody td:nth-child(2){width:145px;min-width:145px;max-width:145px;position:sticky;left:130px;z-index:5;background:#fff!important}
+        .keu-ralan-table thead tr:first-child>th:nth-child(3),.keu-ralan-table tbody td:nth-child(3){width:80px;min-width:80px;max-width:80px;position:sticky;left:275px;z-index:5;background:#fff!important}
+        .keu-ralan-table thead tr:first-child>th:nth-child(4),.keu-ralan-table tbody td:nth-child(4){width:190px;min-width:190px;max-width:190px;position:sticky;left:355px;z-index:5;background:#fff!important}
+        .keu-ralan-table thead tr:first-child>th:nth-child(5),.keu-ralan-table tbody td:nth-child(5){width:260px;min-width:260px;max-width:260px;position:sticky;left:545px;z-index:5;background:#fff!important}
+        .keu-ralan-table thead tr:first-child>th:nth-child(6),.keu-ralan-table tbody td:nth-child(6){width:185px;min-width:185px;max-width:185px;position:sticky;left:805px;z-index:5;background:#fff!important;border-right:3px solid #2f6fb2!important;box-shadow:10px 0 14px -12px rgba(15,23,42,.95)}
+        .keu-ralan-table thead tr:first-child>th:nth-child(-n+6){z-index:10;background:#343a40!important;color:#fff!important}
+        .keu-ralan-table thead tr:first-child>th:nth-child(-n+6),.keu-ralan-table tbody td:nth-child(-n+6){background-clip:padding-box}
+        .keu-ralan-table tbody tr:hover td:nth-child(-n+6){background:#eceff3!important}
+        .keu-ralan-table tfoot td{background:#f5f8fc!important}
+        .keu-ralan-table tfoot td:nth-child(1){position:sticky;left:0;z-index:5}
+        .keu-ralan-table tfoot td:nth-child(2){position:sticky;left:130px;z-index:5}
+        .keu-ralan-table tfoot td:nth-child(3){position:sticky;left:275px;z-index:5}
+        .keu-ralan-table tfoot td:nth-child(4){position:sticky;left:355px;z-index:5}
+        .keu-ralan-table tfoot td:nth-child(5){position:sticky;left:545px;z-index:5}
+        .keu-ralan-table tfoot td:nth-child(6){position:sticky;left:805px;z-index:5;border-right:3px solid #2f6fb2!important;box-shadow:10px 0 14px -12px rgba(15,23,42,.95)}
+        .keu-ralan-table tfoot td:nth-child(-n+6){background:#f5f8fc!important;background-clip:padding-box}
+>>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
         .keu-action-cell{width:132px;min-width:132px;max-width:132px;text-align:center;padding-left:6px!important;padding-right:6px!important}
         .keu-calc-btn{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:24px;border:0;border-radius:4px;background:#15803d;color:#fff;font-size:11px;font-weight:800;padding:2px 9px;cursor:pointer;line-height:1;white-space:nowrap}
         .keu-calc-btn:hover{background:#166534;color:#fff}
@@ -174,11 +202,24 @@ ob_start(); ?>
                 <col style="width:130px">
                 <col style="width:130px">
                 <col style="width:135px">
+<<<<<<< HEAD
+=======
+                <col style="width:140px">
+                <col style="width:210px">
+                <col style="width:140px">
+                <col style="width:120px">
+                <col style="width:105px">
+                <col style="width:105px">
+                <col style="width:125px">
+                <col style="width:105px">
+                <col style="width:105px">
+>>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
                 <col style="width:100px">
                 <col style="width:132px">
             </colgroup>
             <thead class="thead-dark">
                 <tr>
+<<<<<<< HEAD
                     <th>Tanggal Kunjungan</th>
                     <th>Nomor Rawat</th>
                     <th>No. RM</th>
@@ -196,6 +237,37 @@ ob_start(); ?>
                     <th>Klaim Digunakan</th>
                     <th>Sumber</th>
                     <th class="keu-action-cell">Aksi</th>
+=======
+                    <th rowspan="2">Tanggal Kunjungan</th>
+                    <th rowspan="2">Nomor Rawat</th>
+                    <th rowspan="2">No. RM</th>
+                    <th rowspan="2">Nama Pasien</th>
+                    <th rowspan="2">Dokter Poliklinik</th>
+                    <th rowspan="2">No. SEP</th>
+                    <th rowspan="2">Poliklinik</th>
+                    <th rowspan="2">Spesialistik</th>
+                    <th rowspan="2">Status Periksa</th>
+                    <th rowspan="2">Status Bayar</th>
+                    <th rowspan="2">Jenis Bayar</th>
+                    <th rowspan="2">Total Tagihan</th>
+                    <th rowspan="2">Klaim Riwayat</th>
+                    <th rowspan="2">Klaim Aktual</th>
+                    <th rowspan="2">Klaim Digunakan</th>
+                    <th colspan="9" class="keu-jd-group">Jasa Dokter</th>
+                    <th rowspan="2">Sumber</th>
+                    <th rowspan="2" class="keu-action-cell">Aksi</th>
+                </tr>
+                <tr>
+                    <th>JD Pemeriksaan</th>
+                    <th>JD dgn Prosedur atau Tindakan</th>
+                    <th>Dokter Anestesi</th>
+                    <th>Dokter Anak</th>
+                    <th>JD HD</th>
+                    <th>JD USG</th>
+                    <th>JD Rontgen</th>
+                    <th>JD Lab</th>
+                    <th>JD PA</th>
+>>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
                 </tr>
             </thead>
             <tbody>
@@ -213,9 +285,24 @@ ob_start(); ?>
                         <td class="text-center"><?php echo htmlspecialchars($row['status_bayar'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td><?php echo htmlspecialchars($row['jenis_bayar'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="text-right" data-order="<?php echo (float) $row['total_tagihan']; ?>">Rp <?php echo aptd_currency($row['total_tagihan']); ?></td>
+<<<<<<< HEAD
                         <td class="col-claim" data-order="<?php echo (float) $row['claim_history']; ?>" title="<?php echo htmlspecialchars($row['claim_history_no_rawat'] !== '' ? 'Riwayat: ' . $row['claim_history_no_rawat'] . ' · ' . $row['target_diagnosis_source'] . ': ' . $row['target_diagnosis_code'] : $row['target_diagnosis_source'] . ': ' . ($row['target_diagnosis_code'] !== '' ? $row['target_diagnosis_code'] : '-'), ENT_QUOTES, 'UTF-8'); ?>">Rp <?php echo aptd_currency($row['claim_history']); ?></td>
                         <td class="col-claim" data-order="<?php echo (float) $row['claim_actual']; ?>">Rp <?php echo aptd_currency($row['claim_actual']); ?></td>
                         <td class="col-claim" data-order="<?php echo (float) $row['claim_used']; ?>"><strong>Rp <?php echo aptd_currency($row['claim_used']); ?></strong></td>
+=======
+                        <td class="col-claim" data-order="<?php echo (float) $row['claim_history']; ?>" title="<?php echo htmlspecialchars($row['claim_history_no_rawat'] !== '' ? 'Riwayat: ' . $row['claim_history_no_rawat'] . ' · via ' . $row['claim_history_match_source'] . ' · ' . $row['target_diagnosis_source'] . ': ' . $row['target_diagnosis_code'] : $row['target_diagnosis_source'] . ': ' . ($row['target_diagnosis_code'] !== '' ? $row['target_diagnosis_code'] : '-'), ENT_QUOTES, 'UTF-8'); ?>">Rp <?php echo aptd_currency($row['claim_history']); ?></td>
+                        <td class="col-claim" data-order="<?php echo (float) $row['claim_actual']; ?>">Rp <?php echo aptd_currency($row['claim_actual']); ?></td>
+                        <td class="col-claim" data-order="<?php echo (float) $row['claim_used']; ?>"><strong>Rp <?php echo aptd_currency($row['claim_used']); ?></strong></td>
+                        <td class="keu-jd-cell" data-order="0">-</td>
+                        <td class="keu-jd-cell" data-order="0">-</td>
+                        <td class="keu-jd-cell" data-order="0">-</td>
+                        <td class="keu-jd-cell" data-order="0">-</td>
+                        <td class="keu-jd-cell" data-order="0">-</td>
+                        <td class="keu-jd-cell" data-order="0">-</td>
+                        <td class="keu-jd-cell" data-order="0">-</td>
+                        <td class="keu-jd-cell" data-order="0">-</td>
+                        <td class="keu-jd-cell" data-order="0">-</td>
+>>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
                         <td class="col-claim-source"><?php echo htmlspecialchars($row['claim_source'], ENT_QUOTES, 'UTF-8'); ?></td>
                         <td class="keu-action-cell">
                             <?php $actionLabel = aptd_keu_ralan_action_label($row); ?>
@@ -246,7 +333,18 @@ ob_start(); ?>
                 <?php endforeach; ?>
             </tbody>
             <?php if (!empty($rows)): ?>
+<<<<<<< HEAD
                 <tfoot><tr style="font-weight:bold;background:#f5f8fc"><td colspan="11" class="text-right">Total Tagihan</td><td class="text-right">Rp <?php echo aptd_currency($summary['total_tagihan']); ?></td><td colspan="5"></td></tr></tfoot>
+=======
+                <tfoot>
+                    <tr style="font-weight:bold;background:#f5f8fc">
+                        <td></td><td></td><td></td><td></td><td></td><td></td>
+                        <td colspan="5" class="text-right">Total Tagihan</td>
+                        <td class="text-right">Rp <?php echo aptd_currency($summary['total_tagihan']); ?></td>
+                        <td colspan="14"></td>
+                    </tr>
+                </tfoot>
+>>>>>>> dae9670 (menambahkan laporan kuangan rawat jalan tiket AR-100 sampai 106)
             <?php endif; ?>
         </table>
     </div>
