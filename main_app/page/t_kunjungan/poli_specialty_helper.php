@@ -147,6 +147,138 @@ function aptd_poli_specialty_mapping($mysqli)
     return $groups;
 }
 
+function aptd_poli_specialty_period($month, $year)
+{
+    $month = (int) $month;
+    $year = (int) $year;
+    $currentYear = (int) date('Y');
+
+    if ($month < 1 || $month > 12) {
+        $month = (int) date('n');
+    }
+    if ($year < 2020 || $year > $currentYear) {
+        $year = $currentYear;
+    }
+
+    return [$month, $year];
+}
+
+function aptd_poli_specialty_monthly_summary(
+    $mysqli,
+    array $groups,
+    $month,
+    $year,
+    array $payerLabels
+) {
+    list($month, $year) = aptd_poli_specialty_period($month, $year);
+
+    $caseParts = [];
+    $allPoliCodes = [];
+    foreach ($groups as $groupName => $poliCodes) {
+        $escapedCodes = [];
+        foreach ($poliCodes as $poliCode) {
+            $poliCode = trim((string) $poliCode);
+            if ($poliCode === '' || isset($allPoliCodes[$poliCode])) {
+                continue;
+            }
+            $allPoliCodes[$poliCode] = true;
+            $escapedCodes[] = "'" . $mysqli->real_escape_string($poliCode) . "'";
+        }
+        if (!empty($escapedCodes)) {
+            $caseParts[] = 'WHEN rp.kd_poli IN (' . implode(',', $escapedCodes) . ") THEN '"
+                . $mysqli->real_escape_string($groupName) . "'";
+        }
+    }
+
+    if (empty($caseParts) || empty($payerLabels)) {
+        return [];
+    }
+
+    $paymentColumns = [];
+    $allowedPayers = [];
+    $payerAliases = [];
+    $payerIndex = 0;
+    foreach ($payerLabels as $payerCode => $label) {
+        $payerCode = trim((string) $payerCode);
+        if ($payerCode === '') {
+            continue;
+        }
+        $escapedPayer = $mysqli->real_escape_string($payerCode);
+        $alias = 'payer_' . $payerIndex++;
+        $payerAliases[$payerCode] = $alias;
+        $allowedPayers[] = "'" . $escapedPayer . "'";
+        $paymentColumns[] = "SUM(CASE WHEN rp.kd_pj = '" . $escapedPayer
+            . "' THEN 1 ELSE 0 END) AS " . $alias;
+    }
+    if (empty($paymentColumns)) {
+        return [];
+    }
+
+    $escapedAllPoli = array_map(function ($poliCode) use ($mysqli) {
+        return "'" . $mysqli->real_escape_string($poliCode) . "'";
+    }, array_keys($allPoliCodes));
+    $startDate = sprintf('%04d-%02d-01', $year, $month);
+    $endDate = date('Y-m-t', strtotime($startDate));
+    $groupCase = 'CASE ' . implode(' ', $caseParts) . ' ELSE NULL END';
+
+    $sql = "SELECT
+                " . $groupCase . " AS nama_poli,
+                " . implode(",\n                ", $paymentColumns) . "
+            FROM reg_periksa rp
+            WHERE rp.kd_poli IN (" . implode(',', $escapedAllPoli) . ")
+              AND " . aptd_poli_specialty_exclusion_sql($mysqli, 'rp.kd_poli') . "
+              AND EXISTS (
+                    SELECT 1
+                    FROM poliklinik pl
+                    WHERE pl.kd_poli = rp.kd_poli
+                      AND pl.status = '1'
+              )
+              AND rp.kd_pj IN (" . implode(',', $allowedPayers) . ")
+              AND rp.stts = 'Sudah'
+              AND rp.status_bayar = 'Sudah Bayar'
+              AND rp.no_rkm_medis NOT IN (
+                    SELECT no_rkm_medis
+                    FROM pasien
+                    WHERE LOWER(nm_pasien) LIKE '%test%'
+              )
+              AND rp.tgl_registrasi BETWEEN '" . $startDate . "' AND '" . $endDate . "'
+            GROUP BY nama_poli
+            HAVING nama_poli IS NOT NULL
+            ORDER BY nama_poli ASC";
+
+    $result = null;
+    for ($attempt = 0; $attempt < 2; $attempt++) {
+        try {
+            $result = $mysqli->query($sql);
+            break;
+        } catch (mysqli_sql_exception $exception) {
+            if ((int) $exception->getCode() !== 1615 || $attempt > 0) {
+                throw $exception;
+            }
+        }
+    }
+
+    $rows = [];
+    if (!$result) {
+        return $rows;
+    }
+    while ($dbRow = $result->fetch_assoc()) {
+        $counts = [];
+        $total = 0;
+        foreach ($payerAliases as $payerCode => $alias) {
+            $counts[$payerCode] = isset($dbRow[$alias]) ? (int) $dbRow[$alias] : 0;
+            $total += $counts[$payerCode];
+        }
+        $rows[] = [
+            'nama_poli' => trim((string) $dbRow['nama_poli']),
+            'counts' => $counts,
+            'total' => $total,
+        ];
+    }
+
+    return $rows;
+}
+
 function aptd_poli_specialty_selected_group(array $groups, $requested, $preferred = 'Penyakit Dalam')
 {
     $requested = trim((string) $requested);

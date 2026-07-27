@@ -69,11 +69,254 @@ function aptd_keu_ralan_inacbg_tariff_sql()
     ";
 }
 
-function aptd_keu_ralan_fetch_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli = '', $onlyNoRawat = '')
+function aptd_keu_ralan_search_where(mysqli $mysqli, $search)
 {
+    $search = trim((string) $search);
+    if ($search === '') {
+        return '';
+    }
+
+    $like = "'%" . $mysqli->real_escape_string($search) . "%'";
+    return " AND (
+           DATE_FORMAT(rp.tgl_registrasi, '%d-%m-%Y') LIKE $like
+        OR rp.no_rawat LIKE $like
+        OR rp.no_rkm_medis LIKE $like
+        OR ps.nm_pasien LIKE $like
+        OR d.nm_dokter LIKE $like
+        OR bs.no_sep LIKE $like
+        OR pl.nm_poli LIKE $like
+        OR s.nm_sps LIKE $like
+        OR rp.stts LIKE $like
+        OR rp.status_bayar LIKE $like
+        OR pj.png_jawab LIKE $like
+    )";
+}
+
+function aptd_keu_ralan_bind_rows_statement(
+    mysqli_stmt $stmt,
+    &$startDate,
+    &$endDate,
+    &$kdPoli,
+    &$onlyNoRawat
+) {
+    if ($kdPoli !== '' && $onlyNoRawat !== '') {
+        $stmt->bind_param('ssss', $startDate, $endDate, $kdPoli, $onlyNoRawat);
+    } elseif ($kdPoli !== '') {
+        $stmt->bind_param('sss', $startDate, $endDate, $kdPoli);
+    } elseif ($onlyNoRawat !== '') {
+        $stmt->bind_param('sss', $startDate, $endDate, $onlyNoRawat);
+    } else {
+        $stmt->bind_param('ss', $startDate, $endDate);
+    }
+}
+
+function aptd_keu_ralan_cache_fields()
+{
+    $decimal = 'DECIMAL(16,2) NOT NULL DEFAULT 0';
+    $integer = 'INT NOT NULL DEFAULT 0';
+    $text = 'TEXT NULL';
+
+    return [
+        'jd_pemeriksaan' => ['column' => 'calc_jd_pemeriksaan', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'jd_prosedur' => ['column' => 'calc_jd_prosedur', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'jd_dokter_anestesi' => ['column' => 'calc_jd_dokter_anestesi', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'jd_dokter_anak' => ['column' => 'calc_jd_dokter_anak', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'jd_hd' => ['column' => 'calc_jd_hd', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'jd_usg' => ['column' => 'calc_jd_usg', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'jd_rontgen' => ['column' => 'calc_jd_rontgen', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'jd_lab' => ['column' => 'calc_jd_lab', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'jd_pa' => ['column' => 'calc_jd_pa', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'bhp_lab_pk' => ['column' => 'calc_bhp_lab_pk', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'bhp_lab_pa' => ['column' => 'calc_bhp_lab_pa', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'bhp_rad_usg' => ['column' => 'calc_bhp_rad_usg', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'bhp_rontgen' => ['column' => 'calc_bhp_rontgen', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'jasa_karyawan' => ['column' => 'calc_jasa_karyawan', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'biaya_bhp' => ['column' => 'calc_biaya_bhp', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'biaya_obat' => ['column' => 'calc_biaya_obat', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'biaya_ekg' => ['column' => 'calc_biaya_ekg', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'biaya_darah' => ['column' => 'calc_biaya_darah', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'makan_jumlah' => ['column' => 'calc_makan_jumlah', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'makan_harga' => ['column' => 'calc_makan_harga', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'makan_kali' => ['column' => 'calc_makan_kali', 'definition' => $integer, 'kind' => 'integer', 'default' => 0],
+        'biaya_fototheraphy' => ['column' => 'calc_biaya_fototheraphy', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'biaya_oksigen' => ['column' => 'calc_biaya_oksigen', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'biaya_spirometri' => ['column' => 'calc_biaya_spirometri', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'total' => ['column' => 'calc_total', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'margin' => ['column' => 'calc_margin', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
+        'keterangan_darah' => ['column' => 'calc_keterangan_darah', 'definition' => $integer, 'kind' => 'integer', 'default' => 0],
+        'keterangan_albumin' => ['column' => 'calc_keterangan_albumin', 'definition' => $integer, 'kind' => 'integer', 'default' => 0],
+        'keterangan_tindakan' => ['column' => 'calc_keterangan_tindakan', 'definition' => $text, 'kind' => 'text', 'default' => ''],
+        'jd_rule' => ['column' => 'rule_jd', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'jd_anestesi_rule' => ['column' => 'rule_jd_anestesi', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'jd_anak_rule' => ['column' => 'rule_jd_anak', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'jd_usg_rule' => ['column' => 'rule_jd_usg', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'jd_rontgen_rule' => ['column' => 'rule_jd_rontgen', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'jd_lab_rule' => ['column' => 'rule_jd_lab', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'jd_pa_rule' => ['column' => 'rule_jd_pa', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'bhp_lab_pk_rule' => ['column' => 'rule_bhp_lab_pk', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'bhp_lab_pa_rule' => ['column' => 'rule_bhp_lab_pa', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'bhp_rad_usg_rule' => ['column' => 'rule_bhp_rad_usg', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'bhp_rontgen_rule' => ['column' => 'rule_bhp_rontgen', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'biaya_bhp_rule' => ['column' => 'rule_biaya_bhp', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'biaya_obat_rule' => ['column' => 'rule_biaya_obat', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'biaya_ekg_rule' => ['column' => 'rule_biaya_ekg', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'biaya_darah_rule' => ['column' => 'rule_biaya_darah', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'makan_rule' => ['column' => 'rule_makan', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'biaya_oksigen_rule' => ['column' => 'rule_biaya_oksigen', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'biaya_spirometri_rule' => ['column' => 'rule_biaya_spirometri', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'total_rule' => ['column' => 'rule_total', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+        'margin_rule' => ['column' => 'rule_margin', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
+    ];
+}
+
+function aptd_keu_ralan_ensure_cache_schema(mysqli $mysqli)
+{
+    static $ready = false;
+    if ($ready) {
+        return;
+    }
+
+    $columnSql = [
+        'no_rawat VARCHAR(20) NOT NULL',
+        'claim_used DECIMAL(16,2) NOT NULL DEFAULT 0',
+        "claim_source VARCHAR(30) NOT NULL DEFAULT 'Belum Ada'",
+        'claim_actual_snapshot DECIMAL(16,2) NOT NULL DEFAULT 0',
+        'claim_history_snapshot DECIMAL(16,2) NOT NULL DEFAULT 0',
+        'claim_history_no_rawat VARCHAR(20) NULL',
+        'claim_diagnosis_code VARCHAR(20) NULL',
+        'calculated_at DATETIME NULL',
+        'calculated_by VARCHAR(50) NULL',
+        'updated_at DATETIME NULL',
+    ];
+    foreach (aptd_keu_ralan_cache_fields() as $field) {
+        $columnSql[] = $field['column'] . ' ' . $field['definition'];
+    }
+
+    $createSql = "CREATE TABLE IF NOT EXISTS lap_keuangan_bpjs_ralan ("
+        . implode(', ', $columnSql)
+        . ', PRIMARY KEY (no_rawat)'
+        . ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
+    if (!$mysqli->query($createSql)) {
+        throw new RuntimeException('Tabel cache keuangan Ralan tidak dapat dibuat: ' . $mysqli->error);
+    }
+
+    $existing = [];
+    $result = $mysqli->query('SHOW COLUMNS FROM lap_keuangan_bpjs_ralan');
+    if (!$result) {
+        throw new RuntimeException('Struktur tabel cache keuangan Ralan tidak dapat dibaca: ' . $mysqli->error);
+    }
+    while ($column = $result->fetch_assoc()) {
+        $existing[$column['Field']] = true;
+    }
+
+    $definitions = [
+        'claim_used' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
+        'claim_source' => "VARCHAR(30) NOT NULL DEFAULT 'Belum Ada'",
+        'claim_actual_snapshot' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
+        'claim_history_snapshot' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
+        'claim_history_no_rawat' => 'VARCHAR(20) NULL',
+        'claim_diagnosis_code' => 'VARCHAR(20) NULL',
+        'calculated_at' => 'DATETIME NULL',
+        'calculated_by' => 'VARCHAR(50) NULL',
+        'updated_at' => 'DATETIME NULL',
+    ];
+    foreach (aptd_keu_ralan_cache_fields() as $field) {
+        $definitions[$field['column']] = $field['definition'];
+    }
+    foreach ($definitions as $column => $definition) {
+        if (!isset($existing[$column])) {
+            if (!$mysqli->query("ALTER TABLE lap_keuangan_bpjs_ralan ADD COLUMN $column $definition")) {
+                throw new RuntimeException('Kolom cache ' . $column . ' tidak dapat dibuat: ' . $mysqli->error);
+            }
+        }
+    }
+
+    $ready = true;
+}
+
+function aptd_keu_ralan_cache_select_sql()
+{
+    $select = '';
+    foreach (aptd_keu_ralan_cache_fields() as $key => $field) {
+        $select .= "MAX(cache." . $field['column'] . ") AS cache_" . $key . ",\n";
+    }
+    return $select;
+}
+
+function aptd_keu_ralan_claim_shifted_to_actual(array $row)
+{
+    if (empty($row['calculated_at']) || (float) $row['claim_actual'] <= 0) {
+        return false;
+    }
+    return (string) $row['cached_claim_source'] !== 'Aktual'
+        || abs((float) $row['cached_claim_used'] - (float) $row['claim_actual']) >= 0.01;
+}
+
+function aptd_keu_ralan_apply_cached_calculations(array &$rows)
+{
+    foreach ($rows as $index => $row) {
+        $hasCache = !empty($row['calculated_at']);
+        foreach (aptd_keu_ralan_cache_fields() as $key => $field) {
+            $value = $hasCache && isset($row['cache_' . $key])
+                ? $row['cache_' . $key]
+                : $field['default'];
+            if ($field['kind'] === 'decimal') {
+                $value = (float) $value;
+            } elseif ($field['kind'] === 'integer') {
+                $value = (int) $value;
+            } else {
+                $value = (string) $value;
+            }
+            $rows[$index][$key] = $value;
+        }
+        $rows[$index]['has_hitung'] = $hasCache ? 1 : 0;
+        $rows[$index]['calculation_stale'] = aptd_keu_ralan_claim_shifted_to_actual($row) ? 1 : 0;
+    }
+}
+
+function aptd_keu_ralan_fetch_rows(
+    mysqli $mysqli,
+    $startDate,
+    $endDate,
+    $kdPoli = '',
+    $onlyNoRawat = '',
+    $search = '',
+    $limit = null,
+    $offset = 0,
+    $orderColumn = 0,
+    $orderDirection = 'ASC',
+    $calculateDetails = false
+)
+{
+    aptd_keu_ralan_ensure_cache_schema($mysqli);
     $poliWhere = $kdPoli !== '' ? ' AND rp.kd_poli = ?' : '';
     $rawatWhere = $onlyNoRawat !== '' ? ' AND rp.no_rawat = ?' : '';
+    $searchWhere = aptd_keu_ralan_search_where($mysqli, $search);
     $inacbgSql = aptd_keu_ralan_inacbg_tariff_sql();
+    $cacheSelectSql = aptd_keu_ralan_cache_select_sql();
+    $orderColumns = [
+        0 => 'rp.tgl_registrasi',
+        1 => 'rp.no_rawat',
+        2 => 'rp.no_rkm_medis',
+        3 => 'ps.nm_pasien',
+        4 => 'd.nm_dokter',
+        5 => 'no_sep',
+        6 => 'pl.nm_poli',
+        7 => 's.nm_sps',
+        8 => 'rp.stts',
+        9 => 'rp.status_bayar',
+        10 => 'pj.png_jawab',
+        12 => 'claim_actual',
+    ];
+    $orderSql = isset($orderColumns[(int) $orderColumn])
+        ? $orderColumns[(int) $orderColumn]
+        : $orderColumns[0];
+    $directionSql = strtoupper((string) $orderDirection) === 'DESC' ? 'DESC' : 'ASC';
+    $limitSql = '';
+    if ($limit !== null) {
+        $limitSql = ' LIMIT ' . max(1, min(100, (int) $limit))
+            . ' OFFSET ' . max(0, (int) $offset);
+    }
     $sql = "
         SELECT
             rp.tgl_registrasi,
@@ -97,7 +340,13 @@ function aptd_keu_ralan_fetch_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli
             COALESCE(MAX(manual.claim_source), '') AS claim_selected_source,
             COALESCE(MAX(manual.claim_history), 0) AS stored_claim_history,
             COALESCE(MAX(manual.claim_history_no_rawat), '') AS stored_claim_history_no_rawat,
-            MAX(manual.calculated_at) AS calculated_at,
+            MAX(cache.calculated_at) AS calculated_at,
+            COALESCE(MAX(cache.claim_used), 0) AS cached_claim_used,
+            COALESCE(MAX(cache.claim_source), '') AS cached_claim_source,
+            COALESCE(MAX(cache.claim_actual_snapshot), 0) AS cached_claim_actual_snapshot,
+            COALESCE(MAX(cache.claim_history_snapshot), 0) AS cached_claim_history_snapshot,
+            COALESCE(MAX(cache.calculated_by), '') AS calculated_by,
+            $cacheSelectSql
             COALESCE((
                 SELECT MAX(b.totalbiaya)
                 FROM billing b
@@ -115,6 +364,7 @@ function aptd_keu_ralan_fetch_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli
         LEFT JOIN diagnosa_pasien dp ON dp.no_rawat = rp.no_rawat
         LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
         LEFT JOIN lap_keuangan_bpjs manual ON manual.no_rawat = rp.no_rawat
+        LEFT JOIN lap_keuangan_bpjs_ralan cache ON cache.no_rawat = rp.no_rawat
         WHERE rp.tgl_registrasi BETWEEN ? AND ?
           AND rp.status_lanjut = 'Ralan'
           AND rp.kd_pj = 'BPJ'
@@ -122,6 +372,7 @@ function aptd_keu_ralan_fetch_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli
           AND ki.no_rawat IS NULL
           $poliWhere
           $rawatWhere
+          $searchWhere
         GROUP BY
             rp.tgl_registrasi,
             rp.no_rawat,
@@ -134,27 +385,40 @@ function aptd_keu_ralan_fetch_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli
             pj.png_jawab,
             rp.stts,
             rp.status_bayar
-        ORDER BY rp.tgl_registrasi ASC, rp.no_rawat ASC";
+        ORDER BY $orderSql $directionSql, rp.no_rawat $directionSql
+        $limitSql";
 
-    $stmt = $mysqli->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Query laporan tidak dapat dipersiapkan: ' . $mysqli->error);
+    $stmt = null;
+    for ($attempt = 0; $attempt < 2; $attempt++) {
+        try {
+            $stmt = $mysqli->prepare($sql);
+            if (!$stmt) {
+                throw new RuntimeException('Query laporan tidak dapat dipersiapkan: ' . $mysqli->error);
+            }
+            aptd_keu_ralan_bind_rows_statement($stmt, $startDate, $endDate, $kdPoli, $onlyNoRawat);
+            if (!$stmt->execute()) {
+                throw new RuntimeException('Query laporan tidak dapat dijalankan: ' . $stmt->error);
+            }
+            break;
+        } catch (mysqli_sql_exception $exception) {
+            if ($stmt instanceof mysqli_stmt) {
+                $stmt->close();
+            }
+            $stmt = null;
+            $needsReprepare = (int) $exception->getCode() === 1615
+                || stripos($exception->getMessage(), 're-prepared') !== false;
+            if ($attempt === 0 && $needsReprepare) {
+                continue;
+            }
+            throw new RuntimeException(
+                'Query laporan tidak dapat dijalankan: ' . $exception->getMessage(),
+                (int) $exception->getCode(),
+                $exception
+            );
+        }
     }
-
-    if ($kdPoli !== '' && $onlyNoRawat !== '') {
-        $stmt->bind_param('ssss', $startDate, $endDate, $kdPoli, $onlyNoRawat);
-    } elseif ($kdPoli !== '') {
-        $stmt->bind_param('sss', $startDate, $endDate, $kdPoli);
-    } elseif ($onlyNoRawat !== '') {
-        $stmt->bind_param('sss', $startDate, $endDate, $onlyNoRawat);
-    } else {
-        $stmt->bind_param('ss', $startDate, $endDate);
-    }
-
-    if (!$stmt->execute()) {
-        $error = $stmt->error;
-        $stmt->close();
-        throw new RuntimeException('Query laporan tidak dapat dijalankan: ' . $error);
+    if (!($stmt instanceof mysqli_stmt)) {
+        throw new RuntimeException('Query laporan tidak dapat dijalankan setelah percobaan ulang.');
     }
 
     $result = $stmt->get_result();
@@ -164,7 +428,98 @@ function aptd_keu_ralan_fetch_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli
     }
     $stmt->close();
     aptd_keu_ralan_apply_claims($mysqli, $rows);
+    if ($calculateDetails) {
+        aptd_keu_ralan_apply_doctor_fees($mysqli, $rows);
+    } else {
+        aptd_keu_ralan_apply_cached_calculations($rows);
+    }
     return $rows;
+}
+
+function aptd_keu_ralan_count_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli = '', $search = '')
+{
+    $poliWhere = $kdPoli !== ''
+        ? " AND rp.kd_poli = '" . $mysqli->real_escape_string($kdPoli) . "'"
+        : '';
+    $searchWhere = aptd_keu_ralan_search_where($mysqli, $search);
+    $startDate = $mysqli->real_escape_string($startDate);
+    $endDate = $mysqli->real_escape_string($endDate);
+    $sql = "
+        SELECT COUNT(DISTINCT rp.no_rawat) AS total
+        FROM reg_periksa rp
+        INNER JOIN pasien ps ON ps.no_rkm_medis = rp.no_rkm_medis
+        INNER JOIN poliklinik pl ON pl.kd_poli = rp.kd_poli
+        INNER JOIN dokter d ON d.kd_dokter = rp.kd_dokter
+        LEFT JOIN spesialis s ON s.kd_sps = d.kd_sps
+        INNER JOIN penjab pj ON pj.kd_pj = rp.kd_pj
+        LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
+        WHERE rp.tgl_registrasi BETWEEN '$startDate' AND '$endDate'
+          AND rp.status_lanjut = 'Ralan'
+          AND rp.kd_pj = 'BPJ'
+          AND rp.stts <> 'Batal'
+          AND NOT EXISTS (
+              SELECT 1 FROM kamar_inap ki WHERE ki.no_rawat = rp.no_rawat
+          )
+          $poliWhere
+          $searchWhere";
+    $result = $mysqli->query($sql);
+    if (!$result) {
+        throw new RuntimeException('Jumlah data laporan tidak dapat dimuat: ' . $mysqli->error);
+    }
+    return (int) $result->fetch_assoc()['total'];
+}
+
+function aptd_keu_ralan_fetch_summary(mysqli $mysqli, $startDate, $endDate, $kdPoli = '')
+{
+    $poliWhere = $kdPoli !== ''
+        ? " AND rp.kd_poli = '" . $mysqli->real_escape_string($kdPoli) . "'"
+        : '';
+    $startDate = $mysqli->real_escape_string($startDate);
+    $endDate = $mysqli->real_escape_string($endDate);
+    $sql = "
+        SELECT COUNT(*) AS jumlah_kunjungan,
+               COUNT(DISTINCT report.kd_poli) AS jumlah_poli,
+               COALESCE(SUM(report.has_sep), 0) AS sudah_sep,
+               COALESCE(SUM(report.total_tagihan), 0) AS total_tagihan
+        FROM (
+            SELECT rp.no_rawat,
+                   rp.kd_poli,
+                   MAX(CASE
+                       WHEN TRIM(IFNULL(bs.no_sep, '')) <> '' THEN 1
+                       ELSE 0
+                   END) AS has_sep,
+                   COALESCE((
+                       SELECT MAX(b.totalbiaya)
+                       FROM billing b
+                       WHERE b.no_rawat = rp.no_rawat
+                         AND b.status = 'Tagihan'
+                   ), 0) AS total_tagihan
+            FROM reg_periksa rp
+            LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
+            WHERE rp.tgl_registrasi BETWEEN '$startDate' AND '$endDate'
+              AND rp.status_lanjut = 'Ralan'
+              AND rp.kd_pj = 'BPJ'
+              AND rp.stts <> 'Batal'
+              AND NOT EXISTS (
+                  SELECT 1 FROM kamar_inap ki WHERE ki.no_rawat = rp.no_rawat
+              )
+              $poliWhere
+            GROUP BY rp.no_rawat, rp.kd_poli
+        ) report";
+    $result = $mysqli->query($sql);
+    if (!$result) {
+        throw new RuntimeException('Ringkasan laporan tidak dapat dimuat: ' . $mysqli->error);
+    }
+    $summary = $result->fetch_assoc();
+    $jumlah = (int) $summary['jumlah_kunjungan'];
+    $totalTagihan = (float) $summary['total_tagihan'];
+    return [
+        'jumlah_kunjungan' => $jumlah,
+        'jumlah_poli' => (int) $summary['jumlah_poli'],
+        'sudah_sep' => (int) $summary['sudah_sep'],
+        'total_tagihan' => $totalTagihan,
+        'rata_tagihan' => $jumlah > 0 ? $totalTagihan / $jumlah : 0,
+    ];
 }
 
 function aptd_keu_ralan_pick_latest_history(array $candidatePool, $currentNoRawat)
@@ -416,6 +771,662 @@ function aptd_keu_ralan_apply_claims(mysqli $mysqli, array &$rows)
     }
 }
 
+function aptd_keu_ralan_bhp_rate($specialistName)
+{
+    $normalized = strtolower(trim(preg_replace('/\s+/', ' ', (string) $specialistName)));
+    if ($normalized === 'bedah' || $normalized === 'tht') {
+        return 15000;
+    }
+    if ($normalized === 'gigi & mulut' || $normalized === 'konservasi & gigi estetik') {
+        return 25000;
+    }
+    return 10000;
+}
+
+function aptd_keu_ralan_calculate_doctor_fee($claimUsed, array $facts)
+{
+    $claimUsed = max(0, (float) $claimUsed);
+    $specialistName = trim((string) (isset($facts['specialist_name']) ? $facts['specialist_name'] : ''));
+    $bhpRate = aptd_keu_ralan_bhp_rate($specialistName);
+    $nutritionCount = max(0, (int) (isset($facts['nutrition_count']) ? $facts['nutrition_count'] : 0));
+    $nutritionTotal = max(0, (float) (isset($facts['nutrition_material_cost']) ? $facts['nutrition_material_cost'] : 0));
+    $nutritionUnitPrice = $nutritionCount > 0 ? $nutritionTotal / $nutritionCount : 0;
+    $result = [
+        'jd_pemeriksaan' => 0,
+        'jd_prosedur' => 0,
+        'jd_dokter_anestesi' => 0,
+        'jd_dokter_anak' => 0,
+        'jd_hd' => 0,
+        'jd_usg' => 0,
+        'jd_rontgen' => 0,
+        'jd_lab' => 0,
+        'jd_pa' => 0,
+        'bhp_lab_pk' => 0,
+        'bhp_lab_pa' => 0,
+        'bhp_rad_usg' => 0,
+        'bhp_rontgen' => 0,
+        'jasa_karyawan' => round($claimUsed * 0.15, 2),
+        'biaya_bhp' => $bhpRate,
+        'biaya_obat' => round(max(0, (float) (isset($facts['medicine_cost']) ? $facts['medicine_cost'] : 0)), 2),
+        'biaya_ekg' => round(max(0, (float) (isset($facts['ekg_cost']) ? $facts['ekg_cost'] : 0)), 2),
+        'biaya_darah' => round(max(0, (float) (isset($facts['blood_cost']) ? $facts['blood_cost'] : 0)), 2),
+        'makan_jumlah' => round($nutritionTotal, 2),
+        'makan_harga' => round($nutritionUnitPrice, 2),
+        'makan_kali' => $nutritionCount,
+        'biaya_fototheraphy' => 0,
+        'biaya_oksigen' => round(max(0, (float) (isset($facts['oxygen_cost']) ? $facts['oxygen_cost'] : 0)), 2),
+        'biaya_spirometri' => round(max(0, (float) (isset($facts['spirometry_cost']) ? $facts['spirometry_cost'] : 0)), 2),
+        'total' => 0,
+        'margin' => 0,
+        'keterangan_darah' => max(0, (int) (isset($facts['blood_count']) ? $facts['blood_count'] : 0)),
+        'keterangan_albumin' => 0,
+        'keterangan_tindakan' => trim((string) (isset($facts['operation_names']) ? $facts['operation_names'] : '')),
+        'jd_rule' => 'Tidak Ada',
+        'jd_anestesi_rule' => 'Tidak Ada Dokter Anestesi',
+        'jd_anak_rule' => 'Bukan Tindakan Partus',
+        'jd_usg_rule' => 'Tidak Ada Pemeriksaan USG',
+        'jd_rontgen_rule' => 'Tidak Ada Pemeriksaan Rontgen',
+        'jd_lab_rule' => 'Tidak Ada Pemeriksaan Lab',
+        'jd_pa_rule' => 'Tidak Ada Pemeriksaan PA',
+        'bhp_lab_pk_rule' => 'BHP Lab PK: Induk Rp 0 + Detail Rp 0',
+        'bhp_lab_pa_rule' => 'BHP Lab PA: Rp 0',
+        'bhp_rad_usg_rule' => 'BHP Radiologi USG: Rp 0',
+        'bhp_rontgen_rule' => 'BHP Radiologi Non-USG: Rp 0',
+        'biaya_bhp_rule' => 'Tarif BHP Spesialistik '
+            . ($specialistName !== '' ? $specialistName : 'Lainnya')
+            . ': Rp ' . aptd_currency($bhpRate),
+        'biaya_ekg_rule' => 'BHP Tindakan EKG: Rp '
+            . aptd_currency(isset($facts['ekg_cost']) ? $facts['ekg_cost'] : 0),
+        'biaya_darah_rule' => 'Tarif Tindakan Harga Darah: Rp '
+            . aptd_currency(isset($facts['blood_cost']) ? $facts['blood_cost'] : 0),
+        'makan_rule' => 'Pemberian Nutrisi ' . $nutritionCount
+            . ' kali: Total Material Rp ' . aptd_currency($nutritionTotal)
+            . ', Harga Rata-rata Rp ' . aptd_currency($nutritionUnitPrice),
+        'biaya_oksigen_rule' => 'Tambahan Biaya Oksigen: Rp '
+            . aptd_currency(isset($facts['oxygen_cost']) ? $facts['oxygen_cost'] : 0),
+        'biaya_spirometri_rule' => 'BHP Tindakan Spirometri: Rp '
+            . aptd_currency(isset($facts['spirometry_cost']) ? $facts['spirometry_cost'] : 0),
+    ];
+
+    if (!empty($facts['has_dokter_anestesi'])) {
+        $result['jd_dokter_anestesi'] = round($claimUsed * 0.08, 2);
+        $result['jd_anestesi_rule'] = 'Dokter Anestesi 8%';
+    }
+    if (!empty($facts['operation_has_partus'])) {
+        $result['jd_dokter_anak'] = 115000;
+        $result['jd_anak_rule'] = 'Tindakan Partus (tarif tetap)';
+    }
+    if (!empty($facts['has_usg'])) {
+        $result['jd_usg'] = 115000;
+        $result['jd_usg_rule'] = 'Pemeriksaan USG (tarif tetap)';
+    }
+    if (!empty($facts['has_rontgen'])) {
+        $result['jd_rontgen'] = 23100;
+        $result['jd_rontgen_rule'] = 'Pemeriksaan Radiologi Non-USG (tarif tetap)';
+    }
+    $bhpRadUsg = max(0, (float) (isset($facts['bhp_rad_usg']) ? $facts['bhp_rad_usg'] : 0));
+    $bhpRontgen = max(0, (float) (isset($facts['bhp_rontgen']) ? $facts['bhp_rontgen'] : 0));
+    $result['bhp_rad_usg'] = round($bhpRadUsg, 2);
+    $result['bhp_rontgen'] = round($bhpRontgen, 2);
+    $result['bhp_rad_usg_rule'] = 'BHP Radiologi USG: Rp ' . aptd_currency($bhpRadUsg);
+    $result['bhp_rontgen_rule'] = 'BHP Radiologi Non-USG: Rp ' . aptd_currency($bhpRontgen);
+    $totalLabCost = max(
+        0,
+        (float) (isset($facts['lab_base_cost']) ? $facts['lab_base_cost'] : 0)
+        + (float) (isset($facts['lab_detail_cost']) ? $facts['lab_detail_cost'] : 0)
+    );
+    if ($totalLabCost > 0) {
+        $result['jd_lab'] = round($totalLabCost * 0.07, 2);
+        $result['jd_lab_rule'] = '7% dari Total Biaya Lab Rp ' . aptd_currency($totalLabCost);
+    }
+    $paDoctorFee = max(0, (float) (isset($facts['pa_doctor_fee']) ? $facts['pa_doctor_fee'] : 0));
+    if ($paDoctorFee > 0) {
+        $result['jd_pa'] = round($paDoctorFee, 2);
+        $result['jd_pa_rule'] = 'Tarif Tindakan Dokter PA';
+    }
+    $bhpLabPkBase = max(0, (float) (isset($facts['bhp_lab_pk_base']) ? $facts['bhp_lab_pk_base'] : 0));
+    $bhpLabDetail = max(0, (float) (isset($facts['bhp_lab_detail']) ? $facts['bhp_lab_detail'] : 0));
+    $bhpLabPa = max(0, (float) (isset($facts['bhp_lab_pa']) ? $facts['bhp_lab_pa'] : 0));
+    $result['bhp_lab_pk'] = round($bhpLabPkBase + $bhpLabDetail, 2);
+    $result['bhp_lab_pa'] = round($bhpLabPa, 2);
+    $result['bhp_lab_pk_rule'] = 'BHP Lab PK: Induk Rp ' . aptd_currency($bhpLabPkBase)
+        . ' + Detail Rp ' . aptd_currency($bhpLabDetail);
+    $result['bhp_lab_pa_rule'] = 'BHP Lab PA: Rp ' . aptd_currency($bhpLabPa);
+
+    if (!empty($facts['has_hd'])) {
+        $result['jd_hd'] = round($claimUsed * 0.21, 2);
+        $result['jd_rule'] = 'Hemodialisa 21%';
+        return $result;
+    }
+
+    if (!empty($facts['has_operation'])) {
+        if (!empty($facts['operation_has_phaco'])) {
+            $result['jd_prosedur'] = round($claimUsed * 0.24, 2);
+            $result['jd_rule'] = 'Operasi Phaco 24%';
+        } elseif (!empty($facts['operation_has_partus_kuret'])) {
+            $result['jd_prosedur'] = round($claimUsed * 0.19, 2);
+            $result['jd_rule'] = 'Operasi Partus/Kuret 19%';
+        } else {
+            // Belum ada persentase bisnis untuk paket operasi selain keyword di atas.
+            $result['jd_rule'] = 'Operasi Lain (belum ada persentase)';
+        }
+        return $result;
+    }
+
+    if (!empty($facts['has_injection'])) {
+        $result['jd_prosedur'] = 150000;
+        $result['jd_rule'] = 'Poliklinik dengan Tindakan Injeksi (tarif tetap)';
+        return $result;
+    }
+
+    if (!empty($facts['has_poli'])) {
+        if (!empty($facts['has_other_treatment'])) {
+            $result['jd_prosedur'] = round($claimUsed * 0.40, 2);
+            $result['jd_rule'] = 'Poliklinik dengan Tindakan 40%';
+        } else {
+            $result['jd_pemeriksaan'] = round(max(0, (float) $facts['poli_doctor_fee']), 2);
+            $result['jd_rule'] = 'Pemeriksaan Poliklinik';
+        }
+    }
+
+    return $result;
+}
+
+function aptd_keu_ralan_expense_total(array $calculation)
+{
+    $expenseFields = [
+        'jd_pemeriksaan',
+        'jd_prosedur',
+        'jd_dokter_anestesi',
+        'jd_dokter_anak',
+        'jd_hd',
+        'jd_usg',
+        'jd_rontgen',
+        'jd_lab',
+        'jd_pa',
+        'jasa_karyawan',
+        'biaya_bhp',
+        'biaya_obat',
+        'bhp_lab_pk',
+        'bhp_lab_pa',
+        'bhp_rad_usg',
+        'bhp_rontgen',
+        'biaya_ekg',
+        'biaya_darah',
+        'makan_jumlah',
+        'biaya_fototheraphy',
+        'biaya_oksigen',
+        'biaya_spirometri',
+    ];
+
+    $total = 0;
+    foreach ($expenseFields as $field) {
+        $total += max(0, (float) (isset($calculation[$field]) ? $calculation[$field] : 0));
+    }
+    return round($total, 2);
+}
+
+function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
+{
+    if (empty($rows)) {
+        return;
+    }
+
+    $factsByNoRawat = [];
+    $noRawatList = [];
+    foreach ($rows as $index => $row) {
+        $noRawat = (string) $row['no_rawat'];
+        $noRawatList[$noRawat] = $noRawat;
+        $factsByNoRawat[$noRawat] = [
+            'specialist_name' => isset($row['nm_sps']) ? (string) $row['nm_sps'] : '',
+            'has_hd' => 0,
+            'has_poli' => 0,
+            'has_other_treatment' => 0,
+            'has_injection' => 0,
+            'poli_doctor_fee' => 0,
+            'ekg_cost' => 0,
+            'blood_cost' => 0,
+            'blood_count' => 0,
+            'spirometry_cost' => 0,
+            'oxygen_cost' => 0,
+            'nutrition_count' => 0,
+            'nutrition_material_cost' => 0,
+            'has_operation' => 0,
+            'operation_has_partus_kuret' => 0,
+            'operation_has_phaco' => 0,
+            'has_dokter_anestesi' => 0,
+            'operation_has_partus' => 0,
+            'operation_names' => '',
+            'has_usg' => 0,
+            'has_rontgen' => 0,
+            'bhp_rad_usg' => 0,
+            'bhp_rontgen' => 0,
+            'lab_base_cost' => 0,
+            'lab_detail_cost' => 0,
+            'pa_doctor_fee' => 0,
+            'bhp_lab_pk_base' => 0,
+            'bhp_lab_detail' => 0,
+            'bhp_lab_pa' => 0,
+            'medicine_non_compounded_cost' => 0,
+            'medicine_compounded_cost' => 0,
+            'medicine_cost' => 0,
+        ];
+        $rows[$index]['jd_pemeriksaan'] = 0;
+        $rows[$index]['jd_prosedur'] = 0;
+        $rows[$index]['jd_dokter_anestesi'] = 0;
+        $rows[$index]['jd_dokter_anak'] = 0;
+        $rows[$index]['jd_hd'] = 0;
+        $rows[$index]['jd_usg'] = 0;
+        $rows[$index]['jd_rontgen'] = 0;
+        $rows[$index]['jd_lab'] = 0;
+        $rows[$index]['jd_pa'] = 0;
+        $rows[$index]['jd_rule'] = 'Tidak Ada';
+        $rows[$index]['jd_anestesi_rule'] = 'Tidak Ada Dokter Anestesi';
+        $rows[$index]['jd_anak_rule'] = 'Bukan Tindakan Partus';
+        $rows[$index]['jd_usg_rule'] = 'Tidak Ada Pemeriksaan USG';
+        $rows[$index]['jd_rontgen_rule'] = 'Tidak Ada Pemeriksaan Rontgen';
+        $rows[$index]['jd_lab_rule'] = 'Tidak Ada Pemeriksaan Lab';
+        $rows[$index]['jd_pa_rule'] = 'Tidak Ada Pemeriksaan PA';
+        $rows[$index]['biaya_obat'] = 0;
+        $rows[$index]['biaya_obat_rule'] = 'HPP Obat Non-Racikan Rp 0 + Racikan Rp 0';
+    }
+
+    foreach (array_chunk(array_values($noRawatList), 400) as $noRawatChunk) {
+        $quotedNoRawat = [];
+        foreach ($noRawatChunk as $noRawat) {
+            $quotedNoRawat[] = "'" . $mysqli->real_escape_string($noRawat) . "'";
+        }
+        $inList = implode(',', $quotedNoRawat);
+
+        $treatmentSql = "
+            SELECT treatments.no_rawat,
+                   MAX(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%hemodialisa%' THEN 1
+                       ELSE 0
+                   END) AS has_hd,
+                   MAX(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%pemeriksaan poliklinik%'
+                         OR LOWER(jp.nm_perawatan) LIKE '%pemeriksaan poli umum%'
+                       THEN 1 ELSE 0
+                   END) AS has_poli,
+                   MAX(CASE
+                       WHEN LOWER(jp.nm_perawatan) NOT LIKE '%pemeriksaan poliklinik%'
+                        AND LOWER(jp.nm_perawatan) NOT LIKE '%pemeriksaan poli umum%'
+                       THEN 1 ELSE 0
+                   END) AS has_other_treatment,
+                   MAX(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%inj.%'
+                       THEN 1 ELSE 0
+                   END) AS has_injection,
+                   SUM(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%pemeriksaan poliklinik%'
+                         OR LOWER(jp.nm_perawatan) LIKE '%pemeriksaan poli umum%'
+                       THEN COALESCE(jp.tarif_tindakandr, 0) ELSE 0
+                   END) AS poli_doctor_fee,
+                   SUM(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%ekg%'
+                       THEN COALESCE(jp.bhp, 0) ELSE 0
+                   END) AS ekg_cost,
+                   SUM(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%harga darah%'
+                       THEN COALESCE(jp.total_byrdrpr, 0) ELSE 0
+                   END) AS blood_cost,
+                   SUM(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%harga darah%'
+                       THEN 1 ELSE 0
+                   END) AS blood_count,
+                   SUM(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%spirometri%'
+                       THEN COALESCE(jp.bhp, 0) ELSE 0
+                   END) AS spirometry_cost,
+                   SUM(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%pemberian nutrisi%'
+                       THEN 1 ELSE 0
+                   END) AS nutrition_count,
+                   SUM(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%pemberian nutrisi%'
+                       THEN COALESCE(jp.material, 0) ELSE 0
+                   END) AS nutrition_material_cost
+            FROM (
+                SELECT no_rawat, kd_jenis_prw
+                FROM rawat_jl_dr
+                WHERE no_rawat IN ($inList)
+                UNION ALL
+                SELECT no_rawat, kd_jenis_prw
+                FROM rawat_jl_pr
+                WHERE no_rawat IN ($inList)
+                UNION ALL
+                SELECT no_rawat, kd_jenis_prw
+                FROM rawat_jl_drpr
+                WHERE no_rawat IN ($inList)
+            ) treatments
+            INNER JOIN jns_perawatan jp ON jp.kd_jenis_prw = treatments.kd_jenis_prw
+            WHERE LOWER(jp.nm_perawatan) NOT LIKE '%administrasi%'
+            GROUP BY treatments.no_rawat";
+
+        $treatmentResult = $mysqli->query($treatmentSql);
+        if (!$treatmentResult) {
+            throw new RuntimeException('Data tindakan jasa dokter tidak dapat dimuat: ' . $mysqli->error);
+        }
+        while ($treatment = $treatmentResult->fetch_assoc()) {
+            $noRawat = (string) $treatment['no_rawat'];
+            if (!isset($factsByNoRawat[$noRawat])) {
+                continue;
+            }
+            $factsByNoRawat[$noRawat]['has_hd'] = (int) $treatment['has_hd'];
+            $factsByNoRawat[$noRawat]['has_poli'] = (int) $treatment['has_poli'];
+            $factsByNoRawat[$noRawat]['has_other_treatment'] = (int) $treatment['has_other_treatment'];
+            $factsByNoRawat[$noRawat]['has_injection'] = (int) $treatment['has_injection'];
+            $factsByNoRawat[$noRawat]['poli_doctor_fee'] = (float) $treatment['poli_doctor_fee'];
+            $factsByNoRawat[$noRawat]['ekg_cost'] = (float) $treatment['ekg_cost'];
+            $factsByNoRawat[$noRawat]['blood_cost'] = (float) $treatment['blood_cost'];
+            $factsByNoRawat[$noRawat]['blood_count'] = (int) $treatment['blood_count'];
+            $factsByNoRawat[$noRawat]['spirometry_cost'] = (float) $treatment['spirometry_cost'];
+            $factsByNoRawat[$noRawat]['nutrition_count'] = (int) $treatment['nutrition_count'];
+            $factsByNoRawat[$noRawat]['nutrition_material_cost'] = (float) $treatment['nutrition_material_cost'];
+        }
+
+        $oxygenSql = "
+            SELECT tb.no_rawat,
+                   SUM(COALESCE(tb.besar_biaya, 0)) AS oxygen_cost
+            FROM tambahan_biaya tb
+            WHERE tb.no_rawat IN ($inList)
+              AND LOWER(tb.nama_biaya) LIKE '%oksigen%'
+            GROUP BY tb.no_rawat";
+
+        $oxygenResult = $mysqli->query($oxygenSql);
+        if (!$oxygenResult) {
+            throw new RuntimeException('Data tambahan biaya oksigen tidak dapat dimuat: ' . $mysqli->error);
+        }
+        while ($oxygen = $oxygenResult->fetch_assoc()) {
+            $noRawat = (string) $oxygen['no_rawat'];
+            if (!isset($factsByNoRawat[$noRawat])) {
+                continue;
+            }
+            $factsByNoRawat[$noRawat]['oxygen_cost'] = (float) $oxygen['oxygen_cost'];
+        }
+
+        $operationSql = "
+            SELECT o.no_rawat,
+                   1 AS has_operation,
+                   MAX(CASE
+                       WHEN LOWER(COALESCE(po.nm_perawatan, '')) LIKE '%partus%'
+                         OR LOWER(COALESCE(po.nm_perawatan, '')) LIKE '%kuret%'
+                       THEN 1 ELSE 0
+                   END) AS operation_has_partus_kuret,
+                   MAX(CASE
+                       WHEN LOWER(COALESCE(po.nm_perawatan, '')) LIKE '%partus%'
+                       THEN 1 ELSE 0
+                   END) AS operation_has_partus,
+                   MAX(CASE
+                       WHEN LOWER(COALESCE(po.nm_perawatan, '')) LIKE '%phaco%'
+                       THEN 1 ELSE 0
+                   END) AS operation_has_phaco,
+                   MAX(CASE
+                       WHEN TRIM(COALESCE(o.dokter_anestesi, '')) NOT IN ('', '-')
+                       THEN 1 ELSE 0
+                   END) AS has_dokter_anestesi,
+                   COALESCE(
+                       GROUP_CONCAT(
+                           DISTINCT NULLIF(TRIM(po.nm_perawatan), '')
+                           ORDER BY po.nm_perawatan
+                           SEPARATOR ', '
+                       ),
+                       ''
+                   ) AS operation_names
+            FROM operasi o
+            LEFT JOIN paket_operasi po ON po.kode_paket = o.kode_paket
+            WHERE o.no_rawat IN ($inList)
+            GROUP BY o.no_rawat";
+
+        $operationResult = $mysqli->query($operationSql);
+        if (!$operationResult) {
+            throw new RuntimeException('Data operasi jasa dokter tidak dapat dimuat: ' . $mysqli->error);
+        }
+        while ($operation = $operationResult->fetch_assoc()) {
+            $noRawat = (string) $operation['no_rawat'];
+            if (!isset($factsByNoRawat[$noRawat])) {
+                continue;
+            }
+            $factsByNoRawat[$noRawat]['has_operation'] = 1;
+            $factsByNoRawat[$noRawat]['operation_has_partus_kuret'] = (int) $operation['operation_has_partus_kuret'];
+            $factsByNoRawat[$noRawat]['operation_has_partus'] = (int) $operation['operation_has_partus'];
+            $factsByNoRawat[$noRawat]['operation_has_phaco'] = (int) $operation['operation_has_phaco'];
+            $factsByNoRawat[$noRawat]['has_dokter_anestesi'] = (int) $operation['has_dokter_anestesi'];
+            $factsByNoRawat[$noRawat]['operation_names'] = (string) $operation['operation_names'];
+        }
+
+        $radiologySql = "
+            SELECT pr.no_rawat,
+                   MAX(CASE
+                       WHEN LOWER(jpr.nm_perawatan) LIKE '%usg%'
+                       THEN 1 ELSE 0
+                   END) AS has_usg,
+                   MAX(CASE
+                       WHEN TRIM(COALESCE(jpr.nm_perawatan, '')) <> ''
+                        AND LOWER(jpr.nm_perawatan) NOT LIKE '%usg%'
+                       THEN 1 ELSE 0
+                   END) AS has_rontgen,
+                   SUM(CASE
+                       WHEN LOWER(jpr.nm_perawatan) LIKE '%usg%'
+                       THEN COALESCE(jpr.bhp, 0) ELSE 0
+                   END) AS bhp_rad_usg,
+                   SUM(CASE
+                       WHEN TRIM(COALESCE(jpr.nm_perawatan, '')) <> ''
+                        AND LOWER(jpr.nm_perawatan) NOT LIKE '%usg%'
+                       THEN COALESCE(jpr.bhp, 0) ELSE 0
+                   END) AS bhp_rontgen
+            FROM periksa_radiologi pr
+            INNER JOIN jns_perawatan_radiologi jpr
+                    ON jpr.kd_jenis_prw = pr.kd_jenis_prw
+            WHERE pr.no_rawat IN ($inList)
+            GROUP BY pr.no_rawat";
+
+        $radiologyResult = $mysqli->query($radiologySql);
+        if (!$radiologyResult) {
+            throw new RuntimeException('Data radiologi jasa dokter tidak dapat dimuat: ' . $mysqli->error);
+        }
+        while ($radiology = $radiologyResult->fetch_assoc()) {
+            $noRawat = (string) $radiology['no_rawat'];
+            if (!isset($factsByNoRawat[$noRawat])) {
+                continue;
+            }
+            $factsByNoRawat[$noRawat]['has_usg'] = (int) $radiology['has_usg'];
+            $factsByNoRawat[$noRawat]['has_rontgen'] = (int) $radiology['has_rontgen'];
+            $factsByNoRawat[$noRawat]['bhp_rad_usg'] = (float) $radiology['bhp_rad_usg'];
+            $factsByNoRawat[$noRawat]['bhp_rontgen'] = (float) $radiology['bhp_rontgen'];
+        }
+
+        $laboratorySql = "
+            SELECT lab.no_rawat,
+                   lab.lab_base_cost,
+                   COALESCE(detail.lab_detail_cost, 0) AS lab_detail_cost,
+                   lab.pa_doctor_fee,
+                   lab.bhp_lab_pk_base,
+                   COALESCE(detail.bhp_lab_detail, 0) AS bhp_lab_detail,
+                   lab.bhp_lab_pa
+            FROM (
+                SELECT pl.no_rawat,
+                       SUM(COALESCE(pl.biaya, 0)) AS lab_base_cost,
+                       SUM(CASE
+                           WHEN pl.kategori = 'PA'
+                           THEN COALESCE(pl.tarif_tindakan_dokter, 0)
+                           ELSE 0
+                       END) AS pa_doctor_fee,
+                       SUM(CASE
+                           WHEN pl.kategori = 'PK'
+                           THEN COALESCE(pl.bhp, 0)
+                           ELSE 0
+                       END) AS bhp_lab_pk_base,
+                       SUM(CASE
+                           WHEN pl.kategori = 'PA'
+                           THEN COALESCE(pl.bhp, 0)
+                           ELSE 0
+                       END) AS bhp_lab_pa
+                FROM periksa_lab pl
+                WHERE pl.no_rawat IN ($inList)
+                GROUP BY pl.no_rawat
+            ) lab
+            LEFT JOIN (
+                SELECT dpl.no_rawat,
+                       SUM(COALESCE(dpl.biaya_item, 0)) AS lab_detail_cost,
+                       SUM(COALESCE(dpl.bhp, 0)) AS bhp_lab_detail
+                FROM detail_periksa_lab dpl
+                WHERE dpl.no_rawat IN ($inList)
+                GROUP BY dpl.no_rawat
+            ) detail ON detail.no_rawat = lab.no_rawat";
+
+        $laboratoryResult = $mysqli->query($laboratorySql);
+        if (!$laboratoryResult) {
+            throw new RuntimeException('Data laboratorium jasa dokter tidak dapat dimuat: ' . $mysqli->error);
+        }
+        while ($laboratory = $laboratoryResult->fetch_assoc()) {
+            $noRawat = (string) $laboratory['no_rawat'];
+            if (!isset($factsByNoRawat[$noRawat])) {
+                continue;
+            }
+            $factsByNoRawat[$noRawat]['lab_base_cost'] = (float) $laboratory['lab_base_cost'];
+            $factsByNoRawat[$noRawat]['lab_detail_cost'] = (float) $laboratory['lab_detail_cost'];
+            $factsByNoRawat[$noRawat]['pa_doctor_fee'] = (float) $laboratory['pa_doctor_fee'];
+            $factsByNoRawat[$noRawat]['bhp_lab_pk_base'] = (float) $laboratory['bhp_lab_pk_base'];
+            $factsByNoRawat[$noRawat]['bhp_lab_detail'] = (float) $laboratory['bhp_lab_detail'];
+            $factsByNoRawat[$noRawat]['bhp_lab_pa'] = (float) $laboratory['bhp_lab_pa'];
+        }
+
+        $medicineSql = "
+            SELECT medicine.no_rawat,
+                   SUM(medicine.non_compounded_cost) AS non_compounded_cost,
+                   SUM(medicine.compounded_cost) AS compounded_cost
+            FROM (
+                SELECT dpo.no_rawat,
+                       SUM(COALESCE(dpo.jml, 0) * COALESCE(db.dasar, 0)) AS non_compounded_cost,
+                       0 AS compounded_cost
+                FROM detail_pemberian_obat dpo
+                INNER JOIN databarang db ON db.kode_brng = dpo.kode_brng
+                WHERE dpo.no_rawat IN ($inList)
+                GROUP BY dpo.no_rawat
+
+                UNION ALL
+
+                SELECT ro.no_rawat,
+                       0 AS non_compounded_cost,
+                       SUM(COALESCE(rdrd.jml, 0) * COALESCE(db.dasar, 0)) AS compounded_cost
+                FROM resep_obat ro
+                INNER JOIN resep_dokter_racikan_detail rdrd ON rdrd.no_resep = ro.no_resep
+                INNER JOIN databarang db ON db.kode_brng = rdrd.kode_brng
+                WHERE ro.no_rawat IN ($inList)
+                GROUP BY ro.no_rawat
+            ) medicine
+            GROUP BY medicine.no_rawat";
+
+        $medicineResult = $mysqli->query($medicineSql);
+        if (!$medicineResult) {
+            throw new RuntimeException('Data biaya dasar obat tidak dapat dimuat: ' . $mysqli->error);
+        }
+        while ($medicine = $medicineResult->fetch_assoc()) {
+            $noRawat = (string) $medicine['no_rawat'];
+            if (!isset($factsByNoRawat[$noRawat])) {
+                continue;
+            }
+            $nonCompoundedCost = max(0, (float) $medicine['non_compounded_cost']);
+            $compoundedCost = max(0, (float) $medicine['compounded_cost']);
+            $factsByNoRawat[$noRawat]['medicine_non_compounded_cost'] = $nonCompoundedCost;
+            $factsByNoRawat[$noRawat]['medicine_compounded_cost'] = $compoundedCost;
+            $factsByNoRawat[$noRawat]['medicine_cost'] = $nonCompoundedCost + $compoundedCost;
+        }
+    }
+
+    foreach ($rows as $index => $row) {
+        $calculation = aptd_keu_ralan_calculate_doctor_fee(
+            (float) $row['claim_used'],
+            $factsByNoRawat[(string) $row['no_rawat']]
+        );
+        $calculation['total'] = aptd_keu_ralan_expense_total($calculation);
+        $calculation['margin'] = round((float) $row['claim_used'] - $calculation['total'], 2);
+        $calculation['total_rule'] = 'Total seluruh komponen biaya/HPP';
+        $calculation['margin_rule'] = 'Klaim Digunakan Rp ' . aptd_currency($row['claim_used'])
+            . ' - TOTAL Rp ' . aptd_currency($calculation['total']);
+        foreach ($calculation as $field => $value) {
+            $rows[$index][$field] = $value;
+        }
+        $facts = $factsByNoRawat[(string) $row['no_rawat']];
+        $rows[$index]['biaya_obat_rule'] = 'HPP Obat Non-Racikan Rp '
+            . aptd_currency($facts['medicine_non_compounded_cost'])
+            . ' + Racikan Rp ' . aptd_currency($facts['medicine_compounded_cost']);
+    }
+}
+
+function aptd_keu_ralan_store_calculation(mysqli $mysqli, array $row, $username = '')
+{
+    aptd_keu_ralan_ensure_cache_schema($mysqli);
+
+    $noRawat = trim((string) (isset($row['no_rawat']) ? $row['no_rawat'] : ''));
+    if ($noRawat === '') {
+        return ['success' => false, 'message' => 'No rawat tidak boleh kosong.'];
+    }
+
+    $now = date('Y-m-d H:i:s');
+    $columns = [
+        'no_rawat',
+        'claim_used',
+        'claim_source',
+        'claim_actual_snapshot',
+        'claim_history_snapshot',
+        'claim_history_no_rawat',
+        'claim_diagnosis_code',
+        'calculated_at',
+        'calculated_by',
+        'updated_at',
+    ];
+    $values = [
+        $noRawat,
+        isset($row['claim_used']) ? $row['claim_used'] : 0,
+        isset($row['claim_source']) ? $row['claim_source'] : 'Belum Ada',
+        isset($row['claim_actual']) ? $row['claim_actual'] : 0,
+        isset($row['claim_history']) ? $row['claim_history'] : 0,
+        isset($row['claim_history_no_rawat']) ? $row['claim_history_no_rawat'] : '',
+        isset($row['target_diagnosis_code']) ? $row['target_diagnosis_code'] : '',
+        $now,
+        trim((string) $username),
+        $now,
+    ];
+
+    foreach (aptd_keu_ralan_cache_fields() as $key => $field) {
+        $columns[] = $field['column'];
+        $values[] = isset($row[$key]) ? $row[$key] : $field['default'];
+    }
+
+    $placeholders = array_fill(0, count($columns), '?');
+    $updates = [];
+    foreach (array_slice($columns, 1) as $column) {
+        $updates[] = $column . ' = VALUES(' . $column . ')';
+    }
+    $sql = 'INSERT INTO lap_keuangan_bpjs_ralan (' . implode(', ', $columns) . ')'
+        . ' VALUES (' . implode(', ', $placeholders) . ')'
+        . ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updates);
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) {
+        return ['success' => false, 'message' => 'Penyimpanan kalkulasi tidak dapat dipersiapkan.'];
+    }
+
+    $types = str_repeat('s', count($values));
+    $bindParams = [$types];
+    foreach ($values as $index => $value) {
+        $values[$index] = (string) $value;
+        $bindParams[] = &$values[$index];
+    }
+    call_user_func_array([$stmt, 'bind_param'], $bindParams);
+    if (!$stmt->execute()) {
+        $error = $stmt->error;
+        $stmt->close();
+        error_log('Kalkulasi Ralan tidak dapat disimpan: ' . $error);
+        return ['success' => false, 'message' => 'Kalkulasi tidak dapat disimpan. Silakan coba kembali.'];
+    }
+    $stmt->close();
+
+    return ['success' => true, 'message' => 'Kalkulasi berhasil disimpan.'];
+}
+
 function aptd_keu_ralan_action_label(array $row)
 {
     $historySelected = (float) $row['claim_selected_raw'] > 0
@@ -505,11 +1516,129 @@ function aptd_keu_ralan_use_history_claim(mysqli $mysqli, $noRawat, $startDate, 
 
 function aptd_keu_ralan_calculate_claim(mysqli $mysqli, $noRawat, $startDate, $endDate, $kdPoli = '', $username = '')
 {
-    $rows = aptd_keu_ralan_fetch_rows($mysqli, $startDate, $endDate, $kdPoli, trim((string) $noRawat));
+    $rows = aptd_keu_ralan_fetch_rows(
+        $mysqli,
+        $startDate,
+        $endDate,
+        $kdPoli,
+        trim((string) $noRawat),
+        '',
+        null,
+        0,
+        0,
+        'ASC',
+        true
+    );
     if (empty($rows)) {
         return ['success' => false, 'message' => 'Data pasien tidak ditemukan pada filter yang dipilih.'];
     }
-    return aptd_keu_ralan_store_claim($mysqli, $rows[0], $username, true);
+    if ((float) $rows[0]['claim_used'] <= 0) {
+        return ['success' => false, 'message' => 'Klaim yang dapat digunakan belum tersedia.'];
+    }
+
+    $claimResult = aptd_keu_ralan_store_claim($mysqli, $rows[0], $username, false);
+    if (!$claimResult['success']) {
+        return $claimResult;
+    }
+    $cacheResult = aptd_keu_ralan_store_calculation($mysqli, $rows[0], $username);
+    if (!$cacheResult['success']) {
+        return $cacheResult;
+    }
+
+    return [
+        'success' => true,
+        'message' => 'Data keuangan rawat jalan berhasil dihitung dan disimpan untuk '
+            . trim((string) $noRawat) . '.',
+    ];
+}
+
+function aptd_keu_ralan_calculate_daily_batch(
+    mysqli $mysqli,
+    $visitDate,
+    $offset = 0,
+    $batchSize = 10,
+    $username = ''
+) {
+    $visitDate = trim((string) $visitDate);
+    $offset = max(0, (int) $offset);
+    $batchSize = max(1, min(20, (int) $batchSize));
+    $dateObject = DateTime::createFromFormat('Y-m-d', $visitDate);
+    $dateErrors = DateTime::getLastErrors();
+    if (
+        !$dateObject
+        || ($dateErrors !== false && ((int) $dateErrors['warning_count'] > 0 || (int) $dateErrors['error_count'] > 0))
+        || $dateObject->format('Y-m-d') !== $visitDate
+    ) {
+        return [
+            'success' => false,
+            'message' => 'Tanggal kunjungan tidak valid.',
+        ];
+    }
+
+    $total = aptd_keu_ralan_count_rows($mysqli, $visitDate, $visitDate);
+    $rows = aptd_keu_ralan_fetch_rows(
+        $mysqli,
+        $visitDate,
+        $visitDate,
+        '',
+        '',
+        '',
+        $batchSize,
+        $offset,
+        0,
+        'ASC'
+    );
+
+    $eligibleRows = [];
+    $skipped = 0;
+    foreach ($rows as $row) {
+        if ((float) $row['claim_used'] > 0) {
+            $eligibleRows[] = $row;
+        } else {
+            $skipped++;
+        }
+    }
+    if (!empty($eligibleRows)) {
+        aptd_keu_ralan_apply_doctor_fees($mysqli, $eligibleRows);
+    }
+
+    $processed = 0;
+    $failed = 0;
+    $failures = [];
+    foreach ($eligibleRows as $row) {
+        $claimResult = aptd_keu_ralan_store_claim($mysqli, $row, $username, false);
+        if (!$claimResult['success']) {
+            $failed++;
+            $failures[] = $row['no_rawat'] . ': ' . $claimResult['message'];
+            continue;
+        }
+        $cacheResult = aptd_keu_ralan_store_calculation($mysqli, $row, $username);
+        if (!$cacheResult['success']) {
+            $failed++;
+            $failures[] = $row['no_rawat'] . ': ' . $cacheResult['message'];
+            continue;
+        }
+        $processed++;
+    }
+
+    $readCount = count($rows);
+    $nextOffset = $offset + $readCount;
+    $done = $readCount === 0 || $nextOffset >= $total;
+
+    return [
+        'success' => true,
+        'message' => $done ? 'Kalkulasi harian selesai.' : 'Batch kalkulasi berhasil.',
+        'visit_date' => $visitDate,
+        'total' => $total,
+        'offset' => $offset,
+        'read' => $readCount,
+        'processed' => $processed,
+        'skipped' => $skipped,
+        'failed' => $failed,
+        'failures' => $failures,
+        'next_offset' => $nextOffset,
+        'done' => $done,
+    ];
 }
 
 function aptd_keu_ralan_summary(array $rows)
@@ -552,7 +1681,18 @@ function aptd_keu_ralan_filter_query($startDate, $endDate, $kdPoli = '')
 
 function aptd_keu_ralan_xml($value)
 {
-    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    $value = (string) $value;
+    if (!preg_match('//u', $value)) {
+        $cleanValue = function_exists('iconv') ? iconv('UTF-8', 'UTF-8//IGNORE', $value) : false;
+        $value = $cleanValue !== false ? $cleanValue : preg_replace('/[\x80-\xFF]/', '', $value);
+    }
+    $value = preg_replace(
+        '/[^\x{0009}\x{000A}\x{000D}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u',
+        '',
+        $value
+    );
+
+    return htmlspecialchars($value, ENT_QUOTES | ENT_XML1 | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 function aptd_keu_ralan_excel_column($index)
@@ -572,6 +1712,9 @@ function aptd_keu_ralan_xlsx_cell($coordinate, $value, $type = 'text', $style = 
     $styleAttribute = $style > 0 ? ' s="' . (int) $style . '"' : '';
     if ($type === 'number') {
         $number = is_numeric($value) ? (float) $value : 0;
+        if (is_nan($number) || is_infinite($number)) {
+            $number = 0;
+        }
         return '<c r="' . $coordinate . '"' . $styleAttribute . '><v>' . $number . '</v></c>';
     }
 
@@ -627,8 +1770,22 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
     $headers = [
         'Tanggal Kunjungan', 'Nomor Rawat', 'No. RM', 'Nama Pasien',
         'Dokter Poliklinik', 'No. SEP', 'Poliklinik', 'Spesialistik',
-        'Status Periksa', 'Status Bayar', 'Jenis Bayar', 'Total Tagihan', 'Klaim Riwayat',
-        'Klaim Aktual', 'Klaim Digunakan', 'Sumber', 'Aksi'
+        'Status Periksa', 'Status Bayar', 'Jenis Bayar', 'Klaim Riwayat',
+        'Klaim Aktual', 'Klaim Digunakan', 'JD Pemeriksaan',
+        'JD dgn Prosedur atau Tindakan', 'Dokter Anestesi', 'Dokter Anak', 'JD HD',
+        'JD USG', 'JD Rontgen', 'JD Lab', 'JD PA',
+        'LAB PK', 'LAB PA', 'Rad USG', 'Rontgen',
+        'JK', 'BHP', 'Obat', 'EKG', 'Darah',
+        'Jumlah', 'Harga', 'Kali',
+        'Fototheraphy', 'Oksigen', 'Spirometri', 'TOTAL', 'MARGIN',
+        'Darah', 'Albumin', 'Tindakan',
+        'Sumber', 'Aksi'
+    ];
+    $headerGroups = [
+        ['start' => 14, 'end' => 22, 'label' => 'Jasa Dokter'],
+        ['start' => 23, 'end' => 26, 'label' => 'BHP Penunjang'],
+        ['start' => 32, 'end' => 34, 'label' => 'Makan'],
+        ['start' => 40, 'end' => 42, 'label' => 'Keterangan'],
     ];
 
     $sheetRows = [];
@@ -637,14 +1794,41 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
         . aptd_keu_ralan_xml($startDate . ' s.d. ' . $endDate . ' | Poliklinik: ' . $poliLabel)
         . '</t></is></c></row>';
 
-    $headerCells = '';
-    foreach ($headers as $index => $header) {
-        $headerCells .= aptd_keu_ralan_xlsx_cell(aptd_keu_ralan_excel_column($index) . '4', $header, 'text', 1);
+    $groupByColumn = [];
+    foreach ($headerGroups as $groupIndex => $headerGroup) {
+        for ($column = $headerGroup['start']; $column <= $headerGroup['end']; $column++) {
+            $groupByColumn[$column] = $groupIndex;
+        }
     }
-    $sheetRows[] = '<row r="4" ht="30">' . $headerCells . '</row>';
 
-    $excelRow = 5;
+    $topHeaderCells = '';
+    $childHeaderCells = '';
+    $mergeRanges = ['A1:AS1', 'A2:AS2'];
+    foreach ($headers as $index => $header) {
+        $columnName = aptd_keu_ralan_excel_column($index);
+        if (!isset($groupByColumn[$index])) {
+            $topHeaderCells .= aptd_keu_ralan_xlsx_cell($columnName . '4', $header, 'text', 1);
+            $mergeRanges[] = $columnName . '4:' . $columnName . '5';
+            continue;
+        }
+
+        $headerGroup = $headerGroups[$groupByColumn[$index]];
+        if ($index === $headerGroup['start']) {
+            $endColumnName = aptd_keu_ralan_excel_column($headerGroup['end']);
+            $topHeaderCells .= aptd_keu_ralan_xlsx_cell($columnName . '4', $headerGroup['label'], 'text', 1);
+            $mergeRanges[] = $columnName . '4:' . $endColumnName . '4';
+        }
+        $childHeaderCells .= aptd_keu_ralan_xlsx_cell($columnName . '5', $header, 'text', 1);
+    }
+    $sheetRows[] = '<row r="4" ht="30">' . $topHeaderCells . '</row>';
+    $sheetRows[] = '<row r="5" ht="34">' . $childHeaderCells . '</row>';
+
+    $excelRow = 6;
+    $expenseGrandTotal = 0;
+    $marginGrandTotal = 0;
     foreach ($rows as $row) {
+        $expenseGrandTotal += (float) $row['total'];
+        $marginGrandTotal += (float) $row['margin'];
         $values = [
             ['value' => $row['tgl_registrasi'], 'type' => 'text', 'style' => 0],
             ['value' => $row['no_rawat'], 'type' => 'text', 'style' => 0],
@@ -657,10 +1841,44 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
             ['value' => $row['status_periksa'], 'type' => 'text', 'style' => 0],
             ['value' => $row['status_bayar'], 'type' => 'text', 'style' => 0],
             ['value' => $row['jenis_bayar'], 'type' => 'text', 'style' => 0],
-            ['value' => $row['total_tagihan'], 'type' => 'number', 'style' => 2],
             ['value' => $row['claim_history'], 'type' => 'number', 'style' => 2],
             ['value' => $row['claim_actual'], 'type' => 'number', 'style' => 2],
             ['value' => $row['claim_used'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jd_pemeriksaan'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jd_prosedur'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jd_dokter_anestesi'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jd_dokter_anak'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jd_hd'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jd_usg'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jd_rontgen'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jd_lab'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jd_pa'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['bhp_lab_pk'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['bhp_lab_pa'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['bhp_rad_usg'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['bhp_rontgen'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['jasa_karyawan'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['biaya_bhp'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['biaya_obat'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['biaya_ekg'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['biaya_darah'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['makan_jumlah'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['makan_harga'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['makan_kali'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['biaya_fototheraphy'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['biaya_oksigen'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['biaya_spirometri'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['total'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['margin'], 'type' => 'number', 'style' => (float) $row['margin'] < 0 ? 4 : 2],
+            ['value' => $row['keterangan_darah'], 'type' => 'number', 'style' => 0],
+            ['value' => $row['keterangan_albumin'], 'type' => 'number', 'style' => 0],
+            [
+                'value' => trim((string) $row['keterangan_tindakan']) !== ''
+                    ? $row['keterangan_tindakan']
+                    : '-',
+                'type' => 'text',
+                'style' => 0,
+            ],
             ['value' => $row['claim_source'], 'type' => 'text', 'style' => 0],
             ['value' => aptd_keu_ralan_action_label($row), 'type' => 'text', 'style' => 0],
         ];
@@ -678,19 +1896,36 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
         $excelRow++;
     }
 
-    $lastDataRow = max(4, $excelRow - 1);
+    $lastDataRow = max(5, $excelRow - 1);
+    $lastSheetRow = $lastDataRow;
+    if (!empty($rows)) {
+        $footerRow = $excelRow;
+        $footerCells = aptd_keu_ralan_xlsx_cell('AL' . $footerRow, 'TOTAL LAPORAN', 'text', 3)
+            . aptd_keu_ralan_xlsx_cell('AM' . $footerRow, round($expenseGrandTotal, 2), 'number', 2)
+            . aptd_keu_ralan_xlsx_cell(
+                'AN' . $footerRow,
+                round($marginGrandTotal, 2),
+                'number',
+                $marginGrandTotal < 0 ? 4 : 2
+            );
+        $sheetRows[] = '<row r="' . $footerRow . '" ht="22">' . $footerCells . '</row>';
+        $lastSheetRow = $footerRow;
+    }
     $sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        . '<dimension ref="A1:Q' . $lastDataRow . '"/>'
-        . '<sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+        . '<dimension ref="A1:AS' . $lastSheetRow . '"/>'
+        . '<sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
         . '<cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="3" width="22" customWidth="1"/>'
         . '<col min="4" max="5" width="30" customWidth="1"/><col min="6" max="6" width="24" customWidth="1"/>'
         . '<col min="7" max="7" width="28" customWidth="1"/><col min="8" max="8" width="22" customWidth="1"/>'
-        . '<col min="9" max="11" width="18" customWidth="1"/><col min="12" max="15" width="20" customWidth="1"/>'
-        . '<col min="16" max="17" width="18" customWidth="1"/></cols>'
+        . '<col min="9" max="11" width="18" customWidth="1"/><col min="12" max="14" width="20" customWidth="1"/>'
+        . '<col min="15" max="23" width="22" customWidth="1"/><col min="24" max="27" width="18" customWidth="1"/>'
+        . '<col min="28" max="32" width="20" customWidth="1"/><col min="33" max="42" width="18" customWidth="1"/>'
+        . '<col min="43" max="43" width="30" customWidth="1"/><col min="44" max="45" width="18" customWidth="1"/></cols>'
         . '<sheetData>' . implode('', $sheetRows) . '</sheetData>'
-        . '<mergeCells count="2"><mergeCell ref="A1:Q1"/><mergeCell ref="A2:Q2"/></mergeCells>'
-        . '<autoFilter ref="A4:Q' . $lastDataRow . '"/>'
+        . '<mergeCells count="' . count($mergeRanges) . '"><mergeCell ref="'
+        . implode('"/><mergeCell ref="', $mergeRanges)
+        . '"/></mergeCells>'
         . '</worksheet>';
 
     $files = [
@@ -698,7 +1933,7 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
         '_rels/.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
         'xl/workbook.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Keuangan Ralan BPJS" sheetId="1" r:id="rId1"/></sheets></workbook>',
         'xl/_rels/workbook.xml.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
-        'xl/styles.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
+        'xl/styles.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFDC2626"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center"/></xf><xf numFmtId="164" fontId="2" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
         'xl/worksheets/sheet1.xml' => $sheetXml,
     ];
 

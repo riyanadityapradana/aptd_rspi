@@ -23,33 +23,29 @@ require_once dirname(__DIR__) . '/poli_specialty_helper.php';
 						'A92' => 'ASURANSI',
 					];
 					
-					// Read filter values from POST
-					$requestedPoli = isset($_POST['poli']) ? trim((string) $_POST['poli']) : '';
-					$filter_poli = aptd_poli_specialty_selected_group($specialtyGroups, $requestedPoli);
-					$filter_month = isset($_POST['month']) ? intval($_POST['month']) : date('n');
-					$filter_year = isset($_POST['year']) ? intval($_POST['year']) : date('Y');
-
-					// Special handling: if poli VAKSIN is selected, replace BPJS with Pancar Tour (kd_pj = A96)
-					if(strtoupper($filter_poli) === 'VAKSIN'){
-						$penjamin = [
-							'A09' => 'UMUM',
-							'A96' => 'Pancar Tour',
-							'A92' => 'ASURANSI',
-						];
+					list($filter_month, $filter_year) = aptd_poli_specialty_period(
+						isset($_POST['month']) ? $_POST['month'] : date('n'),
+						isset($_POST['year']) ? $_POST['year'] : date('Y')
+					);
+					$summaryRows = aptd_poli_specialty_monthly_summary(
+						$mysqli,
+						$specialtyGroups,
+						$filter_month,
+						$filter_year,
+						$penjamin
+					);
+					$grandTotals = array_fill_keys(array_keys($penjamin), 0);
+					$grandTotal = 0;
+					foreach ($summaryRows as $summaryRow) {
+						foreach (array_keys($penjamin) as $payerCode) {
+							$grandTotals[$payerCode] += isset($summaryRow['counts'][$payerCode])
+								? (int) $summaryRow['counts'][$payerCode]
+								: 0;
+						}
+						$grandTotal += (int) $summaryRow['total'];
 					}
 					?>
 					<form id="filterForm" method="post" class="form-inline mb-2">
-						<div class="form-group mr-2">
-							<label for="poli">Poliklinik:&nbsp;</label>
-							<select name="poli" id="poli" class="form-control form-control-sm ml-1">
-								<?php
-								foreach($specialtyGroups as $poli_name => $codes){
-									$sel = ($filter_poli === $poli_name) ? 'selected' : '';
-									echo "<option value=\"".htmlspecialchars($poli_name)."\" $sel>".htmlspecialchars($poli_name)."</option>";
-								}
-								?>
-							</select>
-						</div>
 						<div class="form-group mr-2">
 							<label for="month">Bulan:&nbsp;</label>
 							<select name="month" id="month" class="form-control form-control-sm ml-1">
@@ -90,61 +86,34 @@ require_once dirname(__DIR__) . '/poli_specialty_helper.php';
 						</tr>
 					</thead>
 					<tbody>
-						<?php
-							// Get poli codes for selected poli group
-							$poli_codes = isset($specialtyGroups[$filter_poli]) ? $specialtyGroups[$filter_poli] : [];
-							
-							$data = [];
-							
-							// Query data for each jenis bayar
-							if(!empty($poli_codes)){
-								$poli_codes_str = "'" . implode("','", array_map(function($v){ return mysqli_real_escape_string($GLOBALS['mysqli'], $v); }, $poli_codes)) . "'";
-								
-								$whereParts = [
-									"rp.kd_poli IN (".$poli_codes_str.")",
-									aptd_poli_specialty_exclusion_sql($mysqli, 'rp.kd_poli'),
-									"EXISTS (SELECT 1 FROM poliklinik pl WHERE pl.kd_poli = rp.kd_poli AND pl.status = '1')",
-									"rp.stts = 'Sudah'",
-									"rp.status_bayar = 'Sudah Bayar'",
-									"rp.no_rkm_medis NOT IN (SELECT no_rkm_medis FROM pasien WHERE LOWER(nm_pasien) LIKE '%test%')"
-								];
-								
-								// Date range from month+year
-								if($filter_month && $filter_year){
-									$start = sprintf('%04d-%02d-01',$filter_year,$filter_month);
-									$end = date('Y-m-t', strtotime($start));
-									$whereParts[] = "rp.tgl_registrasi BETWEEN '".$start."' AND '".$end."'";
-								}
-								
-								// Get data for each payment type
-								foreach($penjamin as $kd_pj => $label){
-									$sql = "SELECT COUNT(*) as jml FROM reg_periksa rp WHERE rp.kd_pj = '".$kd_pj."' AND " . implode(' AND ', $whereParts);
-									$result = mysqli_query($mysqli, $sql);
-									if($result){
-										$row = mysqli_fetch_assoc($result);
-										$data[$kd_pj] = isset($row['jml']) ? (int)$row['jml'] : 0;
-									} else {
-										$data[$kd_pj] = 0;
-									}
-								}
-								
-								// Calculate total
-								$total = array_sum($data);
-							} else {
-								$data = array_fill_keys(array_keys($penjamin), 0);
-								$total = 0;
-							}
-						?>
-						<tr>
-							<td style="text-align: center;">1</td>
-							<td><?php echo htmlspecialchars($filter_poli); ?></td>
-							<?php foreach($penjamin as $kd => $label){
-								$val = isset($data[$kd]) ? $data[$kd] : 0;
-								echo '<td style="text-align: center;">'.htmlspecialchars($val).'</td>';
-							} ?>
-							<td style="text-align: center; font-weight: bold;"><?php echo $total; ?></td>
-						</tr>
+						<?php if (empty($summaryRows)): ?>
+							<tr>
+								<td colspan="6" style="text-align: center;">Tidak ada data kunjungan pada periode ini.</td>
+							</tr>
+						<?php else: ?>
+							<?php foreach ($summaryRows as $index => $summaryRow): ?>
+								<tr>
+									<td style="text-align: center;"><?php echo $index + 1; ?></td>
+									<td><?php echo htmlspecialchars($summaryRow['nama_poli'], ENT_QUOTES, 'UTF-8'); ?></td>
+									<?php foreach ($penjamin as $payerCode => $label): ?>
+										<td style="text-align: center;">
+											<?php echo isset($summaryRow['counts'][$payerCode]) ? (int) $summaryRow['counts'][$payerCode] : 0; ?>
+										</td>
+									<?php endforeach; ?>
+									<td style="text-align: center; font-weight: bold;"><?php echo (int) $summaryRow['total']; ?></td>
+								</tr>
+							<?php endforeach; ?>
+						<?php endif; ?>
 					</tbody>
+					<tfoot>
+						<tr style="background-color:#f8f9fa;font-weight:bold;">
+							<td colspan="2" style="text-align:right;">Grand Total</td>
+							<?php foreach ($penjamin as $payerCode => $label): ?>
+								<td style="text-align:center;"><?php echo (int) $grandTotals[$payerCode]; ?></td>
+							<?php endforeach; ?>
+							<td style="text-align:center;"><?php echo (int) $grandTotal; ?></td>
+						</tr>
+					</tfoot>
 				</table>
 			</div>
 		</div>
@@ -160,7 +129,6 @@ require_once dirname(__DIR__) . '/poli_specialty_helper.php';
 		// Export to Excel
 		$('#btnExport').on('click', function(){
 			var formData = new FormData();
-			formData.append('poli', $('#poli').val());
 			formData.append('month', $('#month').val());
 			formData.append('year', $('#year').val());
 			formData.append('export', '1');
@@ -175,7 +143,7 @@ require_once dirname(__DIR__) . '/poli_specialty_helper.php';
 					responseType: 'blob'
 				},
 				success: function(data, status, xhr){
-					var filename = 'Data_Kunjungan_' + new Date().toISOString().split('T')[0] + '.xlsx';
+					var filename = 'Data_Kunjungan_PerPoli_' + new Date().toISOString().split('T')[0] + '.xlsx';
 					var link = document.createElement('a');
 					var url = URL.createObjectURL(data);
 					link.href = url;
