@@ -5,7 +5,7 @@ list($month, $year, $startDate, $endDate) = aptd_keu_ranap_date_filter(false);
 $monthLabels = aptd_month_labels_local();
 $saveMessage = null;
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
-$canEditClaim = in_array($levelLogin, ['admin', 'rekammedis'], true);
+$canEditClaim = in_array($levelLogin, ['admin', 'rekammedis', 'keuangan'], true);
 if (isset($_POST['save_claim']) && $_POST['save_claim'] === '1') {
     $claimPage = isset($_POST['claim_page']) ? max(0, (int) $_POST['claim_page']) : 0;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {

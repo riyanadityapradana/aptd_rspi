@@ -2179,11 +2179,13 @@ function aptd_keu_ranap_summary(array $rows)
         'total_claim' => 0,
         'total_jasa_dokter' => 0,
         'total_obat' => 0,
+        'total_margin' => 0,
     ];
 
     foreach ($rows as $row) {
         $summary['total_claim'] += isset($row['claim']) ? (float) $row['claim'] : 0;
         $summary['total_obat'] += isset($row['obat']) ? (float) $row['obat'] : 0;
+        $summary['total_margin'] += isset($row['margin']) ? (float) $row['margin'] : 0;
 
         foreach ($doctorFeeKeys as $key) {
             $summary['total_jasa_dokter'] += isset($row[$key]) ? (float) $row[$key] : 0;

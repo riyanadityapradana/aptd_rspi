@@ -249,7 +249,7 @@ $menuAdmin = [
                 <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
                     <?php renderDropdownMenu('navbarDropdownRalan', 'Master Kunjungan Ralan', $menuKunjunganRalan, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownRanap', 'Master Kunjungan Ranap', $menuKunjunganRanap, $page); ?>
-                    <?php if ($levelLogin === 'rekammedis') { renderMenuLink('input_data_claim', 'Input Data Claim', $page); } ?>
+                    <?php if (in_array($levelLogin, ['rekammedis', 'keuangan'], true)) { renderMenuLink('input_data_claim', 'Input Data Claim', $page); } ?>
                     <?php if ($levelLogin === 'perawat') { renderMenuLink('diagnosa_awal_sementara_ranap', 'Input Diagnosa Awal', $page); } ?>
                     <?php renderDropdownMenu('navbarDropdownPenyakit', 'Master Penyakit', $menuPenyakit, $page); ?>
                     <?php renderDropdownMenu('navbarDropdownDataKlinis', 'Data Klinis', $menuDataKlinis, $page); ?>

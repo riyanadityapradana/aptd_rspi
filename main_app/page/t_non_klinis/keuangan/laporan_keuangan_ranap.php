@@ -6,7 +6,7 @@ $filterInfo = aptd_keu_ranap_filter_info_label($startDate, $endDate, $filterBy);
 $filterQuery = aptd_keu_ranap_filter_query($startDate, $endDate, $filterBy);
 $saveMessage = null;
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
-$canEditClaim = in_array($levelLogin, ['admin', 'rekammedis'], true);
+$canEditClaim = in_array($levelLogin, ['admin', 'rekammedis', 'keuangan'], true);
 $canCalculateKeuangan = in_array($levelLogin, ['admin', 'keuangan'], true);
 $isReportRowAction = (isset($_POST['calculate_keu_row']) && $_POST['calculate_keu_row'] === '1')
     || (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1')
@@ -99,11 +99,12 @@ ob_start(); ?>
 <?php $filters = ob_get_clean();
 
 ob_start(); ?>
-<section class="analytics-cards">
+<section class="analytics-cards keu-ranap-cards">
     <div class="analytics-card"><div class="analytics-k">Pasien BPJS Ranap</div><div class="analytics-v"><?php echo aptd_number($summary['jumlah_pasien']); ?></div><div class="analytics-s"><?php echo htmlspecialchars(aptd_keu_ranap_filter_mode_label($filterBy), ENT_QUOTES, 'UTF-8'); ?></div></div>
     <div class="analytics-card"><div class="analytics-k">Total Claim</div><div class="analytics-v"><?php echo aptd_currency($summary['total_claim']); ?></div><div class="analytics-s">Claim dipakai</div></div>
     <div class="analytics-card"><div class="analytics-k">Total Jasa Dokter</div><div class="analytics-v"><?php echo aptd_currency($summary['total_jasa_dokter']); ?></div><div class="analytics-s">Akumulasi kolom jasa dokter</div></div>
     <div class="analytics-card"><div class="analytics-k">Total Obat</div><div class="analytics-v"><?php echo aptd_currency($summary['total_obat']); ?></div><div class="analytics-s">Akumulasi biaya obat pasien</div></div>
+    <div class="analytics-card keu-margin-card <?php echo (float) $summary['total_margin'] < 0 ? 'keu-margin-loss' : 'keu-margin-profit'; ?>"><div class="analytics-k">Total Margin</div><div class="analytics-v"><?php echo aptd_currency($summary['total_margin']); ?></div><div class="analytics-s">Akumulasi margin data yang sudah dihitung</div></div>
 </section>
 <?php $cards = ob_get_clean();
 
@@ -141,6 +142,11 @@ ob_start(); ?>
     <style>
         .analytics-filter{gap:12px;align-items:flex-end;flex-wrap:wrap}
         .analytics-filter .form-control[type=date]{min-width:150px}
+        .keu-ranap-cards .analytics-card{min-width:0;overflow:hidden}
+        .keu-ranap-cards .analytics-card:nth-child(5){background:linear-gradient(135deg,#eefbf4,#fff)}
+        .keu-ranap-cards .keu-margin-loss{background:linear-gradient(135deg,#fff0f0,#fff)}
+        .keu-ranap-cards .keu-margin-loss .analytics-v{color:#b42318}
+        .keu-ranap-cards .keu-margin-profit .analytics-v{color:#16794b}
         .keu-date-mode{min-width:240px}
         .keu-radio-group{display:flex;gap:14px;align-items:center;min-height:31px}
         .keu-radio{display:inline-flex;gap:6px;align-items:center;margin:0;font-size:13px;color:#123a63;white-space:nowrap}

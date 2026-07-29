@@ -432,9 +432,9 @@ ob_start(); ?>
 ob_start(); ?>
 <section class="analytics-cards keu-ralan-cards">
     <div class="analytics-card"><div class="analytics-k">Kunjungan BPJS</div><div class="analytics-v"><?php echo aptd_number($summary['jumlah_kunjungan']); ?></div><div class="analytics-s">Rawat jalan pada periode terpilih</div></div>
-    <div class="analytics-card"><div class="analytics-k">Poliklinik</div><div class="analytics-v"><?php echo aptd_number($summary['jumlah_poli']); ?></div><div class="analytics-s">Poli dengan kunjungan BPJS</div></div>
-    <div class="analytics-card"><div class="analytics-k">Sudah SEP</div><div class="analytics-v"><?php echo aptd_number($summary['sudah_sep']); ?></div><div class="analytics-s">Kunjungan dengan nomor SEP</div></div>
-    <div class="analytics-card"><div class="analytics-k">Total Tagihan</div><div class="analytics-v">Rp <?php echo aptd_currency($summary['total_tagihan']); ?></div><div class="analytics-s">Rata-rata Rp <?php echo aptd_currency($summary['rata_tagihan']); ?> / kunjungan</div></div>
+    <div class="analytics-card"><div class="analytics-k">Total Klaim</div><div class="analytics-v">Rp <?php echo aptd_currency($summary['total_klaim']); ?></div><div class="analytics-s">Akumulasi klaim digunakan</div></div>
+    <div class="analytics-card"><div class="analytics-k">Total Jasa Dokter</div><div class="analytics-v">Rp <?php echo aptd_currency($summary['total_jasa_dokter']); ?></div><div class="analytics-s">Akumulasi seluruh jasa dokter</div></div>
+    <div class="analytics-card"><div class="analytics-k">Total Obat</div><div class="analytics-v">Rp <?php echo aptd_currency($summary['total_obat']); ?></div><div class="analytics-s">Akumulasi biaya dasar obat</div></div>
 </section>
 <?php $cards = ob_get_clean();
 

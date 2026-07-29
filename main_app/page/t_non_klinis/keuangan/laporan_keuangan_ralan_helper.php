@@ -471,31 +471,58 @@ function aptd_keu_ralan_count_rows(mysqli $mysqli, $startDate, $endDate, $kdPoli
 
 function aptd_keu_ralan_fetch_summary(mysqli $mysqli, $startDate, $endDate, $kdPoli = '')
 {
+    aptd_keu_ralan_ensure_cache_schema($mysqli);
     $poliWhere = $kdPoli !== ''
         ? " AND rp.kd_poli = '" . $mysqli->real_escape_string($kdPoli) . "'"
         : '';
     $startDate = $mysqli->real_escape_string($startDate);
     $endDate = $mysqli->real_escape_string($endDate);
+    $inacbgSql = aptd_keu_ralan_inacbg_tariff_sql();
     $sql = "
         SELECT COUNT(*) AS jumlah_kunjungan,
-               COUNT(DISTINCT report.kd_poli) AS jumlah_poli,
-               COALESCE(SUM(report.has_sep), 0) AS sudah_sep,
-               COALESCE(SUM(report.total_tagihan), 0) AS total_tagihan
+               COALESCE(SUM(CASE
+                   WHEN report.claim_actual > 0 THEN report.claim_actual
+                   WHEN report.cached_claim_used > 0 THEN report.cached_claim_used
+                   WHEN report.has_target_diagnosis = 1 THEN report.manual_claim_selected
+                   ELSE 0
+               END), 0) AS total_klaim,
+               COALESCE(SUM(report.total_jasa_dokter), 0) AS total_jasa_dokter,
+               COALESCE(SUM(report.total_obat), 0) AS total_obat
         FROM (
             SELECT rp.no_rawat,
-                   rp.kd_poli,
-                   MAX(CASE
-                       WHEN TRIM(IFNULL(bs.no_sep, '')) <> '' THEN 1
-                       ELSE 0
-                   END) AS has_sep,
-                   COALESCE((
-                       SELECT MAX(b.totalbiaya)
-                       FROM billing b
-                       WHERE b.no_rawat = rp.no_rawat
-                         AND b.status = 'Tagihan'
-                   ), 0) AS total_tagihan
+                   COALESCE(MAX(inacbg.tariff), 0) AS claim_actual,
+                   COALESCE(MAX(cache.claim_used), 0) AS cached_claim_used,
+                   COALESCE(MAX(manual.claim_selected), 0) AS manual_claim_selected,
+                   CASE
+                       WHEN COUNT(dp.no_rawat) = 0 THEN
+                           CASE WHEN MAX(NULLIF(TRIM(bs.diagawal), '')) IS NOT NULL THEN 1 ELSE 0 END
+                       WHEN UPPER(LEFT(COALESCE(MAX(CASE
+                           WHEN dp.prioritas = 1 THEN NULLIF(TRIM(dp.kd_penyakit), '')
+                       END), ''), 1)) = 'Z' THEN
+                           CASE WHEN MAX(CASE
+                               WHEN dp.prioritas = 2 THEN NULLIF(TRIM(dp.kd_penyakit), '')
+                           END) IS NOT NULL THEN 1 ELSE 0 END
+                       ELSE
+                           CASE WHEN MAX(CASE
+                               WHEN dp.prioritas = 1 THEN NULLIF(TRIM(dp.kd_penyakit), '')
+                           END) IS NOT NULL THEN 1 ELSE 0 END
+                   END AS has_target_diagnosis,
+                   COALESCE(MAX(cache.calc_jd_pemeriksaan), 0)
+                       + COALESCE(MAX(cache.calc_jd_prosedur), 0)
+                       + COALESCE(MAX(cache.calc_jd_dokter_anestesi), 0)
+                       + COALESCE(MAX(cache.calc_jd_dokter_anak), 0)
+                       + COALESCE(MAX(cache.calc_jd_hd), 0)
+                       + COALESCE(MAX(cache.calc_jd_usg), 0)
+                       + COALESCE(MAX(cache.calc_jd_rontgen), 0)
+                       + COALESCE(MAX(cache.calc_jd_lab), 0)
+                       + COALESCE(MAX(cache.calc_jd_pa), 0) AS total_jasa_dokter,
+                   COALESCE(MAX(cache.calc_biaya_obat), 0) AS total_obat
             FROM reg_periksa rp
+            LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
             LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
+            LEFT JOIN diagnosa_pasien dp ON dp.no_rawat = rp.no_rawat
+            LEFT JOIN lap_keuangan_bpjs manual ON manual.no_rawat = rp.no_rawat
+            LEFT JOIN lap_keuangan_bpjs_ralan cache ON cache.no_rawat = rp.no_rawat
             WHERE rp.tgl_registrasi BETWEEN '$startDate' AND '$endDate'
               AND rp.status_lanjut = 'Ralan'
               AND rp.kd_pj = 'BPJ'
@@ -504,21 +531,18 @@ function aptd_keu_ralan_fetch_summary(mysqli $mysqli, $startDate, $endDate, $kdP
                   SELECT 1 FROM kamar_inap ki WHERE ki.no_rawat = rp.no_rawat
               )
               $poliWhere
-            GROUP BY rp.no_rawat, rp.kd_poli
+            GROUP BY rp.no_rawat
         ) report";
     $result = $mysqli->query($sql);
     if (!$result) {
         throw new RuntimeException('Ringkasan laporan tidak dapat dimuat: ' . $mysqli->error);
     }
     $summary = $result->fetch_assoc();
-    $jumlah = (int) $summary['jumlah_kunjungan'];
-    $totalTagihan = (float) $summary['total_tagihan'];
     return [
-        'jumlah_kunjungan' => $jumlah,
-        'jumlah_poli' => (int) $summary['jumlah_poli'],
-        'sudah_sep' => (int) $summary['sudah_sep'],
-        'total_tagihan' => $totalTagihan,
-        'rata_tagihan' => $jumlah > 0 ? $totalTagihan / $jumlah : 0,
+        'jumlah_kunjungan' => (int) $summary['jumlah_kunjungan'],
+        'total_klaim' => (float) $summary['total_klaim'],
+        'total_jasa_dokter' => (float) $summary['total_jasa_dokter'],
+        'total_obat' => (float) $summary['total_obat'],
     ];
 }
 
@@ -1646,9 +1670,27 @@ function aptd_keu_ralan_summary(array $rows)
     $poli = [];
     $totalTagihan = 0;
     $sudahSep = 0;
+    $totalKlaim = 0;
+    $totalJasaDokter = 0;
+    $totalObat = 0;
     foreach ($rows as $row) {
         $poli[$row['kd_poli']] = true;
         $totalTagihan += (float) $row['total_tagihan'];
+        $totalKlaim += isset($row['claim_used']) ? (float) $row['claim_used'] : 0;
+        foreach ([
+            'jd_pemeriksaan',
+            'jd_prosedur',
+            'jd_dokter_anestesi',
+            'jd_dokter_anak',
+            'jd_hd',
+            'jd_usg',
+            'jd_rontgen',
+            'jd_lab',
+            'jd_pa',
+        ] as $doctorFeeField) {
+            $totalJasaDokter += isset($row[$doctorFeeField]) ? (float) $row[$doctorFeeField] : 0;
+        }
+        $totalObat += isset($row['biaya_obat']) ? (float) $row['biaya_obat'] : 0;
         if (trim((string) $row['no_sep']) !== '') {
             $sudahSep++;
         }
@@ -1661,6 +1703,9 @@ function aptd_keu_ralan_summary(array $rows)
         'sudah_sep' => $sudahSep,
         'total_tagihan' => $totalTagihan,
         'rata_tagihan' => $jumlah > 0 ? $totalTagihan / $jumlah : 0,
+        'total_klaim' => $totalKlaim,
+        'total_jasa_dokter' => $totalJasaDokter,
+        'total_obat' => $totalObat,
     ];
 }
 

@@ -3,6 +3,9 @@ require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php'
 require_once dirname(__DIR__) . '/poli_specialty_helper.php';
 ?>
 <br>
+<style>
+	.perpoli-full-table .wrapper{max-height:none!important;overflow-y:visible!important}
+</style>
 <div class="row text-left">
 	<div class="col">
 		<h3 class="text-lef" style="color: #666666; margin-bottom: 5px;">DATA KUNJUNGAN PASIEN</h3>
@@ -11,7 +14,7 @@ require_once dirname(__DIR__) . '/poli_specialty_helper.php';
 </div>
 <div class="row">
 	<div class="col-sm-12" style="border-right: 1px solid #E5E5E5">
-		<div class="dataTables_wrapper table-responsive-sm" style="padding-top: 0;">
+		<div class="dataTables_wrapper table-responsive-sm perpoli-full-table" style="padding-top: 0;">
 				<div class="wrapper">
 					<?php
 					$specialtyGroups = aptd_poli_specialty_mapping($mysqli);
@@ -76,7 +79,7 @@ require_once dirname(__DIR__) . '/poli_specialty_helper.php';
 							<i class="fa fa-file-excel"></i> Export Excel
 						</button>
 					</form>
-					<table class="table table-sm table-bordered table-hover" id="table4" style="width:100%;margin-top: 10px;">
+					<table class="table table-sm table-bordered table-hover" id="tablePerpoli" style="width:100%;margin-top: 10px;">
 					<thead class="thead-dark">
 						<tr>
 							<th style="text-align: center;">No.</th>
