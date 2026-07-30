@@ -104,6 +104,7 @@ $menuKunjunganRalan = [
         ['page' => 'kunjungan_data_sdhSEP', 'label' => 'Kunjungan Pasien Rawat Jalan Sudah SEP'],
         ['page' => 'waktu_tunggu_poli_ralan', 'label' => 'Waktu Tunggu Poli BPJS'],
         ['page' => 'waktu_tunggu_registrasi_perawat_ralan', 'label' => 'Waktu Tunggu Registrasi ke Perawat BPJS'],
+        ['page' => 'evaluasi_task4_bpjs', 'label' => 'Evaluasi Task ID 4 BPJS'],
     ],
     [
         ['page' => 'kunjungan_data_berdasarkanusia_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Berdasarkan Usia'],

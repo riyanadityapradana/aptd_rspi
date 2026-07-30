@@ -949,7 +949,9 @@ function aptd_keu_ralan_calculate_doctor_fee($claimUsed, array $facts)
             $result['jd_rule'] = 'Poliklinik dengan Tindakan 40%';
         } else {
             $result['jd_pemeriksaan'] = round(max(0, (float) $facts['poli_doctor_fee']), 2);
-            $result['jd_rule'] = 'Pemeriksaan Poliklinik';
+            $result['jd_rule'] = !empty($facts['has_nebulizer'])
+                ? 'Pemeriksaan Poliklinik (Nebulizer dikecualikan)'
+                : 'Pemeriksaan Poliklinik';
         }
     }
 
@@ -1005,6 +1007,7 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
             'specialist_name' => isset($row['nm_sps']) ? (string) $row['nm_sps'] : '',
             'has_hd' => 0,
             'has_poli' => 0,
+            'has_nebulizer' => 0,
             'has_other_treatment' => 0,
             'has_injection' => 0,
             'poli_doctor_fee' => 0,
@@ -1074,8 +1077,13 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
                        THEN 1 ELSE 0
                    END) AS has_poli,
                    MAX(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%nebulizer%'
+                       THEN 1 ELSE 0
+                   END) AS has_nebulizer,
+                   MAX(CASE
                        WHEN LOWER(jp.nm_perawatan) NOT LIKE '%pemeriksaan poliklinik%'
                         AND LOWER(jp.nm_perawatan) NOT LIKE '%pemeriksaan poli umum%'
+                        AND LOWER(jp.nm_perawatan) NOT LIKE '%nebulizer%'
                        THEN 1 ELSE 0
                    END) AS has_other_treatment,
                    MAX(CASE
@@ -1139,6 +1147,7 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
             }
             $factsByNoRawat[$noRawat]['has_hd'] = (int) $treatment['has_hd'];
             $factsByNoRawat[$noRawat]['has_poli'] = (int) $treatment['has_poli'];
+            $factsByNoRawat[$noRawat]['has_nebulizer'] = (int) $treatment['has_nebulizer'];
             $factsByNoRawat[$noRawat]['has_other_treatment'] = (int) $treatment['has_other_treatment'];
             $factsByNoRawat[$noRawat]['has_injection'] = (int) $treatment['has_injection'];
             $factsByNoRawat[$noRawat]['poli_doctor_fee'] = (float) $treatment['poli_doctor_fee'];
