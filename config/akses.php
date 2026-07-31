@@ -19,6 +19,8 @@ function aptd_get_routes()
         'waktu_tunggu_registrasi_perawat_ralan' => 'page/t_kunjungan/rawat_jalan/waktu_tunggu_registrasi_perawat_ralan.php',
         'evaluasi_task4_bpjs' => 'page/t_kunjungan/rawat_inap/evaluasi_task4_bpjs.php',
         'export_evaluasi_task4_bpjs' => 'page/t_kunjungan/rawat_inap/export_evaluasi_task4_bpjs.php',
+        'evaluasi_task4_terawal_bpjs' => 'page/t_kunjungan/rawat_inap/evaluasi_task4_terawal_bpjs.php',
+        'export_evaluasi_task4_terawal_bpjs' => 'page/t_kunjungan/rawat_inap/export_evaluasi_task4_terawal_bpjs.php',
         'export_kunjungan' => 'page/t_kunjungan/rawat_jalan/export_kunjungan.php',
         'export_kunjungan_igd' => 'page/t_non_klinis/export_kunjungan_igd.php',
         'export_kunjungan_ralan' => 'page/t_kunjungan/rawat_jalan/export_kunjungan_ralan.php',
@@ -139,9 +141,11 @@ function aptd_can_access($level, $page)
         'waktu_tunggu_poli_ralan',
         'waktu_tunggu_registrasi_perawat_ralan',
         'evaluasi_task4_bpjs',
+        'evaluasi_task4_terawal_bpjs',
         'export_blmSEP',
         'export_sdhSEP',
         'export_evaluasi_task4_bpjs',
+        'export_evaluasi_task4_terawal_bpjs',
     ];
 
     if (!isset($accessMap[$level]) || !isset($routes[$page])) {
