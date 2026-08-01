@@ -110,6 +110,438 @@ function aptd_keu_ralan_bind_rows_statement(
     }
 }
 
+function aptd_keu_ralan_validate_apotek_upload(array $file, $requireUploadedFile = true)
+{
+    $uploadErrors = [
+        UPLOAD_ERR_INI_SIZE => 'Ukuran berkas melebihi batas upload server.',
+        UPLOAD_ERR_FORM_SIZE => 'Ukuran berkas melebihi batas form upload.',
+        UPLOAD_ERR_PARTIAL => 'Berkas hanya terunggah sebagian. Silakan unggah ulang.',
+        UPLOAD_ERR_NO_FILE => 'Pilih berkas Excel yang akan diimport.',
+        UPLOAD_ERR_NO_TMP_DIR => 'Folder sementara upload tidak tersedia di server.',
+        UPLOAD_ERR_CANT_WRITE => 'Berkas upload tidak dapat ditulis di server.',
+        UPLOAD_ERR_EXTENSION => 'Upload berkas dihentikan oleh ekstensi server.',
+    ];
+    $errorCode = isset($file['error']) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
+    if ($errorCode !== UPLOAD_ERR_OK) {
+        return [
+            'success' => false,
+            'message' => isset($uploadErrors[$errorCode])
+                ? $uploadErrors[$errorCode]
+                : 'Berkas gagal diunggah.',
+        ];
+    }
+
+    $originalName = isset($file['name'])
+        ? basename(str_replace('\\', '/', trim((string) $file['name'])))
+        : '';
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    if ($originalName === '' || !in_array($extension, ['xls', 'xlsx'], true)) {
+        return [
+            'success' => false,
+            'message' => 'Format berkas tidak didukung. Gunakan berkas .xls atau .xlsx.',
+        ];
+    }
+
+    $temporaryPath = isset($file['tmp_name']) ? (string) $file['tmp_name'] : '';
+    $fileSize = isset($file['size']) ? (int) $file['size'] : 0;
+    if ($temporaryPath === '' || $fileSize <= 0 || !is_file($temporaryPath)) {
+        return ['success' => false, 'message' => 'Berkas Excel kosong atau tidak dapat dibaca.'];
+    }
+    if ($requireUploadedFile && !is_uploaded_file($temporaryPath)) {
+        return ['success' => false, 'message' => 'Sumber berkas upload tidak valid.'];
+    }
+
+    return [
+        'success' => true,
+        'message' => 'Berkas Excel berhasil diterima.',
+        'file_name' => $originalName,
+        'extension' => $extension,
+        'size' => $fileSize,
+    ];
+}
+
+function aptd_keu_ralan_ensure_apotek_manual_schema(mysqli $mysqli)
+{
+    static $ready = false;
+    if ($ready) {
+        return;
+    }
+
+    $sql = "CREATE TABLE IF NOT EXISTS klaim_apotek_online_manual (
+        no_sep VARCHAR(40) NOT NULL,
+        nominal_klaim DECIMAL(16,2) NOT NULL DEFAULT 0.00,
+        tanggal_input TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        user_input VARCHAR(100) NOT NULL,
+        PRIMARY KEY (no_sep)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+    if (!$mysqli->query($sql)) {
+        throw new RuntimeException('Tabel klaim apotek online tidak dapat disiapkan: ' . $mysqli->error);
+    }
+    $ready = true;
+}
+
+function aptd_keu_ralan_normalize_apotek_nominal($value)
+{
+    if ($value === null || is_bool($value)) {
+        return null;
+    }
+
+    if (is_int($value) || is_float($value)) {
+        $nominal = (float) $value;
+    } else {
+        $text = trim((string) $value);
+        if ($text === '') {
+            return null;
+        }
+        $text = str_ireplace(['Rp', 'IDR'], '', $text);
+        $text = str_replace(["\xc2\xa0", ' '], '', $text);
+        $text = preg_replace('/[^0-9,.\-]/', '', $text);
+        if ($text === '' || !preg_match('/\d/', $text)) {
+            return null;
+        }
+
+        if (strpos($text, ',') !== false) {
+            $text = str_replace('.', '', $text);
+            $parts = explode(',', $text);
+            $decimal = array_pop($parts);
+            $text = implode('', $parts) . '.' . $decimal;
+        } else {
+            $text = str_replace('.', '', $text);
+        }
+        if (!is_numeric($text)) {
+            return null;
+        }
+        $nominal = (float) $text;
+    }
+
+    if (!is_finite($nominal) || $nominal < 0 || $nominal > 99999999999999.99) {
+        return null;
+    }
+    return round($nominal, 2);
+}
+
+function aptd_keu_ralan_xlsx_archive($filePath)
+{
+    $binary = file_get_contents($filePath);
+    if ($binary === false || substr($binary, 0, 2) !== 'PK') {
+        throw new RuntimeException('Struktur berkas XLSX tidak valid.');
+    }
+
+    $eocdPosition = strrpos($binary, "\x50\x4b\x05\x06");
+    if ($eocdPosition === false || strlen($binary) < $eocdPosition + 22) {
+        throw new RuntimeException('Direktori berkas XLSX tidak ditemukan.');
+    }
+    $eocd = unpack(
+        'Vsignature/vdisk/vcentral_disk/ventries_disk/ventries_total/Vcentral_size/Vcentral_offset/vcomment_length',
+        substr($binary, $eocdPosition, 22)
+    );
+    if (!$eocd || $eocd['signature'] !== 0x06054b50) {
+        throw new RuntimeException('Direktori berkas XLSX rusak.');
+    }
+
+    $entries = [];
+    $position = (int) $eocd['central_offset'];
+    for ($index = 0; $index < (int) $eocd['entries_total']; $index++) {
+        if (strlen($binary) < $position + 46) {
+            throw new RuntimeException('Daftar isi berkas XLSX tidak lengkap.');
+        }
+        $header = unpack(
+            'Vsignature/vversion_made/vversion_needed/vflags/vcompression/vtime/vdate/Vcrc/Vcompressed_size/Vuncompressed_size/vname_length/vextra_length/vcomment_length/vdisk/vinternal/Vexternal/Vlocal_offset',
+            substr($binary, $position, 46)
+        );
+        if (!$header || $header['signature'] !== 0x02014b50) {
+            throw new RuntimeException('Entri berkas XLSX tidak valid.');
+        }
+        $name = substr($binary, $position + 46, (int) $header['name_length']);
+        $entries[$name] = $header;
+        $position += 46
+            + (int) $header['name_length']
+            + (int) $header['extra_length']
+            + (int) $header['comment_length'];
+    }
+
+    return ['binary' => $binary, 'entries' => $entries];
+}
+
+function aptd_keu_ralan_xlsx_entry(array $archive, $name, $required = true)
+{
+    if (!isset($archive['entries'][$name])) {
+        if ($required) {
+            throw new RuntimeException('Komponen ' . $name . ' tidak ditemukan pada XLSX.');
+        }
+        return '';
+    }
+    $entry = $archive['entries'][$name];
+    if (((int) $entry['flags'] & 1) === 1) {
+        throw new RuntimeException('Berkas XLSX terenkripsi tidak dapat diproses.');
+    }
+    if ((int) $entry['uncompressed_size'] > 52428800) {
+        throw new RuntimeException('Komponen XLSX terlalu besar untuk diproses.');
+    }
+
+    $offset = (int) $entry['local_offset'];
+    $binary = $archive['binary'];
+    if (strlen($binary) < $offset + 30) {
+        throw new RuntimeException('Data komponen XLSX tidak lengkap.');
+    }
+    $local = unpack(
+        'Vsignature/vversion/vflags/vcompression/vtime/vdate/Vcrc/Vcompressed_size/Vuncompressed_size/vname_length/vextra_length',
+        substr($binary, $offset, 30)
+    );
+    if (!$local || $local['signature'] !== 0x04034b50) {
+        throw new RuntimeException('Data komponen XLSX rusak.');
+    }
+    $dataOffset = $offset + 30 + (int) $local['name_length'] + (int) $local['extra_length'];
+    $compressed = substr($binary, $dataOffset, (int) $entry['compressed_size']);
+    if ((int) $entry['compression'] === 0) {
+        $content = $compressed;
+    } elseif ((int) $entry['compression'] === 8) {
+        $content = gzinflate($compressed);
+    } else {
+        throw new RuntimeException('Metode kompresi XLSX tidak didukung.');
+    }
+    if ($content === false) {
+        throw new RuntimeException('Komponen XLSX gagal didekompresi.');
+    }
+    if (strlen($content) > 52428800) {
+        throw new RuntimeException('Komponen XLSX terlalu besar untuk diproses.');
+    }
+    return $content;
+}
+
+function aptd_keu_ralan_xlsx_xml($xmlContent, $componentName)
+{
+    $previous = libxml_use_internal_errors(true);
+    $xml = simplexml_load_string($xmlContent, 'SimpleXMLElement', LIBXML_NONET | LIBXML_COMPACT);
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+    if ($xml === false) {
+        throw new RuntimeException('XML ' . $componentName . ' tidak valid.');
+    }
+    $xml->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+    return $xml;
+}
+
+function aptd_keu_ralan_parse_xlsx_without_zip($filePath)
+{
+    $archive = aptd_keu_ralan_xlsx_archive($filePath);
+    $sharedStrings = [];
+    $sharedXmlContent = aptd_keu_ralan_xlsx_entry($archive, 'xl/sharedStrings.xml', false);
+    if ($sharedXmlContent !== '') {
+        $sharedXml = aptd_keu_ralan_xlsx_xml($sharedXmlContent, 'sharedStrings');
+        foreach ($sharedXml->xpath('//x:si') as $sharedItem) {
+            $sharedItem->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+            $text = '';
+            foreach ($sharedItem->xpath('.//x:t') as $textPart) {
+                $text .= (string) $textPart;
+            }
+            $sharedStrings[] = $text;
+        }
+    }
+
+    $sheetNames = [];
+    foreach (array_keys($archive['entries']) as $entryName) {
+        if (preg_match('#^xl/worksheets/sheet[0-9]+\.xml$#i', $entryName)) {
+            $sheetNames[] = $entryName;
+        }
+    }
+    natsort($sheetNames);
+    if (!$sheetNames) {
+        throw new RuntimeException('Worksheet tidak ditemukan pada berkas XLSX.');
+    }
+
+    $records = [];
+    $skipped = 0;
+    $duplicateRows = 0;
+    foreach ($sheetNames as $sheetName) {
+        $sheetXml = aptd_keu_ralan_xlsx_xml(
+            aptd_keu_ralan_xlsx_entry($archive, $sheetName),
+            $sheetName
+        );
+        foreach ($sheetXml->xpath('//x:sheetData/x:row') as $row) {
+            $row->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+            $values = ['E' => '', 'K' => ''];
+            foreach ($row->xpath('./x:c') as $cell) {
+                $reference = strtoupper((string) $cell['r']);
+                $column = preg_replace('/[^A-Z]/', '', $reference);
+                if (!array_key_exists($column, $values)) {
+                    continue;
+                }
+                $cell->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+                $type = (string) $cell['t'];
+                if ($type === 'inlineStr') {
+                    $value = '';
+                    foreach ($cell->xpath('.//x:t') as $textPart) {
+                        $value .= (string) $textPart;
+                    }
+                } else {
+                    $valueNodes = $cell->xpath('./x:v');
+                    $value = $valueNodes ? (string) $valueNodes[0] : '';
+                    if ($type === 's') {
+                        $value = isset($sharedStrings[(int) $value]) ? $sharedStrings[(int) $value] : '';
+                    } elseif (($type === '' || $type === 'n') && is_numeric($value)) {
+                        $value = (float) $value;
+                    }
+                }
+                $values[$column] = $value;
+            }
+
+            if (trim((string) $values['E']) === '' && trim((string) $values['K']) === '') {
+                continue;
+            }
+            $noSep = ltrim(trim((string) $values['E']), "'");
+            $noSep = preg_replace('/\s+/', '', $noSep);
+            $nominal = aptd_keu_ralan_normalize_apotek_nominal($values['K']);
+            if ($noSep === '' || strlen($noSep) > 40 || $nominal === null) {
+                $skipped++;
+                continue;
+            }
+            if (isset($records[$noSep])) {
+                $duplicateRows++;
+            }
+            $records[$noSep] = $nominal;
+        }
+    }
+
+    return [$records, $skipped, $duplicateRows];
+}
+
+function aptd_keu_ralan_import_apotek_excel(mysqli $mysqli, $filePath, $username)
+{
+    $filePath = (string) $filePath;
+    if ($filePath === '' || !is_file($filePath)) {
+        return ['success' => false, 'message' => 'Berkas Excel tidak dapat dibaca.'];
+    }
+
+    $records = [];
+    $skipped = 0;
+    $duplicateRows = 0;
+    $signature = file_get_contents($filePath, false, null, 0, 8);
+    $isXlsx = $signature !== false && substr($signature, 0, 2) === 'PK';
+    if ($isXlsx && !class_exists('ZipArchive')) {
+        list($records, $skipped, $duplicateRows) = aptd_keu_ralan_parse_xlsx_without_zip($filePath);
+    } else {
+        require_once dirname(dirname(__DIR__)) . '/export_excel_helper.php';
+        if (!aptd_excel_bootstrap() || !class_exists('PhpOffice\\PhpSpreadsheet\\IOFactory')) {
+            return ['success' => false, 'message' => 'Library pembaca Excel belum tersedia di server.'];
+        }
+
+        $spreadsheet = null;
+        try {
+            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filePath);
+            if (method_exists($reader, 'setReadDataOnly')) {
+                $reader->setReadDataOnly(true);
+            }
+            $spreadsheet = $reader->load($filePath);
+
+            foreach ($spreadsheet->getAllSheets() as $worksheet) {
+                $highestRow = max(
+                    (int) $worksheet->getHighestDataRow('E'),
+                    (int) $worksheet->getHighestDataRow('K')
+                );
+                for ($rowNumber = 1; $rowNumber <= $highestRow; $rowNumber++) {
+                    $sepValue = $worksheet->getCell('E' . $rowNumber)->getValue();
+                    $claimCell = $worksheet->getCell('K' . $rowNumber);
+                    $claimValue = $claimCell->getValue();
+                    if ($claimCell->isFormula()) {
+                        try {
+                            $claimValue = $claimCell->getCalculatedValue();
+                        } catch (Throwable $exception) {
+                            $claimValue = $claimCell->getValue();
+                        }
+                    }
+
+                    if (trim((string) $sepValue) === '' && trim((string) $claimValue) === '') {
+                        continue;
+                    }
+                    $noSep = ltrim(trim((string) $sepValue), "'");
+                    $noSep = preg_replace('/\s+/', '', $noSep);
+                    $nominal = aptd_keu_ralan_normalize_apotek_nominal($claimValue);
+                    if ($noSep === '' || strlen($noSep) > 40 || $nominal === null) {
+                        $skipped++;
+                        continue;
+                    }
+                    if (isset($records[$noSep])) {
+                        $duplicateRows++;
+                    }
+                    $records[$noSep] = $nominal;
+                }
+            }
+        } catch (Throwable $exception) {
+            if ($spreadsheet) {
+                $spreadsheet->disconnectWorksheets();
+            }
+            throw new RuntimeException('Berkas Excel gagal dibaca: ' . $exception->getMessage(), 0, $exception);
+        }
+        if ($spreadsheet) {
+            $spreadsheet->disconnectWorksheets();
+        }
+        unset($spreadsheet);
+    }
+
+    if (!$records) {
+        return [
+            'success' => false,
+            'message' => 'Tidak ditemukan data Nomor SEP di kolom E dan Nilai Klaim di kolom K.',
+            'processed' => 0,
+            'skipped' => $skipped,
+        ];
+    }
+
+    aptd_keu_ralan_ensure_apotek_manual_schema($mysqli);
+    $username = trim((string) $username);
+    if ($username === '') {
+        $username = 'system';
+    }
+    $username = function_exists('mb_substr')
+        ? mb_substr($username, 0, 100, 'UTF-8')
+        : substr($username, 0, 100);
+
+    $sql = "INSERT INTO klaim_apotek_online_manual
+                (no_sep, nominal_klaim, tanggal_input, user_input)
+            VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+            ON DUPLICATE KEY UPDATE
+                nominal_klaim = VALUES(nominal_klaim),
+                tanggal_input = CURRENT_TIMESTAMP,
+                user_input = VALUES(user_input)";
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('Penyimpanan klaim apotek tidak dapat dipersiapkan: ' . $mysqli->error);
+    }
+
+    $processed = 0;
+    $mysqli->begin_transaction();
+    try {
+        $noSep = '';
+        $nominal = 0.0;
+        if (!$stmt->bind_param('sds', $noSep, $nominal, $username)) {
+            throw new RuntimeException('Parameter klaim apotek tidak dapat dipersiapkan.');
+        }
+        foreach ($records as $recordNoSep => $recordNominal) {
+            $noSep = $recordNoSep;
+            $nominal = $recordNominal;
+            if (!$stmt->execute()) {
+                throw new RuntimeException('Klaim untuk SEP ' . $noSep . ' tidak dapat disimpan.');
+            }
+            $processed++;
+        }
+        $mysqli->commit();
+    } catch (Throwable $exception) {
+        $mysqli->rollback();
+        $stmt->close();
+        throw $exception;
+    }
+    $stmt->close();
+
+    return [
+        'success' => true,
+        'message' => 'Berhasil mengimpor/memperbarui ' . $processed . ' data klaim apotek online.',
+        'processed' => $processed,
+        'skipped' => $skipped,
+        'duplicate_rows' => $duplicateRows,
+    ];
+}
+
 function aptd_keu_ralan_cache_fields()
 {
     $decimal = 'DECIMAL(16,2) NOT NULL DEFAULT 0';
@@ -182,6 +614,7 @@ function aptd_keu_ralan_ensure_cache_schema(mysqli $mysqli)
         "claim_source VARCHAR(30) NOT NULL DEFAULT 'Belum Ada'",
         'claim_actual_snapshot DECIMAL(16,2) NOT NULL DEFAULT 0',
         'claim_history_snapshot DECIMAL(16,2) NOT NULL DEFAULT 0',
+        'claim_apotek_snapshot DECIMAL(16,2) NOT NULL DEFAULT 0',
         'claim_history_no_rawat VARCHAR(20) NULL',
         'claim_diagnosis_code VARCHAR(20) NULL',
         'calculated_at DATETIME NULL',
@@ -214,6 +647,7 @@ function aptd_keu_ralan_ensure_cache_schema(mysqli $mysqli)
         'claim_source' => "VARCHAR(30) NOT NULL DEFAULT 'Belum Ada'",
         'claim_actual_snapshot' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
         'claim_history_snapshot' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
+        'claim_apotek_snapshot' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
         'claim_history_no_rawat' => 'VARCHAR(20) NULL',
         'claim_diagnosis_code' => 'VARCHAR(20) NULL',
         'calculated_at' => 'DATETIME NULL',
@@ -245,11 +679,19 @@ function aptd_keu_ralan_cache_select_sql()
 
 function aptd_keu_ralan_claim_shifted_to_actual(array $row)
 {
-    if (empty($row['calculated_at']) || (float) $row['claim_actual'] <= 0) {
+    if (empty($row['calculated_at'])) {
         return false;
     }
-    return (string) $row['cached_claim_source'] !== 'Aktual'
-        || abs((float) $row['cached_claim_used'] - (float) $row['claim_actual']) >= 0.01;
+    $actualShifted = (float) $row['claim_actual'] > 0
+        && (
+            (string) $row['cached_claim_source'] !== 'Aktual'
+            || abs((float) $row['cached_claim_used'] - (float) $row['claim_actual']) >= 0.01
+        );
+    $apotekShifted = abs(
+        (float) (isset($row['cached_claim_apotek_snapshot']) ? $row['cached_claim_apotek_snapshot'] : 0)
+        - (float) (isset($row['klaim_apotek_online']) ? $row['klaim_apotek_online'] : 0)
+    ) >= 0.01;
+    return $actualShifted || $apotekShifted;
 }
 
 function aptd_keu_ralan_apply_cached_calculations(array &$rows)
@@ -268,6 +710,15 @@ function aptd_keu_ralan_apply_cached_calculations(array &$rows)
                 $value = (string) $value;
             }
             $rows[$index][$key] = $value;
+        }
+        if ($hasCache) {
+            $claimUsed = (float) (isset($row['claim_used']) ? $row['claim_used'] : 0);
+            $claimApotek = (float) (isset($row['klaim_apotek_online']) ? $row['klaim_apotek_online'] : 0);
+            $total = (float) $rows[$index]['total'];
+            $rows[$index]['margin'] = round($claimUsed + $claimApotek - $total, 2);
+            $rows[$index]['margin_rule'] = 'Klaim Digunakan Rp ' . aptd_currency($claimUsed)
+                . ' + Klaim Apotek Online Rp ' . aptd_currency($claimApotek)
+                . ' - TOTAL Rp ' . aptd_currency($total);
         }
         $rows[$index]['has_hitung'] = $hasCache ? 1 : 0;
         $rows[$index]['calculation_stale'] = aptd_keu_ralan_claim_shifted_to_actual($row) ? 1 : 0;
@@ -289,6 +740,7 @@ function aptd_keu_ralan_fetch_rows(
 )
 {
     aptd_keu_ralan_ensure_cache_schema($mysqli);
+    aptd_keu_ralan_ensure_apotek_manual_schema($mysqli);
     $poliWhere = $kdPoli !== '' ? ' AND rp.kd_poli = ?' : '';
     $rawatWhere = $onlyNoRawat !== '' ? ' AND rp.no_rawat = ?' : '';
     $searchWhere = aptd_keu_ralan_search_where($mysqli, $search);
@@ -331,6 +783,7 @@ function aptd_keu_ralan_fetch_rows(
             rp.stts AS status_periksa,
             rp.status_bayar,
             COALESCE(MAX(NULLIF(TRIM(bs.no_sep), '')), '') AS no_sep,
+            COALESCE(MAX(apotek.nominal_klaim), 0) AS klaim_apotek_online,
             COUNT(dp.no_rawat) AS diagnosis_count,
             COALESCE(MAX(CASE WHEN dp.prioritas = 1 THEN NULLIF(TRIM(dp.kd_penyakit), '') END), '') AS diagnosis_priority_1,
             COALESCE(MAX(CASE WHEN dp.prioritas = 2 THEN NULLIF(TRIM(dp.kd_penyakit), '') END), '') AS diagnosis_priority_2,
@@ -345,6 +798,7 @@ function aptd_keu_ralan_fetch_rows(
             COALESCE(MAX(cache.claim_source), '') AS cached_claim_source,
             COALESCE(MAX(cache.claim_actual_snapshot), 0) AS cached_claim_actual_snapshot,
             COALESCE(MAX(cache.claim_history_snapshot), 0) AS cached_claim_history_snapshot,
+            COALESCE(MAX(cache.claim_apotek_snapshot), 0) AS cached_claim_apotek_snapshot,
             COALESCE(MAX(cache.calculated_by), '') AS calculated_by,
             $cacheSelectSql
             COALESCE((
@@ -360,6 +814,7 @@ function aptd_keu_ralan_fetch_rows(
         LEFT JOIN spesialis s ON s.kd_sps = d.kd_sps
         INNER JOIN penjab pj ON pj.kd_pj = rp.kd_pj
         LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
+        LEFT JOIN klaim_apotek_online_manual apotek ON apotek.no_sep = bs.no_sep
         LEFT JOIN kamar_inap ki ON ki.no_rawat = rp.no_rawat
         LEFT JOIN diagnosa_pasien dp ON dp.no_rawat = rp.no_rawat
         LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
@@ -1375,9 +1830,14 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
             $factsByNoRawat[(string) $row['no_rawat']]
         );
         $calculation['total'] = aptd_keu_ralan_expense_total($calculation);
-        $calculation['margin'] = round((float) $row['claim_used'] - $calculation['total'], 2);
+        $claimApotek = (float) (isset($row['klaim_apotek_online']) ? $row['klaim_apotek_online'] : 0);
+        $calculation['margin'] = round(
+            (float) $row['claim_used'] + $claimApotek - $calculation['total'],
+            2
+        );
         $calculation['total_rule'] = 'Total seluruh komponen biaya/HPP';
         $calculation['margin_rule'] = 'Klaim Digunakan Rp ' . aptd_currency($row['claim_used'])
+            . ' + Klaim Apotek Online Rp ' . aptd_currency($claimApotek)
             . ' - TOTAL Rp ' . aptd_currency($calculation['total']);
         foreach ($calculation as $field => $value) {
             $rows[$index][$field] = $value;
@@ -1405,6 +1865,7 @@ function aptd_keu_ralan_store_calculation(mysqli $mysqli, array $row, $username 
         'claim_source',
         'claim_actual_snapshot',
         'claim_history_snapshot',
+        'claim_apotek_snapshot',
         'claim_history_no_rawat',
         'claim_diagnosis_code',
         'calculated_at',
@@ -1417,6 +1878,7 @@ function aptd_keu_ralan_store_calculation(mysqli $mysqli, array $row, $username 
         isset($row['claim_source']) ? $row['claim_source'] : 'Belum Ada',
         isset($row['claim_actual']) ? $row['claim_actual'] : 0,
         isset($row['claim_history']) ? $row['claim_history'] : 0,
+        isset($row['klaim_apotek_online']) ? $row['klaim_apotek_online'] : 0,
         isset($row['claim_history_no_rawat']) ? $row['claim_history_no_rawat'] : '',
         isset($row['target_diagnosis_code']) ? $row['target_diagnosis_code'] : '',
         $now,
@@ -1825,7 +2287,7 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
         'Tanggal Kunjungan', 'Nomor Rawat', 'No. RM', 'Nama Pasien',
         'Dokter Poliklinik', 'No. SEP', 'Poliklinik', 'Spesialistik',
         'Status Periksa', 'Status Bayar', 'Jenis Bayar', 'Klaim Riwayat',
-        'Klaim Aktual', 'Klaim Digunakan', 'JD Pemeriksaan',
+        'Klaim Aktual', 'Klaim Digunakan', 'Klaim Apotek Online', 'JD Pemeriksaan',
         'JD dgn Prosedur atau Tindakan', 'Dokter Anestesi', 'Dokter Anak', 'JD HD',
         'JD USG', 'JD Rontgen', 'JD Lab', 'JD PA',
         'LAB PK', 'LAB PA', 'Rad USG', 'Rontgen',
@@ -1836,10 +2298,10 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
         'Sumber', 'Aksi'
     ];
     $headerGroups = [
-        ['start' => 14, 'end' => 22, 'label' => 'Jasa Dokter'],
-        ['start' => 23, 'end' => 26, 'label' => 'BHP Penunjang'],
-        ['start' => 32, 'end' => 34, 'label' => 'Makan'],
-        ['start' => 40, 'end' => 42, 'label' => 'Keterangan'],
+        ['start' => 15, 'end' => 23, 'label' => 'Jasa Dokter'],
+        ['start' => 24, 'end' => 27, 'label' => 'BHP Penunjang'],
+        ['start' => 33, 'end' => 35, 'label' => 'Makan'],
+        ['start' => 41, 'end' => 43, 'label' => 'Keterangan'],
     ];
 
     $sheetRows = [];
@@ -1857,7 +2319,7 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
 
     $topHeaderCells = '';
     $childHeaderCells = '';
-    $mergeRanges = ['A1:AS1', 'A2:AS2'];
+    $mergeRanges = ['A1:AT1', 'A2:AT2'];
     foreach ($headers as $index => $header) {
         $columnName = aptd_keu_ralan_excel_column($index);
         if (!isset($groupByColumn[$index])) {
@@ -1898,6 +2360,7 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
             ['value' => $row['claim_history'], 'type' => 'number', 'style' => 2],
             ['value' => $row['claim_actual'], 'type' => 'number', 'style' => 2],
             ['value' => $row['claim_used'], 'type' => 'number', 'style' => 2],
+            ['value' => $row['klaim_apotek_online'], 'type' => 'number', 'style' => 2],
             ['value' => $row['jd_pemeriksaan'], 'type' => 'number', 'style' => 2],
             ['value' => $row['jd_prosedur'], 'type' => 'number', 'style' => 2],
             ['value' => $row['jd_dokter_anestesi'], 'type' => 'number', 'style' => 2],
@@ -1954,10 +2417,10 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
     $lastSheetRow = $lastDataRow;
     if (!empty($rows)) {
         $footerRow = $excelRow;
-        $footerCells = aptd_keu_ralan_xlsx_cell('AL' . $footerRow, 'TOTAL LAPORAN', 'text', 3)
-            . aptd_keu_ralan_xlsx_cell('AM' . $footerRow, round($expenseGrandTotal, 2), 'number', 2)
+        $footerCells = aptd_keu_ralan_xlsx_cell('AM' . $footerRow, 'TOTAL LAPORAN', 'text', 3)
+            . aptd_keu_ralan_xlsx_cell('AN' . $footerRow, round($expenseGrandTotal, 2), 'number', 2)
             . aptd_keu_ralan_xlsx_cell(
-                'AN' . $footerRow,
+                'AO' . $footerRow,
                 round($marginGrandTotal, 2),
                 'number',
                 $marginGrandTotal < 0 ? 4 : 2
@@ -1967,15 +2430,15 @@ function aptd_keu_ralan_build_xlsx(array $rows, $startDate, $endDate, $poliLabel
     }
     $sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        . '<dimension ref="A1:AS' . $lastSheetRow . '"/>'
+        . '<dimension ref="A1:AT' . $lastSheetRow . '"/>'
         . '<sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
         . '<cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="3" width="22" customWidth="1"/>'
         . '<col min="4" max="5" width="30" customWidth="1"/><col min="6" max="6" width="24" customWidth="1"/>'
         . '<col min="7" max="7" width="28" customWidth="1"/><col min="8" max="8" width="22" customWidth="1"/>'
-        . '<col min="9" max="11" width="18" customWidth="1"/><col min="12" max="14" width="20" customWidth="1"/>'
-        . '<col min="15" max="23" width="22" customWidth="1"/><col min="24" max="27" width="18" customWidth="1"/>'
-        . '<col min="28" max="32" width="20" customWidth="1"/><col min="33" max="42" width="18" customWidth="1"/>'
-        . '<col min="43" max="43" width="30" customWidth="1"/><col min="44" max="45" width="18" customWidth="1"/></cols>'
+        . '<col min="9" max="11" width="18" customWidth="1"/><col min="12" max="15" width="20" customWidth="1"/>'
+        . '<col min="16" max="24" width="22" customWidth="1"/><col min="25" max="28" width="18" customWidth="1"/>'
+        . '<col min="29" max="33" width="20" customWidth="1"/><col min="34" max="43" width="18" customWidth="1"/>'
+        . '<col min="44" max="44" width="30" customWidth="1"/><col min="45" max="46" width="18" customWidth="1"/></cols>'
         . '<sheetData>' . implode('', $sheetRows) . '</sheetData>'
         . '<mergeCells count="' . count($mergeRanges) . '"><mergeCell ref="'
         . implode('"/><mergeCell ref="', $mergeRanges)

@@ -35,7 +35,7 @@ function aptd_keu_ralan_datatable_action(
         if (!$enabled) {
             $title = 'Klaim digunakan belum tersedia';
         } elseif (!empty($row['calculation_stale'])) {
-            $title = 'Klaim Aktual sudah tersedia. Hitung ulang untuk memperbarui seluruh kalkulasi.';
+            $title = 'Dasar klaim berubah. Hitung ulang untuk memperbarui seluruh kalkulasi.';
         } else {
             $title = $actionLabel === 'Hitung Ulang'
                 ? 'Hitung ulang data keuangan'
@@ -162,6 +162,7 @@ function aptd_keu_ralan_datatable_response(mysqli $mysqli)
             $biayaFototheraphy = aptd_keu_ralan_datatable_money($row['biaya_fototheraphy']);
             $biayaOksigen = aptd_keu_ralan_datatable_money($row['biaya_oksigen']);
             $biayaSpirometri = aptd_keu_ralan_datatable_money($row['biaya_spirometri']);
+            $klaimApotekOnline = aptd_keu_ralan_datatable_money($row['klaim_apotek_online']);
             $total = aptd_keu_ralan_datatable_money($row['total']);
             $margin = aptd_keu_ralan_datatable_money($row['margin']);
             $keteranganDarah = aptd_keu_ralan_datatable_html(aptd_number($row['keterangan_darah']));
@@ -192,6 +193,7 @@ function aptd_keu_ralan_datatable_response(mysqli $mysqli)
                     . aptd_keu_ralan_datatable_money($row['claim_history']) . '</span>',
                 aptd_keu_ralan_datatable_money($row['claim_actual']),
                 '<strong>' . aptd_keu_ralan_datatable_money($row['claim_used']) . '</strong>',
+                $klaimApotekOnline,
                 '<span title="' . $jdTitle . '">' . $jdPemeriksaan . '</span>',
                 '<span title="' . $jdTitle . '">' . $jdProsedur . '</span>',
                 '<span title="' . aptd_keu_ralan_datatable_html($row['jd_anestesi_rule']) . '">'
@@ -324,12 +326,80 @@ function aptd_keu_ralan_bulk_daily_response(mysqli $mysqli)
     }
 }
 
+function aptd_keu_ralan_import_apotek_response(mysqli $mysqli)
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/akses.php';
+    header('Content-Type: application/json; charset=UTF-8');
+
+    $level = isset($_SESSION['level']) ? $_SESSION['level'] : '';
+    if (
+        !isset($_SESSION['login_aptd_rspi'])
+        || $_SESSION['login_aptd_rspi'] !== true
+        || !aptd_can_access($level, 'laporan_keuangan_ralan')
+        || !in_array($level, ['admin', 'keuangan'], true)
+    ) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Anda tidak memiliki akses untuk mengimport klaim apotek.',
+        ]);
+        return;
+    }
+    if (strtoupper(isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET') !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['success' => false, 'message' => 'Metode request tidak diizinkan.']);
+        return;
+    }
+
+    $uploadedFile = isset($_FILES['klaim_apotek_file']) && is_array($_FILES['klaim_apotek_file'])
+        ? $_FILES['klaim_apotek_file']
+        : [];
+    $validation = aptd_keu_ralan_validate_apotek_upload($uploadedFile);
+    if (!$validation['success']) {
+        http_response_code(400);
+        echo json_encode($validation);
+        return;
+    }
+
+    try {
+        $result = aptd_keu_ralan_import_apotek_excel(
+            $mysqli,
+            $uploadedFile['tmp_name'],
+            isset($_SESSION['username']) ? $_SESSION['username'] : $level
+        );
+        $result['file'] = [
+            'name' => $validation['file_name'],
+            'extension' => $validation['extension'],
+            'size' => $validation['size'],
+            'parameter' => 'klaim_apotek_file',
+        ];
+        if (!$result['success']) {
+            http_response_code(422);
+        }
+        echo json_encode($result);
+    } catch (Throwable $exception) {
+        error_log('Import klaim apotek Ralan gagal: ' . $exception->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Import klaim apotek belum dapat diselesaikan. Periksa format berkas lalu coba kembali.',
+        ]);
+    }
+}
+
 if (isset($_GET['keu_ralan_mode']) && $_GET['keu_ralan_mode'] === 'datatable') {
     aptd_keu_ralan_datatable_response($mysqli);
     exit;
 }
 if (isset($_GET['keu_ralan_mode']) && $_GET['keu_ralan_mode'] === 'bulk_daily') {
     aptd_keu_ralan_bulk_daily_response($mysqli);
+    exit;
+}
+if (isset($_GET['keu_ralan_mode']) && $_GET['keu_ralan_mode'] === 'import_apotek') {
+    aptd_keu_ralan_import_apotek_response($mysqli);
     exit;
 }
 
@@ -473,6 +543,14 @@ ob_start(); ?>
         .keu-ralan-bulk-status{font-size:12px;font-weight:700;color:#526581}
         .keu-ralan-bulk-status.is-success{color:#15803d}
         .keu-ralan-bulk-status.is-error{color:#dc2626}
+        .keu-import-overlay{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.48);backdrop-filter:blur(2px)}
+        .keu-import-overlay[hidden]{display:none!important}
+        .keu-import-loading{display:flex;align-items:center;gap:12px;min-width:280px;padding:18px 22px;border-radius:12px;background:#fff;color:#203a5f;font-size:14px;font-weight:800;box-shadow:0 18px 45px rgba(15,23,42,.28)}
+        .keu-import-spinner{width:24px;height:24px;border:3px solid #cbd5e1;border-top-color:#203a5f;border-radius:50%;animation:keuImportSpin .75s linear infinite}
+        .keu-import-toast{position:fixed;right:22px;top:86px;z-index:2010;max-width:430px;padding:12px 16px;border-radius:8px;background:#15803d;color:#fff;font-size:13px;font-weight:700;box-shadow:0 12px 30px rgba(15,23,42,.22)}
+        .keu-import-toast.is-error{background:#dc2626}
+        .keu-import-toast[hidden]{display:none!important}
+        @keyframes keuImportSpin{to{transform:rotate(360deg)}}
         .keu-ralan-search{display:flex;justify-content:flex-end;min-width:0;margin-left:auto}
         .keu-ralan-search .dataTables_filter{float:none!important;margin:0!important;text-align:right}
         .keu-ralan-search .dataTables_filter label{display:flex;align-items:center;margin:0!important}
@@ -483,7 +561,7 @@ ob_start(); ?>
         .keu-ralan-pagination-actions{display:flex;justify-content:flex-end;min-width:0;margin-left:auto}
         .keu-ralan-pagination-actions .dataTables_paginate{float:none!important;margin:0!important;padding-top:0!important;white-space:nowrap}
         .keu-ralan-pagination-actions .pagination{margin:0!important;justify-content:flex-end;flex-wrap:wrap}
-        .keu-ralan-table{width:5947px!important;min-width:5947px;table-layout:fixed;border-collapse:separate!important;border-spacing:0}
+        .keu-ralan-table{width:6102px!important;min-width:6102px;table-layout:fixed;border-collapse:separate!important;border-spacing:0}
         .keu-ralan-table th,.keu-ralan-table td{box-sizing:border-box;vertical-align:middle!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .keu-ralan-table thead th{background:#343a40!important;color:#fff!important}
         .keu-ralan-table thead tr:first-child>th.keu-jd-group,.keu-ralan-table thead tr:first-child>th.keu-bhp-group,.keu-ralan-table thead tr:first-child>th.keu-makan-group,.keu-ralan-table thead tr:first-child>th.keu-keterangan-group{height:38px;border-bottom:2px solid #8ba4c7!important;letter-spacing:.2px}
@@ -534,7 +612,7 @@ ob_start(); ?>
     </style>
     <div class="keu-ralan-table-toolbar" aria-label="Pencarian laporan">
         <?php if ($canCalculateKeuangan): ?>
-            <div class="keu-ralan-bulk" aria-label="Kalkulasi massal harian">
+            <div class="keu-ralan-bulk" aria-label="Kalkulasi massal dan import klaim apotek">
                 <label for="keuRalanBulkDate" class="sr-only">Tanggal kunjungan</label>
                 <input
                     type="date"
@@ -545,11 +623,35 @@ ob_start(); ?>
                 <button type="button" class="btn btn-primary btn-sm px-3" id="keuRalanBulkButton">
                     Hitung Data Harian
                 </button>
+                <button
+                    type="button"
+                    class="btn btn-outline-success btn-sm px-3"
+                    id="keuRalanImportButton"
+                    title="Import Tabel Nilai Klaim Apotek Online"
+                >
+                    Import Klaim Apotek
+                </button>
+                <input
+                    type="file"
+                    id="keuRalanImportFile"
+                    name="klaim_apotek_file"
+                    class="d-none"
+                    accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    tabindex="-1"
+                    aria-hidden="true"
+                >
                 <span class="keu-ralan-bulk-status" id="keuRalanBulkStatus" role="status" aria-live="polite"></span>
             </div>
         <?php endif; ?>
         <div class="keu-ralan-search" id="keuRalanSearch"></div>
     </div>
+    <div class="keu-import-overlay" id="keuRalanImportOverlay" hidden aria-hidden="true">
+        <div class="keu-import-loading" role="status" aria-live="polite">
+            <span class="keu-import-spinner" aria-hidden="true"></span>
+            <span>Memproses data klaim apotek...</span>
+        </div>
+    </div>
+    <div class="keu-import-toast" id="keuRalanImportToast" role="alert" hidden></div>
     <div class="table-responsive keu-ralan-scroll">
         <table class="table table-sm table-bordered table-hover analytics-table keu-ralan-table" id="table4" style="width:100%;font-size:12px">
             <colgroup>
@@ -567,6 +669,7 @@ ob_start(); ?>
                 <col style="width:130px">
                 <col style="width:130px">
                 <col style="width:135px">
+                <col style="width:155px">
                 <col style="width:140px">
                 <col style="width:210px">
                 <col style="width:140px">
@@ -615,6 +718,7 @@ ob_start(); ?>
                     <th rowspan="2">Klaim Riwayat</th>
                     <th rowspan="2">Klaim Aktual</th>
                     <th rowspan="2">Klaim Digunakan</th>
+                    <th rowspan="2">Klaim Apotek Online</th>
                     <th colspan="9" class="keu-jd-group">Jasa Dokter</th>
                     <th colspan="4" class="keu-bhp-group">BHP Penunjang</th>
                     <th rowspan="2">JK</th>
@@ -658,13 +762,13 @@ ob_start(); ?>
             <?php if ($summary['jumlah_kunjungan'] > 0): ?>
                 <tfoot>
                     <tr style="font-weight:bold;background:#f5f8fc">
-                        <?php for ($footerColumn = 0; $footerColumn < 37; $footerColumn++): ?>
+                        <?php for ($footerColumn = 0; $footerColumn < 38; $footerColumn++): ?>
                             <td></td>
                         <?php endfor; ?>
                         <td class="text-right">Total Halaman</td>
                         <td class="text-right" id="keuRalanFooterTotal">Rp 0</td>
                         <td class="text-right" id="keuRalanFooterMargin">Rp 0</td>
-                        <?php for ($footerColumn = 40; $footerColumn < 45; $footerColumn++): ?>
+                        <?php for ($footerColumn = 41; $footerColumn < 46; $footerColumn++): ?>
                             <td></td>
                         <?php endfor; ?>
                     </tr>
@@ -769,18 +873,18 @@ ob_start(); ?>
                         .html('<strong>' + formatRupiah(pageTotals.margin) + '</strong>');
                 },
                 columnDefs: [
-                    { targets: [8, 9, 40, 41, 43, 44], className: 'text-center' },
-                    { targets: [11, 12, 13], className: 'text-right col-claim' },
-                    { targets: [14, 15, 16, 17, 18, 19, 20, 21, 22], className: 'text-right keu-jd-cell' },
-                    { targets: [23, 24, 25, 26], className: 'text-right keu-bhp-cell' },
-                    { targets: [27, 28, 29, 30, 31], className: 'text-right col-claim' },
-                    { targets: [32, 33, 34], className: 'text-right keu-makan-cell' },
-                    { targets: [35, 36, 37, 38, 39], className: 'text-right col-claim' },
-                    { targets: [40, 41], className: 'text-center keu-keterangan-cell' },
-                    { targets: 42, className: 'keu-keterangan-cell' },
-                    { targets: 43, className: 'text-center col-claim-source' },
-                    { targets: 44, className: 'text-center keu-action-cell' },
-                    { targets: [11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44], orderable: false }
+                    { targets: [8, 9, 41, 42, 44, 45], className: 'text-center' },
+                    { targets: [11, 12, 13, 14], className: 'text-right col-claim' },
+                    { targets: [15, 16, 17, 18, 19, 20, 21, 22, 23], className: 'text-right keu-jd-cell' },
+                    { targets: [24, 25, 26, 27], className: 'text-right keu-bhp-cell' },
+                    { targets: [28, 29, 30, 31, 32], className: 'text-right col-claim' },
+                    { targets: [33, 34, 35], className: 'text-right keu-makan-cell' },
+                    { targets: [36, 37, 38, 39, 40], className: 'text-right col-claim' },
+                    { targets: [41, 42], className: 'text-center keu-keterangan-cell' },
+                    { targets: 43, className: 'keu-keterangan-cell' },
+                    { targets: 44, className: 'text-center col-claim-source' },
+                    { targets: 45, className: 'text-center keu-action-cell' },
+                    { targets: [11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45], orderable: false }
                 ]
             });
             placeTableControls();
@@ -788,15 +892,36 @@ ob_start(); ?>
             var bulkButton = $('#keuRalanBulkButton');
             var bulkDate = $('#keuRalanBulkDate');
             var bulkStatus = $('#keuRalanBulkStatus');
+            var importButton = $('#keuRalanImportButton');
+            var importFile = $('#keuRalanImportFile');
+            var importOverlay = $('#keuRalanImportOverlay');
+            var importToast = $('#keuRalanImportToast');
+            var importToastTimer = null;
             var setBulkStatus = function(message, state) {
                 bulkStatus
                     .removeClass('is-success is-error')
                     .addClass(state === 'success' ? 'is-success' : (state === 'error' ? 'is-error' : ''))
                     .text(message);
             };
+            var setImportLoading = function(isLoading) {
+                importOverlay.prop('hidden', !isLoading).attr('aria-hidden', isLoading ? 'false' : 'true');
+            };
+            var showImportToast = function(message, state) {
+                if (importToastTimer) {
+                    window.clearTimeout(importToastTimer);
+                }
+                importToast
+                    .toggleClass('is-error', state === 'error')
+                    .text(message)
+                    .prop('hidden', false);
+                importToastTimer = window.setTimeout(function() {
+                    importToast.prop('hidden', true);
+                }, 6000);
+            };
             var finishBulk = function() {
                 bulkButton.prop('disabled', false).text('Hitung Data Harian');
                 bulkDate.prop('disabled', false);
+                importButton.prop('disabled', false).text('Import Klaim Apotek');
             };
             bulkButton.on('click', function() {
                 var visitDate = bulkDate.val();
@@ -808,6 +933,7 @@ ob_start(); ?>
                 var totals = { processed: 0, skipped: 0, failed: 0 };
                 bulkButton.prop('disabled', true).text('Memproses...');
                 bulkDate.prop('disabled', true);
+                importButton.prop('disabled', true);
                 setBulkStatus('Menyiapkan kalkulasi...', '');
 
                 var runBatch = function(offset) {
@@ -866,6 +992,66 @@ ob_start(); ?>
                 };
 
                 runBatch(0);
+            });
+
+            importButton.on('click', function() {
+                importFile.val('').trigger('click');
+            });
+            importFile.on('change', function() {
+                var selectedFile = this.files && this.files.length ? this.files[0] : null;
+                if (!selectedFile) {
+                    return;
+                }
+                if (!/\.(xls|xlsx)$/i.test(selectedFile.name || '')) {
+                    importFile.val('');
+                    setBulkStatus('Format berkas tidak didukung. Gunakan berkas .xls atau .xlsx.', 'error');
+                    showImportToast('Format berkas tidak didukung. Gunakan berkas .xls atau .xlsx.', 'error');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('klaim_apotek_file', selectedFile, selectedFile.name);
+                importButton.prop('disabled', true).text('Mengunggah...');
+                bulkButton.prop('disabled', true);
+                bulkDate.prop('disabled', true);
+                setBulkStatus('Mengunggah berkas klaim apotek...', '');
+                setImportLoading(true);
+
+                $.ajax({
+                    url: 'page/t_non_klinis/keuangan/laporan_keuangan_ralan.php?keu_ralan_mode=import_apotek',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    timeout: 120000
+                }).done(function(response) {
+                    if (!response || response.success !== true) {
+                        setBulkStatus(
+                            response && response.message ? response.message : 'Upload klaim apotek gagal.',
+                            'error'
+                        );
+                        showImportToast(
+                            response && response.message ? response.message : 'Upload klaim apotek gagal.',
+                            'error'
+                        );
+                        return;
+                    }
+                    setBulkStatus(response.message, 'success');
+                    showImportToast(response.message, 'success');
+                    table.ajax.reload(null, false);
+                }).fail(function(xhr) {
+                    var response = xhr.responseJSON || {};
+                    var message = response.message || 'Upload klaim apotek gagal. Silakan coba kembali.';
+                    setBulkStatus(message, 'error');
+                    showImportToast(message, 'error');
+                }).always(function() {
+                    setImportLoading(false);
+                    importFile.val('');
+                    importButton.prop('disabled', false).text('Import Klaim Apotek');
+                    bulkButton.prop('disabled', false);
+                    bulkDate.prop('disabled', false);
+                });
             });
 
             var syncReportPage = function() {

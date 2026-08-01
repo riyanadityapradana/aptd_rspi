@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS klaim_apotek_online_manual (
+    no_sep VARCHAR(40) NOT NULL,
+    nominal_klaim DECIMAL(16,2) NOT NULL DEFAULT 0.00,
+    tanggal_input TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    user_input VARCHAR(100) NOT NULL,
+    PRIMARY KEY (no_sep)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_general_ci;
