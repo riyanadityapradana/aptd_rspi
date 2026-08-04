@@ -1262,6 +1262,12 @@ function aptd_keu_ralan_bhp_rate($specialistName)
     return 10000;
 }
 
+function aptd_keu_ralan_is_general_poli($poliName)
+{
+    $normalized = strtolower(trim(preg_replace('/\s+/', ' ', (string) $poliName)));
+    return $normalized === 'poli umum';
+}
+
 function aptd_keu_ralan_calculate_doctor_fee($claimUsed, array $facts)
 {
     $claimUsed = max(0, (float) $claimUsed);
@@ -1270,6 +1276,9 @@ function aptd_keu_ralan_calculate_doctor_fee($claimUsed, array $facts)
     $nutritionCount = max(0, (int) (isset($facts['nutrition_count']) ? $facts['nutrition_count'] : 0));
     $nutritionTotal = max(0, (float) (isset($facts['nutrition_material_cost']) ? $facts['nutrition_material_cost'] : 0));
     $nutritionUnitPrice = $nutritionCount > 0 ? $nutritionTotal / $nutritionCount : 0;
+    $medicineBaseCost = max(0, (float) (isset($facts['medicine_cost']) ? $facts['medicine_cost'] : 0));
+    $medicineMarkup = round($medicineBaseCost * 0.15, 2);
+    $medicineCostWithMarkup = round($medicineBaseCost + $medicineMarkup, 2);
     $result = [
         'jd_pemeriksaan' => 0,
         'jd_prosedur' => 0,
@@ -1286,7 +1295,7 @@ function aptd_keu_ralan_calculate_doctor_fee($claimUsed, array $facts)
         'bhp_rontgen' => 0,
         'jasa_karyawan' => round($claimUsed * 0.15, 2),
         'biaya_bhp' => $bhpRate,
-        'biaya_obat' => round(max(0, (float) (isset($facts['medicine_cost']) ? $facts['medicine_cost'] : 0)), 2),
+        'biaya_obat' => $medicineCostWithMarkup,
         'biaya_ekg' => round(max(0, (float) (isset($facts['ekg_cost']) ? $facts['ekg_cost'] : 0)), 2),
         'biaya_darah' => round(max(0, (float) (isset($facts['blood_cost']) ? $facts['blood_cost'] : 0)), 2),
         'makan_jumlah' => round($nutritionTotal, 2),
@@ -1371,6 +1380,20 @@ function aptd_keu_ralan_calculate_doctor_fee($claimUsed, array $facts)
     $result['bhp_lab_pk_rule'] = 'BHP Lab PK: Induk Rp ' . aptd_currency($bhpLabPkBase)
         . ' + Detail Rp ' . aptd_currency($bhpLabDetail);
     $result['bhp_lab_pa_rule'] = 'BHP Lab PA: Rp ' . aptd_currency($bhpLabPa);
+
+    // AR-153: dokter Poli Umum hanya menerima jasa pemeriksaan. Semua tindakan
+    // tambahan tidak boleh memicu JD Prosedur, termasuk HD, operasi, atau injeksi.
+    if (aptd_keu_ralan_is_general_poli(isset($facts['poli_name']) ? $facts['poli_name'] : '')) {
+        $result['jd_pemeriksaan'] = round(
+            max(0, (float) (isset($facts['general_poli_doctor_fee']) ? $facts['general_poli_doctor_fee'] : 0)),
+            2
+        );
+        $result['jd_prosedur'] = 0;
+        $result['jd_rule'] = !empty($facts['has_general_poli_exam'])
+            ? 'Poli Umum: JD Pemeriksaan tarif_tindakandr; JD Prosedur Rp 0'
+            : 'Poli Umum: Pemeriksaan Poli Umum tidak ditemukan; JD Prosedur Rp 0';
+        return $result;
+    }
 
     if (!empty($facts['has_hd'])) {
         $result['jd_hd'] = round($claimUsed * 0.21, 2);
@@ -1460,12 +1483,15 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
         $noRawatList[$noRawat] = $noRawat;
         $factsByNoRawat[$noRawat] = [
             'specialist_name' => isset($row['nm_sps']) ? (string) $row['nm_sps'] : '',
+            'poli_name' => isset($row['nm_poli']) ? (string) $row['nm_poli'] : '',
             'has_hd' => 0,
             'has_poli' => 0,
+            'has_general_poli_exam' => 0,
             'has_nebulizer' => 0,
             'has_other_treatment' => 0,
             'has_injection' => 0,
             'poli_doctor_fee' => 0,
+            'general_poli_doctor_fee' => 0,
             'ekg_cost' => 0,
             'blood_cost' => 0,
             'blood_count' => 0,
@@ -1489,8 +1515,6 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
             'bhp_lab_pk_base' => 0,
             'bhp_lab_detail' => 0,
             'bhp_lab_pa' => 0,
-            'medicine_non_compounded_cost' => 0,
-            'medicine_compounded_cost' => 0,
             'medicine_cost' => 0,
         ];
         $rows[$index]['jd_pemeriksaan'] = 0;
@@ -1510,7 +1534,7 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
         $rows[$index]['jd_lab_rule'] = 'Tidak Ada Pemeriksaan Lab';
         $rows[$index]['jd_pa_rule'] = 'Tidak Ada Pemeriksaan PA';
         $rows[$index]['biaya_obat'] = 0;
-        $rows[$index]['biaya_obat_rule'] = 'HPP Obat Non-Racikan Rp 0 + Racikan Rp 0';
+        $rows[$index]['biaya_obat_rule'] = 'HPP detail_pemberian_obat Rp 0 + 15% Rp 0 = Rp 0';
     }
 
     foreach (array_chunk(array_values($noRawatList), 400) as $noRawatChunk) {
@@ -1532,6 +1556,10 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
                        THEN 1 ELSE 0
                    END) AS has_poli,
                    MAX(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%pemeriksaan poli umum%'
+                       THEN 1 ELSE 0
+                   END) AS has_general_poli_exam,
+                   MAX(CASE
                        WHEN LOWER(jp.nm_perawatan) LIKE '%nebulizer%'
                        THEN 1 ELSE 0
                    END) AS has_nebulizer,
@@ -1550,6 +1578,10 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
                          OR LOWER(jp.nm_perawatan) LIKE '%pemeriksaan poli umum%'
                        THEN COALESCE(jp.tarif_tindakandr, 0) ELSE 0
                    END) AS poli_doctor_fee,
+                   SUM(CASE
+                       WHEN LOWER(jp.nm_perawatan) LIKE '%pemeriksaan poli umum%'
+                       THEN COALESCE(jp.tarif_tindakandr, 0) ELSE 0
+                   END) AS general_poli_doctor_fee,
                    SUM(CASE
                        WHEN LOWER(jp.nm_perawatan) LIKE '%ekg%'
                        THEN COALESCE(jp.bhp, 0) ELSE 0
@@ -1602,10 +1634,12 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
             }
             $factsByNoRawat[$noRawat]['has_hd'] = (int) $treatment['has_hd'];
             $factsByNoRawat[$noRawat]['has_poli'] = (int) $treatment['has_poli'];
+            $factsByNoRawat[$noRawat]['has_general_poli_exam'] = (int) $treatment['has_general_poli_exam'];
             $factsByNoRawat[$noRawat]['has_nebulizer'] = (int) $treatment['has_nebulizer'];
             $factsByNoRawat[$noRawat]['has_other_treatment'] = (int) $treatment['has_other_treatment'];
             $factsByNoRawat[$noRawat]['has_injection'] = (int) $treatment['has_injection'];
             $factsByNoRawat[$noRawat]['poli_doctor_fee'] = (float) $treatment['poli_doctor_fee'];
+            $factsByNoRawat[$noRawat]['general_poli_doctor_fee'] = (float) $treatment['general_poli_doctor_fee'];
             $factsByNoRawat[$noRawat]['ekg_cost'] = (float) $treatment['ekg_cost'];
             $factsByNoRawat[$noRawat]['blood_cost'] = (float) $treatment['blood_cost'];
             $factsByNoRawat[$noRawat]['blood_count'] = (int) $treatment['blood_count'];
@@ -1781,31 +1815,16 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
             $factsByNoRawat[$noRawat]['bhp_lab_pa'] = (float) $laboratory['bhp_lab_pa'];
         }
 
+        // detail_pemberian_obat sudah memuat obat non-racikan dan seluruh komponen
+        // racikan yang benar-benar diberikan. Menambahkan resep_dokter_racikan_detail
+        // akan menghitung komponen racikan untuk kedua kalinya (AR-152).
         $medicineSql = "
-            SELECT medicine.no_rawat,
-                   SUM(medicine.non_compounded_cost) AS non_compounded_cost,
-                   SUM(medicine.compounded_cost) AS compounded_cost
-            FROM (
-                SELECT dpo.no_rawat,
-                       SUM(COALESCE(dpo.jml, 0) * COALESCE(db.dasar, 0)) AS non_compounded_cost,
-                       0 AS compounded_cost
-                FROM detail_pemberian_obat dpo
-                INNER JOIN databarang db ON db.kode_brng = dpo.kode_brng
-                WHERE dpo.no_rawat IN ($inList)
-                GROUP BY dpo.no_rawat
-
-                UNION ALL
-
-                SELECT ro.no_rawat,
-                       0 AS non_compounded_cost,
-                       SUM(COALESCE(rdrd.jml, 0) * COALESCE(db.dasar, 0)) AS compounded_cost
-                FROM resep_obat ro
-                INNER JOIN resep_dokter_racikan_detail rdrd ON rdrd.no_resep = ro.no_resep
-                INNER JOIN databarang db ON db.kode_brng = rdrd.kode_brng
-                WHERE ro.no_rawat IN ($inList)
-                GROUP BY ro.no_rawat
-            ) medicine
-            GROUP BY medicine.no_rawat";
+            SELECT dpo.no_rawat,
+                   SUM(COALESCE(dpo.jml, 0) * COALESCE(db.dasar, 0)) AS medicine_cost
+            FROM detail_pemberian_obat dpo
+            INNER JOIN databarang db ON db.kode_brng = dpo.kode_brng
+            WHERE dpo.no_rawat IN ($inList)
+            GROUP BY dpo.no_rawat";
 
         $medicineResult = $mysqli->query($medicineSql);
         if (!$medicineResult) {
@@ -1816,11 +1835,7 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
             if (!isset($factsByNoRawat[$noRawat])) {
                 continue;
             }
-            $nonCompoundedCost = max(0, (float) $medicine['non_compounded_cost']);
-            $compoundedCost = max(0, (float) $medicine['compounded_cost']);
-            $factsByNoRawat[$noRawat]['medicine_non_compounded_cost'] = $nonCompoundedCost;
-            $factsByNoRawat[$noRawat]['medicine_compounded_cost'] = $compoundedCost;
-            $factsByNoRawat[$noRawat]['medicine_cost'] = $nonCompoundedCost + $compoundedCost;
+            $factsByNoRawat[$noRawat]['medicine_cost'] = max(0, (float) $medicine['medicine_cost']);
         }
     }
 
@@ -1843,9 +1858,12 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
             $rows[$index][$field] = $value;
         }
         $facts = $factsByNoRawat[(string) $row['no_rawat']];
-        $rows[$index]['biaya_obat_rule'] = 'HPP Obat Non-Racikan Rp '
-            . aptd_currency($facts['medicine_non_compounded_cost'])
-            . ' + Racikan Rp ' . aptd_currency($facts['medicine_compounded_cost']);
+        $medicineBaseCost = max(0, (float) $facts['medicine_cost']);
+        $medicineMarkup = round($medicineBaseCost * 0.15, 2);
+        $rows[$index]['biaya_obat_rule'] = 'HPP detail_pemberian_obat Rp '
+            . aptd_currency($medicineBaseCost)
+            . ' + 15% Rp ' . aptd_currency($medicineMarkup)
+            . ' = Rp ' . aptd_currency($medicineBaseCost + $medicineMarkup);
     }
 }
 
