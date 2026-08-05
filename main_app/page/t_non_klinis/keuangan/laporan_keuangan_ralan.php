@@ -31,7 +31,8 @@ function aptd_keu_ralan_datatable_action(
         $html .= '<input type="hidden" name="calculate_keu_row" value="1">'
             . '<input type="hidden" name="calculate_no_rawat" value="'
             . aptd_keu_ralan_datatable_html($row['no_rawat']) . '">';
-        $enabled = $canCalculateKeuangan && (float) $row['claim_used'] > 0;
+        $calculationRow = aptd_keu_ralan_restore_calculation_claims($row);
+        $enabled = $canCalculateKeuangan && (float) $calculationRow['claim_used'] > 0;
         if (!$enabled) {
             $title = 'Klaim digunakan belum tersedia';
         } elseif (!empty($row['calculation_stale'])) {

@@ -698,6 +698,15 @@ function aptd_keu_ralan_apply_cached_calculations(array &$rows)
 {
     foreach ($rows as $index => $row) {
         $hasCache = !empty($row['calculated_at']);
+        // Simpan hasil pencarian klaim terbaru untuk proses Hitung/Hitung Ulang.
+        // Field claim_history dan claim_used di bawah ini khusus menjadi snapshot UI (AR-155).
+        $rows[$index]['calculation_claim_history'] = (float) $row['claim_history'];
+        $rows[$index]['calculation_claim_used'] = (float) $row['claim_used'];
+        $rows[$index]['calculation_claim_source'] = (string) $row['claim_source'];
+        $rows[$index]['calculation_claim_history_no_rawat'] = (string) $row['claim_history_no_rawat'];
+        $rows[$index]['calculation_claim_history_match_source'] = (string) $row['claim_history_match_source'];
+        $rows[$index]['calculation_target_diagnosis_code'] = (string) $row['target_diagnosis_code'];
+        $rows[$index]['calculation_target_diagnosis_source'] = (string) $row['target_diagnosis_source'];
         foreach (aptd_keu_ralan_cache_fields() as $key => $field) {
             $value = $hasCache && isset($row['cache_' . $key])
                 ? $row['cache_' . $key]
@@ -711,8 +720,30 @@ function aptd_keu_ralan_apply_cached_calculations(array &$rows)
             }
             $rows[$index][$key] = $value;
         }
+        $rows[$index]['claim_history'] = $hasCache
+            ? (float) $row['cached_claim_history_snapshot']
+            : 0;
+        $rows[$index]['claim_used'] = $hasCache
+            ? (float) $row['cached_claim_used']
+            : 0;
+        $rows[$index]['claim_source'] = $hasCache && trim((string) $row['cached_claim_source']) !== ''
+            ? (string) $row['cached_claim_source']
+            : 'Belum Ada';
+        $rows[$index]['claim_history_no_rawat'] = $hasCache
+            ? (string) $row['cached_claim_history_no_rawat']
+            : '';
+        $rows[$index]['claim_history_match_source'] = $hasCache
+            && (float) $row['cached_claim_history_snapshot'] > 0
+            ? 'Snapshot Kalkulasi'
+            : '';
+        $rows[$index]['target_diagnosis_code'] = $hasCache
+            ? (string) $row['cached_claim_diagnosis_code']
+            : '';
+        $rows[$index]['target_diagnosis_source'] = $hasCache
+            ? 'Snapshot Kalkulasi'
+            : 'Belum Ada';
         if ($hasCache) {
-            $claimUsed = (float) (isset($row['claim_used']) ? $row['claim_used'] : 0);
+            $claimUsed = (float) $row['cached_claim_used'];
             $claimApotek = (float) (isset($row['klaim_apotek_online']) ? $row['klaim_apotek_online'] : 0);
             $total = (float) $rows[$index]['total'];
             $rows[$index]['margin'] = round($claimUsed + $claimApotek - $total, 2);
@@ -723,6 +754,25 @@ function aptd_keu_ralan_apply_cached_calculations(array &$rows)
         $rows[$index]['has_hitung'] = $hasCache ? 1 : 0;
         $rows[$index]['calculation_stale'] = aptd_keu_ralan_claim_shifted_to_actual($row) ? 1 : 0;
     }
+}
+
+function aptd_keu_ralan_restore_calculation_claims(array $row)
+{
+    foreach ([
+        'claim_history',
+        'claim_used',
+        'claim_source',
+        'claim_history_no_rawat',
+        'claim_history_match_source',
+        'target_diagnosis_code',
+        'target_diagnosis_source',
+    ] as $field) {
+        $calculationField = 'calculation_' . $field;
+        if (array_key_exists($calculationField, $row)) {
+            $row[$field] = $row[$calculationField];
+        }
+    }
+    return $row;
 }
 
 function aptd_keu_ralan_fetch_rows(
@@ -799,6 +849,8 @@ function aptd_keu_ralan_fetch_rows(
             COALESCE(MAX(cache.claim_actual_snapshot), 0) AS cached_claim_actual_snapshot,
             COALESCE(MAX(cache.claim_history_snapshot), 0) AS cached_claim_history_snapshot,
             COALESCE(MAX(cache.claim_apotek_snapshot), 0) AS cached_claim_apotek_snapshot,
+            COALESCE(MAX(cache.claim_history_no_rawat), '') AS cached_claim_history_no_rawat,
+            COALESCE(MAX(cache.claim_diagnosis_code), '') AS cached_claim_diagnosis_code,
             COALESCE(MAX(cache.calculated_by), '') AS calculated_by,
             $cacheSelectSql
             COALESCE((
@@ -935,12 +987,7 @@ function aptd_keu_ralan_fetch_summary(mysqli $mysqli, $startDate, $endDate, $kdP
     $inacbgSql = aptd_keu_ralan_inacbg_tariff_sql();
     $sql = "
         SELECT COUNT(*) AS jumlah_kunjungan,
-               COALESCE(SUM(CASE
-                   WHEN report.claim_actual > 0 THEN report.claim_actual
-                   WHEN report.cached_claim_used > 0 THEN report.cached_claim_used
-                   WHEN report.has_target_diagnosis = 1 THEN report.manual_claim_selected
-                   ELSE 0
-               END), 0) AS total_klaim,
+               COALESCE(SUM(report.cached_claim_used), 0) AS total_klaim,
                COALESCE(SUM(report.total_jasa_dokter), 0) AS total_jasa_dokter,
                COALESCE(SUM(report.total_obat), 0) AS total_obat
         FROM (
@@ -1942,17 +1989,22 @@ function aptd_keu_ralan_store_calculation(mysqli $mysqli, array $row, $username 
 
 function aptd_keu_ralan_action_label(array $row)
 {
-    $historySelected = (float) $row['claim_selected_raw'] > 0
-        && (string) $row['claim_selected_source'] === 'history_diagnose'
-        && abs((float) $row['stored_claim_history'] - (float) $row['claim_history']) < 0.01
-        && (string) $row['stored_claim_history_no_rawat'] === (string) $row['claim_history_no_rawat'];
-    if ((float) $row['claim_actual'] <= 0 && (float) $row['claim_history'] > 0 && !$historySelected) {
+    $calculationRow = aptd_keu_ralan_restore_calculation_claims($row);
+    $historySelected = (float) $calculationRow['claim_selected_raw'] > 0
+        && (string) $calculationRow['claim_selected_source'] === 'history_diagnose'
+        && abs((float) $calculationRow['stored_claim_history'] - (float) $calculationRow['claim_history']) < 0.01
+        && (string) $calculationRow['stored_claim_history_no_rawat'] === (string) $calculationRow['claim_history_no_rawat'];
+    if (
+        (float) $calculationRow['claim_actual'] <= 0
+        && (float) $calculationRow['claim_history'] > 0
+        && !$historySelected
+    ) {
         return 'Pakai Riwayat';
     }
-    if ((float) $row['claim_used'] <= 0) {
+    if ((float) $calculationRow['claim_used'] <= 0) {
         return 'Tidak Aktif';
     }
-    return !empty($row['has_hitung']) ? 'Hitung Ulang' : 'Hitung';
+    return !empty($calculationRow['has_hitung']) ? 'Hitung Ulang' : 'Hitung';
 }
 
 function aptd_keu_ralan_store_claim(mysqli $mysqli, array $row, $username = '', $markCalculated = false)
@@ -2018,13 +2070,14 @@ function aptd_keu_ralan_use_history_claim(mysqli $mysqli, $noRawat, $startDate, 
     if (empty($rows)) {
         return ['success' => false, 'message' => 'Data pasien tidak ditemukan pada filter yang dipilih.'];
     }
-    if ((float) $rows[0]['claim_actual'] > 0) {
+    $row = aptd_keu_ralan_restore_calculation_claims($rows[0]);
+    if ((float) $row['claim_actual'] > 0) {
         return ['success' => false, 'message' => 'Klaim aktual sudah tersedia dan otomatis menjadi klaim yang digunakan.'];
     }
-    if ((float) $rows[0]['claim_history'] <= 0) {
+    if ((float) $row['claim_history'] <= 0) {
         return ['success' => false, 'message' => 'Klaim riwayat belum tersedia untuk nomor rawat ini.'];
     }
-    return aptd_keu_ralan_store_claim($mysqli, $rows[0], $username, false);
+    return aptd_keu_ralan_store_claim($mysqli, $row, $username, false);
 }
 
 function aptd_keu_ralan_calculate_claim(mysqli $mysqli, $noRawat, $startDate, $endDate, $kdPoli = '', $username = '')
@@ -2105,6 +2158,7 @@ function aptd_keu_ralan_calculate_daily_batch(
     $eligibleRows = [];
     $skipped = 0;
     foreach ($rows as $row) {
+        $row = aptd_keu_ralan_restore_calculation_claims($row);
         if ((float) $row['claim_used'] > 0) {
             $eligibleRows[] = $row;
         } else {
