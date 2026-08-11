@@ -216,9 +216,9 @@ function aptd_keu_ranap_claim_select_sql()
 {
     return "
         CASE
+            WHEN COALESCE(inacbg.tariff, 0) > 0 THEN inacbg.tariff
             WHEN COALESCE(manual.claim_selected, 0) > 0 THEN manual.claim_selected
             WHEN COALESCE(manual.jum_claim, 0) > 0 THEN manual.jum_claim
-            WHEN COALESCE(inacbg.tariff, 0) > 0 THEN inacbg.tariff
             ELSE 0
         END
     ";
@@ -228,10 +228,10 @@ function aptd_keu_ranap_claim_source_sql()
 {
     return "
         CASE
+            WHEN COALESCE(inacbg.tariff, 0) > 0 THEN 'inacbg_current'
             WHEN COALESCE(manual.claim_selected, 0) > 0 AND IFNULL(manual.claim_source, '') <> '' THEN manual.claim_source
             WHEN COALESCE(manual.claim_selected, 0) > 0 THEN 'manual'
             WHEN COALESCE(manual.jum_claim, 0) > 0 THEN 'manual'
-            WHEN COALESCE(inacbg.tariff, 0) > 0 THEN 'inacbg_current'
             ELSE 'none'
         END
     ";
@@ -472,6 +472,7 @@ function aptd_keu_ranap_fetch_rows(mysqli $mysqli, $startDate, $endDate, $onlyNo
             $claimSelectSql AS claim,
             COALESCE(manual.jum_claim, 0) AS manual_claim,
             COALESCE(manual.claim_selected, 0) AS claim_selected_raw,
+            COALESCE(manual.claim_source, '') AS claim_source_stored,
             COALESCE(inacbg.tariff, 0) AS claim_actual,
             COALESCE(manual.claim_history, 0) AS claim_history,
             COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
@@ -1124,7 +1125,7 @@ function aptd_keu_ranap_ensure_cache_schema(mysqli $mysqli)
     }
 }
 
-function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate, $filterBy = 'masuk')
+function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate, $filterBy = 'masuk', $refreshActualClaims = true)
 {
     aptd_keu_ranap_ensure_cache_schema($mysqli);
     $inacbgSql = aptd_keu_ranap_inacbg_tariff_sql();
@@ -1169,6 +1170,7 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate, 
             $claimSelectSql AS claim,
             COALESCE(manual.jum_claim, 0) AS manual_claim,
             COALESCE(manual.claim_selected, 0) AS claim_selected_raw,
+            COALESCE(manual.claim_source, '') AS claim_source_stored,
             COALESCE(inacbg.tariff, 0) AS claim_actual,
             COALESCE(manual.claim_history, 0) AS claim_history,
             COALESCE(manual.claim_history_no_rawat, '') AS claim_history_no_rawat,
@@ -1220,6 +1222,32 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate, 
 
     $stmt->close();
     aptd_keu_ranap_apply_history_claims($mysqli, $rows);
+
+    if ($refreshActualClaims) {
+        $hasRefreshedCalculation = false;
+        foreach ($rows as $row) {
+            $hasCalculation = isset($row['has_hitung']) && (int) $row['has_hitung'] === 1;
+            if (!$hasCalculation || !aptd_keu_ranap_should_promote_actual_claim($row)) {
+                continue;
+            }
+
+            $refreshResult = aptd_keu_ranap_calculate_and_store(
+                $mysqli,
+                isset($row['no_rawat']) ? $row['no_rawat'] : '',
+                $startDate,
+                $endDate,
+                $filterBy
+            );
+            if (!empty($refreshResult['success'])) {
+                $hasRefreshedCalculation = true;
+            }
+        }
+
+        if ($hasRefreshedCalculation) {
+            return aptd_keu_ranap_fetch_report_rows($mysqli, $startDate, $endDate, $filterBy, false);
+        }
+    }
+
     return $rows;
 }
 
@@ -1464,15 +1492,39 @@ function aptd_keu_ranap_persist_effective_claim(mysqli $mysqli, array $row)
     $stmt->close();
 }
 
+function aptd_keu_ranap_should_promote_actual_claim(array $row)
+{
+    $noRawat = isset($row['no_rawat']) ? trim((string) $row['no_rawat']) : '';
+    $storedSource = isset($row['claim_source_stored'])
+        ? trim((string) $row['claim_source_stored'])
+        : (isset($row['claim_source']) ? trim((string) $row['claim_source']) : '');
+    $selected = isset($row['claim_selected_raw']) ? (float) $row['claim_selected_raw'] : 0;
+    $manual = isset($row['manual_claim']) ? (float) $row['manual_claim'] : 0;
+    $actual = isset($row['claim_actual']) ? (float) $row['claim_actual'] : 0;
+
+    if ($storedSource === '' && ($selected > 0 || $manual > 0)) {
+        $storedSource = 'manual';
+    }
+
+    if ($noRawat === '' || $actual <= 0) {
+        return false;
+    }
+
+    if (!in_array($storedSource, ['manual', 'history_diagnose', 'inacbg_current'], true)) {
+        return false;
+    }
+
+    return $storedSource !== 'inacbg_current' || abs($selected - $actual) >= 0.01;
+}
+
 function aptd_keu_ranap_promote_actual_claim_for_calculation(mysqli $mysqli, array $row)
 {
     aptd_keu_ranap_ensure_cache_schema($mysqli);
 
     $noRawat = isset($row['no_rawat']) ? trim((string) $row['no_rawat']) : '';
-    $source = isset($row['claim_source']) ? trim((string) $row['claim_source']) : '';
     $actual = isset($row['claim_actual']) ? (float) $row['claim_actual'] : 0;
 
-    if ($noRawat === '' || $source !== 'history_diagnose' || $actual <= 0) {
+    if (!aptd_keu_ranap_should_promote_actual_claim($row)) {
         return $row;
     }
 
@@ -1496,6 +1548,7 @@ function aptd_keu_ranap_promote_actual_claim_for_calculation(mysqli $mysqli, arr
 
     $row['claim'] = $actual;
     $row['claim_selected_raw'] = $actual;
+    $row['claim_source_stored'] = 'inacbg_current';
     $row['claim_source'] = 'inacbg_current';
     $row['claim_source_label'] = aptd_keu_ranap_claim_source_label('inacbg_current', $actual, $history);
 

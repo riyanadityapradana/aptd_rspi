@@ -9,6 +9,8 @@ function aptd_get_routes()
         'export_adime_gizi' => 'page/t_gizi/export_adime_gizi.php',
         'kunjungan_usia_ranap_gizi' => 'page/t_gizi/kunjungan_data_berdasarkanusia_ranap_gizi.php',
         'export_kunjungan_usia_ranap_gizi' => 'page/t_gizi/export_kunjungan_usia_ranap_gizi.php',
+        'rekap_resep_fornas_non_fornas' => 'page/t_non_klinis/farmasi/rekap_resep_fornas_non_fornas.php',
+        'export_rekap_resep_fornas_pdf' => 'page/t_non_klinis/farmasi/export_rekap_resep_fornas_pdf.php',
 
         'kunjungan_data_ralan' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_ralan.php',
         'kunjungan_data_perpoli' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_perpoli.php',
@@ -21,6 +23,8 @@ function aptd_get_routes()
         'export_evaluasi_task4_bpjs' => 'page/t_kunjungan/rawat_inap/export_evaluasi_task4_bpjs.php',
         'evaluasi_task4_terawal_bpjs' => 'page/t_kunjungan/rawat_inap/evaluasi_task4_terawal_bpjs.php',
         'export_evaluasi_task4_terawal_bpjs' => 'page/t_kunjungan/rawat_inap/export_evaluasi_task4_terawal_bpjs.php',
+        'indikator_waktu_tunggu_poli_task_2_5' => 'page/t_kunjungan/rawat_jalan/indikator_waktu_tunggu_poli_task_2_5.php',
+        'export_indikator_waktu_tunggu_poli_task_2_5' => 'page/t_kunjungan/rawat_jalan/export_indikator_waktu_tunggu_poli_task_2_5.php',
         'export_kunjungan' => 'page/t_kunjungan/rawat_jalan/export_kunjungan.php',
         'export_kunjungan_igd' => 'page/t_non_klinis/export_kunjungan_igd.php',
         'export_kunjungan_ralan' => 'page/t_kunjungan/rawat_jalan/export_kunjungan_ralan.php',
@@ -121,7 +125,7 @@ function aptd_get_access_map()
         'keuangan' => ['beranda', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap', 'laporan_keuangan_ralan', 'export_laporan_keuangan_ralan', 'input_data_claim'],
         'moneta' => ['beranda', 'top_10_dokter_pasien', 'kunjungan_wilayah_visual'],
         'gizi' => ['beranda', 'adime_gizi', 'export_adime_gizi', 'kunjungan_usia_ranap_gizi', 'export_kunjungan_usia_ranap_gizi'],
-        'farmasi' => ['beranda', 'kode_penyakit_ab_ranap', 'export_kode_penyakit_ab_ranap'],
+        'farmasi' => ['beranda', 'kode_penyakit_ab_ranap', 'export_kode_penyakit_ab_ranap', 'rekap_resep_fornas_non_fornas', 'export_rekap_resep_fornas_pdf'],
         'pemasaran' => ['beranda', 'kunjungan_kecamatan_mingguan_ralan', 'kunjungan_kecamatan_mingguan_ranap'],
         'perawat' => ['beranda', 'diagnosa_awal_sementara_ranap'],
     ];
@@ -135,6 +139,10 @@ function aptd_can_access($level, $page)
 {
     $accessMap = aptd_get_access_map();
     $routes = aptd_get_routes();
+    $restrictedPageRoles = [
+        'rekap_resep_fornas_non_fornas' => ['admin', 'farmasi'],
+        'export_rekap_resep_fornas_pdf' => ['admin', 'farmasi'],
+    ];
     $adminOnlyPages = [
         'kunjungan_data_blmSEP',
         'kunjungan_data_sdhSEP',
@@ -142,13 +150,19 @@ function aptd_can_access($level, $page)
         'waktu_tunggu_registrasi_perawat_ralan',
         'evaluasi_task4_bpjs',
         'evaluasi_task4_terawal_bpjs',
+        'indikator_waktu_tunggu_poli_task_2_5',
         'export_blmSEP',
         'export_sdhSEP',
         'export_evaluasi_task4_bpjs',
         'export_evaluasi_task4_terawal_bpjs',
+        'export_indikator_waktu_tunggu_poli_task_2_5',
     ];
 
     if (!isset($accessMap[$level]) || !isset($routes[$page])) {
+        return false;
+    }
+
+    if (isset($restrictedPageRoles[$page]) && !in_array($level, $restrictedPageRoles[$page], true)) {
         return false;
     }
 

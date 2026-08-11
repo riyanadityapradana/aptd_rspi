@@ -106,6 +106,7 @@ $menuKunjunganRalan = [
         ['page' => 'waktu_tunggu_registrasi_perawat_ralan', 'label' => 'Waktu Tunggu Registrasi ke Perawat BPJS'],
         ['page' => 'evaluasi_task4_bpjs', 'label' => 'Evaluasi Task ID 4 BPJS'],
         ['page' => 'evaluasi_task4_terawal_bpjs', 'label' => 'Indikator Kesesuaian Jadwal (Task 4 Terawal)'],
+        ['page' => 'indikator_waktu_tunggu_poli_task_2_5', 'label' => 'Indikator Waktu Tunggu Poli (Task ID 2-5)'],
     ],
     [
         ['page' => 'kunjungan_data_berdasarkanusia_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Berdasarkan Usia'],
@@ -167,6 +168,7 @@ $menuDataKlinis = [
 
 $menuDataNonKlinis = [
     [
+        ['page' => 'rekap_resep_fornas_non_fornas', 'label' => 'Rekap Resep Fornas, Non-Fornas dan Non For RSPI'],
         ['page' => 'diare_data', 'label' => 'Data Pasien Diagnosa Diare'],
         ['page' => 'top_10_dokter_pasien', 'label' => 'Top 10 Dokter Paling Banyak Pasien'],
         ['page' => 'pasien_rujukan_masuk_keluar', 'label' => 'Pasien Rujukan Masuk / Keluar'],
