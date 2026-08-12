@@ -124,6 +124,7 @@ function aptd_task4_terawal_fetch_base_rows($conn, array $filters)
             r.tgl_registrasi AS tanggal,
             p.nm_poli AS nama_poli,
             j.jam_mulai AS jam_buka_poli,
+            r.kd_dokter AS kode_dokter,
             d.nm_dokter AS nama_dokter,
             r.no_rawat AS nomor_rawat,
             task_awal.waktu_task4 AS task_4_paling_awal,
@@ -176,6 +177,7 @@ function aptd_task4_terawal_fetch_base_rows($conn, array $filters)
             r.tgl_registrasi,
             p.nm_poli,
             j.jam_mulai,
+            r.kd_dokter,
             d.nm_dokter,
             r.no_rawat,
             task_awal.waktu_task4
@@ -218,9 +220,42 @@ function aptd_task4_terawal_search_rows(array $rows, $search)
     }));
 }
 
+function aptd_task4_terawal_build_doctor_summary(array $rows)
+{
+    $doctorStatuses = [];
+
+    foreach ($rows as $row) {
+        $doctorKey = isset($row['kode_dokter']) && $row['kode_dokter'] !== ''
+            ? (string) $row['kode_dokter']
+            : (string) $row['nama_dokter'];
+
+        if (!isset($doctorStatuses[$doctorKey])) {
+            $doctorStatuses[$doctorKey] = false;
+        }
+        if ($row['kesesuaian'] === 'Tidak Sesuai') {
+            $doctorStatuses[$doctorKey] = true;
+        }
+    }
+
+    $totalDoctors = count($doctorStatuses);
+    $unsuitableDoctors = count(array_filter($doctorStatuses));
+    $suitableDoctors = $totalDoctors - $unsuitableDoctors;
+    $suitabilityPercentage = $totalDoctors > 0
+        ? round(($suitableDoctors / $totalDoctors) * 100, 2)
+        : 0;
+
+    return [
+        'total_dokter_praktek' => $totalDoctors,
+        'dokter_sesuai' => $suitableDoctors,
+        'dokter_tidak_sesuai' => $unsuitableDoctors,
+        'persentase_kesesuaian' => $suitabilityPercentage,
+    ];
+}
+
 function aptd_task4_terawal_build_report($conn, array $filters, $paginate = true)
 {
     $baseRows = aptd_task4_terawal_fetch_base_rows($conn, $filters);
+    $doctorSummary = aptd_task4_terawal_build_doctor_summary($baseRows);
     $filteredRows = aptd_task4_filter_status($baseRows, $filters['kesesuaian']);
     $summary = aptd_task4_build_summary($filteredRows);
     $charts = aptd_task4_build_charts($filteredRows, $summary);
@@ -239,6 +274,7 @@ function aptd_task4_terawal_build_report($conn, array $filters, $paginate = true
     return [
         'filters' => array_merge($filters, ['page' => $page]),
         'summary' => $summary,
+        'doctor_summary' => $doctorSummary,
         'chart' => $charts,
         'data' => array_map('aptd_task4_present_row', $tableRows),
         'pagination' => [
@@ -249,4 +285,3 @@ function aptd_task4_terawal_build_report($conn, array $filters, $paginate = true
         ],
     ];
 }
-

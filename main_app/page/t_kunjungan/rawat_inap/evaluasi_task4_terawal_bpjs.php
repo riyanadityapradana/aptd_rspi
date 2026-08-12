@@ -43,6 +43,7 @@ try {
 .task4-card-label{font-size:11px;font-weight:800;color:#657a90;text-transform:uppercase}
 .task4-card-value{margin-top:6px;font-size:28px;line-height:1.1;font-weight:800;color:#1b3552}
 .task4-card-note{margin-top:7px;font-size:11px;color:#7b8da0}
+.task4-doctor-block{display:grid;gap:8px}.task4-doctor-title{margin:0;color:#526b83;font-size:12px;font-weight:800;text-transform:uppercase}.task4-doctor-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.task4-doctor-cards .task4-card:nth-child(1){border-top-color:#2d7dd2}.task4-doctor-cards .task4-card:nth-child(2){border-top-color:#d1495b}.task4-doctor-cards .task4-card:nth-child(3){border-top-color:#24966d}
 .task4-chart-grid{display:grid;grid-template-columns:minmax(280px,.8fr) minmax(0,1.6fr);gap:12px}
 .task4-chart-title,.task4-table-title{margin:0;font-size:17px;font-weight:800;color:#244565}
 .task4-chart-note,.task4-table-note{margin:4px 0 0;color:#708399;font-size:12px}
@@ -77,9 +78,9 @@ try {
 .task4-pages button:hover:not(:disabled){background:#edf4fb;border-color:#8db2d5}
 .task4-pages button.is-active{background:#1769aa;border-color:#1769aa;color:#fff}
 .task4-pages button:disabled{opacity:.45;cursor:not-allowed}
-@media(max-width:1100px){.task4-filter{grid-template-columns:repeat(3,minmax(150px,1fr))}.task4-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.task4-chart-grid{grid-template-columns:1fr}}
+@media(max-width:1100px){.task4-filter{grid-template-columns:repeat(3,minmax(150px,1fr))}.task4-cards,.task4-doctor-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.task4-chart-grid{grid-template-columns:1fr}}
 @media(max-width:720px){.task4-title-row,.task4-table-head,.task4-pagination{align-items:stretch;flex-direction:column}.task4-source{white-space:normal}.task4-filter{grid-template-columns:1fr 1fr}.task4-actions{grid-column:1/-1}.task4-actions .btn{flex:1}.task4-table-tools{justify-content:space-between}.task4-search{flex:1}.task4-search input{width:100%}.task4-pages{justify-content:flex-start}}
-@media(max-width:480px){.task4-panel{padding:14px}.task4-title{font-size:22px}.task4-filter,.task4-cards{grid-template-columns:1fr}.task4-actions{flex-wrap:wrap}.task4-actions .btn{flex:1 1 45%}.task4-card-value{font-size:24px}}
+@media(max-width:480px){.task4-panel{padding:14px}.task4-title{font-size:22px}.task4-filter,.task4-cards,.task4-doctor-cards{grid-template-columns:1fr}.task4-actions{flex-wrap:wrap}.task4-actions .btn{flex:1 1 45%}.task4-card-value{font-size:24px}}
 </style>
 
 <div class="task4-page">
@@ -163,6 +164,27 @@ try {
             <div class="task4-card-label">Persentase Kesesuaian</div>
             <div class="task4-card-value" id="task4Persentase">0%</div>
             <div class="task4-card-note">Jumlah sesuai dibandingkan total data.</div>
+        </div>
+    </section>
+
+    <section class="task4-doctor-block" aria-labelledby="task4DoctorSummaryTitle">
+        <h2 class="task4-doctor-title" id="task4DoctorSummaryTitle">Agregasi Dokter - Standar BPJS</h2>
+        <div class="task4-doctor-cards">
+            <div class="task4-card">
+                <div class="task4-card-label">Total Dokter Praktek</div>
+                <div class="task4-card-value" id="task4TotalDokter">0</div>
+                <div class="task4-card-note">Dokter unik yang dievaluasi pada periode terpilih.</div>
+            </div>
+            <div class="task4-card">
+                <div class="task4-card-label">Dokter Tidak Sesuai</div>
+                <div class="task4-card-value" id="task4DokterTidakSesuai">0</div>
+                <div class="task4-card-note">Memiliki minimal satu jadwal berstatus Tidak Sesuai.</div>
+            </div>
+            <div class="task4-card">
+                <div class="task4-card-label">Persentase Kesesuaian Dokter</div>
+                <div class="task4-card-value" id="task4PersentaseDokter">0%</div>
+                <div class="task4-card-note">Dokter sesuai dibandingkan total dokter praktek.</div>
+            </div>
         </div>
     </section>
 
@@ -381,6 +403,13 @@ try {
         document.getElementById('task4Sesuai').textContent = numberFormat.format(summary.sesuai || 0);
         document.getElementById('task4TidakSesuai').textContent = numberFormat.format(summary.tidak_sesuai || 0);
         document.getElementById('task4Persentase').textContent = numberFormat.format(summary.persentase_kesesuaian || 0) + '%';
+    }
+
+    function updateDoctorSummary(summary) {
+        summary = summary || {};
+        document.getElementById('task4TotalDokter').textContent = numberFormat.format(summary.total_dokter_praktek || 0);
+        document.getElementById('task4DokterTidakSesuai').textContent = numberFormat.format(summary.dokter_tidak_sesuai || 0);
+        document.getElementById('task4PersentaseDokter').textContent = numberFormat.format(summary.persentase_kesesuaian || 0) + '%';
     }
 
     function destroyChart(name) {
@@ -643,6 +672,7 @@ try {
                 state.page = payload.pagination.page;
                 state.filters = payload.filters;
                 updateSummary(payload.summary);
+                updateDoctorSummary(payload.doctor_summary);
                 updateCharts(payload.chart, payload.summary);
                 updateTable(payload.data, payload.pagination);
             })

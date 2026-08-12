@@ -69,6 +69,30 @@ function aptd_keu_ralan_inacbg_tariff_sql()
     ";
 }
 
+function aptd_keu_ralan_eklaim_tariff_sql()
+{
+    return "
+        SELECT egr.no_rawat,
+               CAST(TRIM(egr.tariff) AS DECIMAL(16,2)) AS tariff,
+               IFNULL(egr.datetime, '1000-01-01 00:00:00') AS tariff_datetime
+        FROM tb_eklaim_grouping_result egr
+        LEFT JOIN tb_eklaim_grouping_result newer
+          ON newer.no_rawat = egr.no_rawat
+         AND TRIM(IFNULL(newer.tariff, '')) REGEXP '^[0-9]+([.][0-9]+)?$'
+         AND CAST(TRIM(newer.tariff) AS DECIMAL(16,2)) > 0
+         AND (
+                IFNULL(newer.datetime, '1000-01-01 00:00:00') > IFNULL(egr.datetime, '1000-01-01 00:00:00')
+             OR (
+                    IFNULL(newer.datetime, '1000-01-01 00:00:00') = IFNULL(egr.datetime, '1000-01-01 00:00:00')
+                AND newer.no_sep > egr.no_sep
+             )
+         )
+        WHERE TRIM(IFNULL(egr.tariff, '')) REGEXP '^[0-9]+([.][0-9]+)?$'
+          AND CAST(TRIM(egr.tariff) AS DECIMAL(16,2)) > 0
+          AND newer.no_rawat IS NULL
+    ";
+}
+
 function aptd_keu_ralan_search_where(mysqli $mysqli, $search)
 {
     $search = trim((string) $search);
@@ -794,7 +818,7 @@ function aptd_keu_ralan_fetch_rows(
     $poliWhere = $kdPoli !== '' ? ' AND rp.kd_poli = ?' : '';
     $rawatWhere = $onlyNoRawat !== '' ? ' AND rp.no_rawat = ?' : '';
     $searchWhere = aptd_keu_ralan_search_where($mysqli, $search);
-    $inacbgSql = aptd_keu_ralan_inacbg_tariff_sql();
+    $eklaimSql = aptd_keu_ralan_eklaim_tariff_sql();
     $cacheSelectSql = aptd_keu_ralan_cache_select_sql();
     $orderColumns = [
         0 => 'rp.tgl_registrasi',
@@ -838,7 +862,7 @@ function aptd_keu_ralan_fetch_rows(
             COALESCE(MAX(CASE WHEN dp.prioritas = 1 THEN NULLIF(TRIM(dp.kd_penyakit), '') END), '') AS diagnosis_priority_1,
             COALESCE(MAX(CASE WHEN dp.prioritas = 2 THEN NULLIF(TRIM(dp.kd_penyakit), '') END), '') AS diagnosis_priority_2,
             COALESCE(MAX(NULLIF(TRIM(bs.diagawal), '')), '') AS diagnosis_sep,
-            COALESCE(MAX(inacbg.tariff), 0) AS claim_actual,
+            COALESCE(MAX(eklaim.tariff), 0) AS claim_actual,
             COALESCE(MAX(manual.claim_selected), 0) AS claim_selected_raw,
             COALESCE(MAX(manual.claim_source), '') AS claim_selected_source,
             COALESCE(MAX(manual.claim_history), 0) AS stored_claim_history,
@@ -869,7 +893,7 @@ function aptd_keu_ralan_fetch_rows(
         LEFT JOIN klaim_apotek_online_manual apotek ON apotek.no_sep = bs.no_sep
         LEFT JOIN kamar_inap ki ON ki.no_rawat = rp.no_rawat
         LEFT JOIN diagnosa_pasien dp ON dp.no_rawat = rp.no_rawat
-        LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
+        LEFT JOIN ($eklaimSql) eklaim ON eklaim.no_rawat = rp.no_rawat
         LEFT JOIN lap_keuangan_bpjs manual ON manual.no_rawat = rp.no_rawat
         LEFT JOIN lap_keuangan_bpjs_ralan cache ON cache.no_rawat = rp.no_rawat
         WHERE rp.tgl_registrasi BETWEEN ? AND ?
@@ -984,7 +1008,7 @@ function aptd_keu_ralan_fetch_summary(mysqli $mysqli, $startDate, $endDate, $kdP
         : '';
     $startDate = $mysqli->real_escape_string($startDate);
     $endDate = $mysqli->real_escape_string($endDate);
-    $inacbgSql = aptd_keu_ralan_inacbg_tariff_sql();
+    $eklaimSql = aptd_keu_ralan_eklaim_tariff_sql();
     $sql = "
         SELECT COUNT(*) AS jumlah_kunjungan,
                COALESCE(SUM(report.cached_claim_used), 0) AS total_klaim,
@@ -992,7 +1016,7 @@ function aptd_keu_ralan_fetch_summary(mysqli $mysqli, $startDate, $endDate, $kdP
                COALESCE(SUM(report.total_obat), 0) AS total_obat
         FROM (
             SELECT rp.no_rawat,
-                   COALESCE(MAX(inacbg.tariff), 0) AS claim_actual,
+                   COALESCE(MAX(eklaim.tariff), 0) AS claim_actual,
                    COALESCE(MAX(cache.claim_used), 0) AS cached_claim_used,
                    COALESCE(MAX(manual.claim_selected), 0) AS manual_claim_selected,
                    CASE
@@ -1020,7 +1044,7 @@ function aptd_keu_ralan_fetch_summary(mysqli $mysqli, $startDate, $endDate, $kdP
                        + COALESCE(MAX(cache.calc_jd_pa), 0) AS total_jasa_dokter,
                    COALESCE(MAX(cache.calc_biaya_obat), 0) AS total_obat
             FROM reg_periksa rp
-            LEFT JOIN ($inacbgSql) inacbg ON inacbg.no_rawat = rp.no_rawat
+            LEFT JOIN ($eklaimSql) eklaim ON eklaim.no_rawat = rp.no_rawat
             LEFT JOIN bridging_sep bs ON bs.no_rawat = rp.no_rawat
             LEFT JOIN diagnosa_pasien dp ON dp.no_rawat = rp.no_rawat
             LEFT JOIN lap_keuangan_bpjs manual ON manual.no_rawat = rp.no_rawat
@@ -2013,7 +2037,7 @@ function aptd_keu_ralan_store_claim(mysqli $mysqli, array $row, $username = '', 
     $actual = (float) $row['claim_actual'];
     $history = (float) $row['claim_history'];
     $used = (float) $row['claim_used'];
-    $source = $actual > 0 ? 'inacbg_current' : ($history > 0 ? 'history_diagnose' : 'none');
+    $source = $actual > 0 ? 'eklaim_current' : ($history > 0 ? 'history_diagnose' : 'none');
     $historyNoRawat = (string) $row['claim_history_no_rawat'];
     $diagnosisCode = (string) $row['target_diagnosis_code'];
     $username = trim((string) $username);
