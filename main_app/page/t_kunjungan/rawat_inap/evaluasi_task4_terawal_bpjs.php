@@ -44,6 +44,7 @@ try {
 .task4-card-value{margin-top:6px;font-size:28px;line-height:1.1;font-weight:800;color:#1b3552}
 .task4-card-note{margin-top:7px;font-size:11px;color:#7b8da0}
 .task4-doctor-block{display:grid;gap:8px}.task4-doctor-title{margin:0;color:#526b83;font-size:12px;font-weight:800;text-transform:uppercase}.task4-doctor-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.task4-doctor-cards .task4-card:nth-child(1){border-top-color:#2d7dd2}.task4-doctor-cards .task4-card:nth-child(2){border-top-color:#d1495b}.task4-doctor-cards .task4-card:nth-child(3){border-top-color:#24966d}
+.task4-doctor-recap{margin-top:4px;padding:18px}.task4-doctor-recap-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}.task4-doctor-recap-count{font-size:12px;font-weight:700;color:#60758b}.task4-doctor-table-wrap{max-height:430px;overflow:auto;border:1px solid #d8e1eb;border-radius:5px}.task4-doctor-table{width:100%;min-width:650px;margin:0;font-size:12px}.task4-doctor-table thead th{position:sticky;top:0;z-index:2;padding:9px 10px;background:#203a5f;color:#fff;border-color:#49617f;vertical-align:middle}.task4-doctor-table td{padding:8px 10px;vertical-align:middle}.task4-doctor-table tbody tr:nth-child(even){background:#f7f9fb}.task4-doctor-table .task4-doctor-number{width:64px;text-align:center}.task4-doctor-table .task4-doctor-total{width:190px;text-align:center}.task4-doctor-table .task4-doctor-status{width:190px;text-align:center}
 .task4-chart-grid{display:grid;grid-template-columns:minmax(280px,.8fr) minmax(0,1.6fr);gap:12px}
 .task4-chart-title,.task4-table-title{margin:0;font-size:17px;font-weight:800;color:#244565}
 .task4-chart-note,.task4-table-note{margin:4px 0 0;color:#708399;font-size:12px}
@@ -79,7 +80,7 @@ try {
 .task4-pages button.is-active{background:#1769aa;border-color:#1769aa;color:#fff}
 .task4-pages button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:1100px){.task4-filter{grid-template-columns:repeat(3,minmax(150px,1fr))}.task4-cards,.task4-doctor-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.task4-chart-grid{grid-template-columns:1fr}}
-@media(max-width:720px){.task4-title-row,.task4-table-head,.task4-pagination{align-items:stretch;flex-direction:column}.task4-source{white-space:normal}.task4-filter{grid-template-columns:1fr 1fr}.task4-actions{grid-column:1/-1}.task4-actions .btn{flex:1}.task4-table-tools{justify-content:space-between}.task4-search{flex:1}.task4-search input{width:100%}.task4-pages{justify-content:flex-start}}
+@media(max-width:720px){.task4-title-row,.task4-table-head,.task4-doctor-recap-head,.task4-pagination{align-items:stretch;flex-direction:column}.task4-source{white-space:normal}.task4-filter{grid-template-columns:1fr 1fr}.task4-actions{grid-column:1/-1}.task4-actions .btn{flex:1}.task4-table-tools{justify-content:space-between}.task4-search{flex:1}.task4-search input{width:100%}.task4-pages{justify-content:flex-start}}
 @media(max-width:480px){.task4-panel{padding:14px}.task4-title{font-size:22px}.task4-filter,.task4-cards,.task4-doctor-cards{grid-template-columns:1fr}.task4-actions{flex-wrap:wrap}.task4-actions .btn{flex:1 1 45%}.task4-card-value{font-size:24px}}
 </style>
 
@@ -184,6 +185,30 @@ try {
                 <div class="task4-card-label">Persentase Kesesuaian Dokter</div>
                 <div class="task4-card-value" id="task4PersentaseDokter">0%</div>
                 <div class="task4-card-note">Dokter sesuai dibandingkan total dokter praktek.</div>
+            </div>
+        </div>
+        <div class="task4-panel task4-doctor-recap">
+            <div class="task4-doctor-recap-head">
+                <div>
+                    <h3 class="task4-table-title">Rekapitulasi Status Kesesuaian per Dokter</h3>
+                    <p class="task4-table-note">Standar BPJS: satu jadwal Tidak Sesuai menjadikan status akhir dokter Tidak Sesuai.</p>
+                </div>
+                <div class="task4-doctor-recap-count" id="task4DoctorRecapCount">0 dokter</div>
+            </div>
+            <div class="task4-doctor-table-wrap">
+                <table class="table table-bordered table-hover task4-doctor-table">
+                    <thead>
+                        <tr>
+                            <th class="task4-doctor-number">No</th>
+                            <th>Nama Dokter</th>
+                            <th class="task4-doctor-total">Total Jadwal Dievaluasi</th>
+                            <th class="task4-doctor-status">Status Kesesuaian Dokter</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task4DoctorRecapBody">
+                        <tr><td colspan="4" class="task4-empty">Memuat rekapitulasi dokter...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </section>
@@ -302,6 +327,8 @@ try {
         tableWrap: document.getElementById('task4TableWrap'),
         tableBody: document.getElementById('task4TableBody'),
         tableNote: document.getElementById('task4TableNote'),
+        doctorRecapBody: document.getElementById('task4DoctorRecapBody'),
+        doctorRecapCount: document.getElementById('task4DoctorRecapCount'),
         info: document.getElementById('task4Info'),
         pages: document.getElementById('task4Pages')
     };
@@ -410,6 +437,25 @@ try {
         document.getElementById('task4TotalDokter').textContent = numberFormat.format(summary.total_dokter_praktek || 0);
         document.getElementById('task4DokterTidakSesuai').textContent = numberFormat.format(summary.dokter_tidak_sesuai || 0);
         document.getElementById('task4PersentaseDokter').textContent = numberFormat.format(summary.persentase_kesesuaian || 0) + '%';
+    }
+
+    function updateDoctorRecap(rows) {
+        rows = Array.isArray(rows) ? rows : [];
+        elements.doctorRecapCount.textContent = numberFormat.format(rows.length) + ' dokter';
+        if (!rows.length) {
+            elements.doctorRecapBody.innerHTML = '<tr><td colspan="4" class="task4-empty">Tidak ada dokter yang dievaluasi pada periode dan filter terpilih.</td></tr>';
+            return;
+        }
+
+        elements.doctorRecapBody.innerHTML = rows.map(function (row, index) {
+            var isMatch = row.status_kesesuaian === 'Sesuai';
+            return '<tr>'
+                + '<td class="task4-doctor-number">' + numberFormat.format(index + 1) + '</td>'
+                + '<td>' + escapeHtml(row.nama_dokter || '-') + '</td>'
+                + '<td class="task4-doctor-total">' + numberFormat.format(row.total_jadwal_dievaluasi || 0) + '</td>'
+                + '<td class="task4-doctor-status"><span class="task4-status ' + (isMatch ? 'task4-status-sesuai' : 'task4-status-tidak') + '">' + escapeHtml(row.status_kesesuaian) + '</span></td>'
+                + '</tr>';
+        }).join('');
     }
 
     function destroyChart(name) {
@@ -673,12 +719,15 @@ try {
                 state.filters = payload.filters;
                 updateSummary(payload.summary);
                 updateDoctorSummary(payload.doctor_summary);
+                updateDoctorRecap(payload.doctor_recap);
                 updateCharts(payload.chart, payload.summary);
                 updateTable(payload.data, payload.pagination);
             })
             .catch(function (error) {
                 if (error.name === 'AbortError') return;
                 showError(error.message || 'Data evaluasi gagal dimuat.');
+                elements.doctorRecapCount.textContent = '0 dokter';
+                elements.doctorRecapBody.innerHTML = '<tr><td colspan="4" class="task4-empty">Rekapitulasi dokter belum dapat dimuat.</td></tr>';
                 elements.tableBody.innerHTML = '<tr><td colspan="9" class="task4-empty">Terjadi kesalahan saat memuat data.</td></tr>';
                 elements.tableNote.textContent = 'Data belum dapat ditampilkan.';
             })

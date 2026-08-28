@@ -1466,6 +1466,15 @@ function aptd_keu_ralan_calculate_doctor_fee($claimUsed, array $facts)
         return $result;
     }
 
+    // AR-175: tindakan Fisioterapi memakai tarif JD tetap dan mengesampingkan
+    // aturan tindakan lain, tanpa mengubah override khusus Poli Umum di atas.
+    if (!empty($facts['has_physiotherapy'])) {
+        $result['jd_pemeriksaan'] = 0;
+        $result['jd_prosedur'] = 65000;
+        $result['jd_rule'] = 'Tindakan Fisioterapi: JD Pemeriksaan Rp 0; JD Prosedur Rp 65.000';
+        return $result;
+    }
+
     if (!empty($facts['has_hd'])) {
         $result['jd_hd'] = round($claimUsed * 0.21, 2);
         $result['jd_rule'] = 'Hemodialisa 21%';
@@ -1556,6 +1565,7 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
             'specialist_name' => isset($row['nm_sps']) ? (string) $row['nm_sps'] : '',
             'poli_name' => isset($row['nm_poli']) ? (string) $row['nm_poli'] : '',
             'has_hd' => 0,
+            'has_physiotherapy' => 0,
             'has_poli' => 0,
             'has_general_poli_exam' => 0,
             'has_nebulizer' => 0,
@@ -1621,6 +1631,11 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
                        WHEN LOWER(jp.nm_perawatan) LIKE '%hemodialisa%' THEN 1
                        ELSE 0
                    END) AS has_hd,
+                   MAX(CASE
+                       WHEN UPPER(jp.kd_jenis_prw) LIKE '%FISIOTERAPHY%'
+                         OR UPPER(jp.nm_perawatan) LIKE '%FISIOTERAPHY%'
+                       THEN 1 ELSE 0
+                   END) AS has_physiotherapy,
                    MAX(CASE
                        WHEN LOWER(jp.nm_perawatan) LIKE '%pemeriksaan poliklinik%'
                          OR LOWER(jp.nm_perawatan) LIKE '%pemeriksaan poli umum%'
@@ -1704,6 +1719,7 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
                 continue;
             }
             $factsByNoRawat[$noRawat]['has_hd'] = (int) $treatment['has_hd'];
+            $factsByNoRawat[$noRawat]['has_physiotherapy'] = (int) $treatment['has_physiotherapy'];
             $factsByNoRawat[$noRawat]['has_poli'] = (int) $treatment['has_poli'];
             $factsByNoRawat[$noRawat]['has_general_poli_exam'] = (int) $treatment['has_general_poli_exam'];
             $factsByNoRawat[$noRawat]['has_nebulizer'] = (int) $treatment['has_nebulizer'];

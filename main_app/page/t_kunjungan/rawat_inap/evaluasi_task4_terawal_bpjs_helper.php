@@ -220,25 +220,48 @@ function aptd_task4_terawal_search_rows(array $rows, $search)
     }));
 }
 
-function aptd_task4_terawal_build_doctor_summary(array $rows)
+function aptd_task4_terawal_build_doctor_recap(array $rows)
 {
-    $doctorStatuses = [];
+    $doctorRecap = [];
 
     foreach ($rows as $row) {
         $doctorKey = isset($row['kode_dokter']) && $row['kode_dokter'] !== ''
             ? (string) $row['kode_dokter']
             : (string) $row['nama_dokter'];
 
-        if (!isset($doctorStatuses[$doctorKey])) {
-            $doctorStatuses[$doctorKey] = false;
+        if (!isset($doctorRecap[$doctorKey])) {
+            $doctorRecap[$doctorKey] = [
+                'kode_dokter' => isset($row['kode_dokter']) ? (string) $row['kode_dokter'] : '',
+                'nama_dokter' => isset($row['nama_dokter']) ? (string) $row['nama_dokter'] : '',
+                'total_jadwal_dievaluasi' => 0,
+                'status_kesesuaian' => 'Sesuai',
+            ];
         }
+        $doctorRecap[$doctorKey]['total_jadwal_dievaluasi']++;
         if ($row['kesesuaian'] === 'Tidak Sesuai') {
-            $doctorStatuses[$doctorKey] = true;
+            $doctorRecap[$doctorKey]['status_kesesuaian'] = 'Tidak Sesuai';
         }
     }
 
-    $totalDoctors = count($doctorStatuses);
-    $unsuitableDoctors = count(array_filter($doctorStatuses));
+    $doctorRecap = array_values($doctorRecap);
+    usort($doctorRecap, function ($left, $right) {
+        $nameComparison = strcasecmp($left['nama_dokter'], $right['nama_dokter']);
+        if ($nameComparison !== 0) {
+            return $nameComparison;
+        }
+        return strcmp($left['kode_dokter'], $right['kode_dokter']);
+    });
+
+    return $doctorRecap;
+}
+
+function aptd_task4_terawal_build_doctor_summary(array $rows)
+{
+    $doctorRecap = aptd_task4_terawal_build_doctor_recap($rows);
+    $totalDoctors = count($doctorRecap);
+    $unsuitableDoctors = count(array_filter($doctorRecap, function ($doctor) {
+        return $doctor['status_kesesuaian'] === 'Tidak Sesuai';
+    }));
     $suitableDoctors = $totalDoctors - $unsuitableDoctors;
     $suitabilityPercentage = $totalDoctors > 0
         ? round(($suitableDoctors / $totalDoctors) * 100, 2)
@@ -255,6 +278,7 @@ function aptd_task4_terawal_build_doctor_summary(array $rows)
 function aptd_task4_terawal_build_report($conn, array $filters, $paginate = true)
 {
     $baseRows = aptd_task4_terawal_fetch_base_rows($conn, $filters);
+    $doctorRecap = aptd_task4_terawal_build_doctor_recap($baseRows);
     $doctorSummary = aptd_task4_terawal_build_doctor_summary($baseRows);
     $filteredRows = aptd_task4_filter_status($baseRows, $filters['kesesuaian']);
     $summary = aptd_task4_build_summary($filteredRows);
@@ -275,6 +299,7 @@ function aptd_task4_terawal_build_report($conn, array $filters, $paginate = true
         'filters' => array_merge($filters, ['page' => $page]),
         'summary' => $summary,
         'doctor_summary' => $doctorSummary,
+        'doctor_recap' => $doctorRecap,
         'chart' => $charts,
         'data' => array_map('aptd_task4_present_row', $tableRows),
         'pagination' => [

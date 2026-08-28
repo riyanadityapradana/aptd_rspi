@@ -79,6 +79,7 @@ try {
         'Poli: ' . ($filters['kd_poli'] !== '' ? $filters['kd_poli'] : 'Semua')
         . ' | Dokter: ' . ($filters['kd_dokter'] !== '' ? $filters['kd_dokter'] : 'Semua')
         . ' | Status Task 99: ' . $statusLabels[$filters['status_task99']]
+        . ' | Hanya Task 2 Terisi: ' . ($filters['hanya_task_2'] === 1 ? 'Ya' : 'Tidak')
         . ' | Pencarian: ' . ($filters['search'] !== '' ? $filters['search'] : '-')
     );
     $sheet->mergeCells('A3:P3');

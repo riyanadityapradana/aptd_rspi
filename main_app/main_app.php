@@ -39,12 +39,18 @@ function renderMenuLink($pageName, $label, $currentPage, $className = 'nav-link'
     echo '</li>';
 }
 
+function isMenuItemVisible($item)
+{
+    return (!isset($item['visible']) || $item['visible'] !== false)
+        && canAccessPage($item['page']);
+}
+
 function renderDropdownMenu($id, $label, $groups, $currentPage)
 {
     $hasVisibleItem = false;
     foreach ($groups as $group) {
         foreach ($group as $item) {
-            if (canAccessPage($item['page'])) {
+            if (isMenuItemVisible($item)) {
                 $hasVisibleItem = true;
                 break 2;
             }
@@ -58,7 +64,9 @@ function renderDropdownMenu($id, $label, $groups, $currentPage)
     $allPages = [];
     foreach ($groups as $group) {
         foreach ($group as $item) {
-            $allPages[] = $item['page'];
+            if (isMenuItemVisible($item)) {
+                $allPages[] = $item['page'];
+            }
         }
     }
 
@@ -70,7 +78,7 @@ function renderDropdownMenu($id, $label, $groups, $currentPage)
     $printedItem = false;
     foreach ($groups as $group) {
         $visibleGroup = array_values(array_filter($group, function ($item) {
-            return canAccessPage($item['page']);
+            return isMenuItemVisible($item);
         }));
 
         if (empty($visibleGroup)) {
@@ -102,9 +110,11 @@ $menuKunjunganRalan = [
     [
         ['page' => 'kunjungan_data_blmSEP', 'label' => 'Kunjungan Pasien Rawat Jalan Belum SEP'],
         ['page' => 'kunjungan_data_sdhSEP', 'label' => 'Kunjungan Pasien Rawat Jalan Sudah SEP'],
-        ['page' => 'waktu_tunggu_poli_ralan', 'label' => 'Waktu Tunggu Poli BPJS'],
-        ['page' => 'waktu_tunggu_registrasi_perawat_ralan', 'label' => 'Waktu Tunggu Registrasi ke Perawat BPJS'],
-        ['page' => 'evaluasi_task4_bpjs', 'label' => 'Evaluasi Task ID 4 BPJS'],
+        // AR-171: menu kepatuhan BPJS lama disembunyikan sementara.
+        // Ubah visible menjadi true untuk menampilkannya kembali tanpa mengubah route/fitur.
+        ['page' => 'waktu_tunggu_poli_ralan', 'label' => 'Waktu Tunggu Poli BPJS', 'visible' => false],
+        ['page' => 'waktu_tunggu_registrasi_perawat_ralan', 'label' => 'Waktu Tunggu Registrasi ke Perawat BPJS', 'visible' => false],
+        ['page' => 'evaluasi_task4_bpjs', 'label' => 'Evaluasi Task ID 4 BPJS', 'visible' => false],
         ['page' => 'evaluasi_task4_terawal_bpjs', 'label' => 'Indikator Kesesuaian Jadwal (Task 4 Terawal)'],
         ['page' => 'indikator_waktu_tunggu_poli_task_2_5', 'label' => 'Indikator Waktu Tunggu Poli (Task ID 2-5)'],
     ],

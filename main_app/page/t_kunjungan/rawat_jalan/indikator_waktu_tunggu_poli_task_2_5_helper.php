@@ -23,6 +23,7 @@ function aptd_wt25_default_filters()
         'kd_poli' => '',
         'kd_dokter' => '',
         'status_task99' => 'semua',
+        'hanya_task_2' => 0,
         'search' => '',
         'page' => 1,
         'per_page' => 20,
@@ -46,6 +47,14 @@ function aptd_wt25_filter_from_request(array $source)
     }
     if (isset($source['per_page']) && !is_array($source['per_page'])) {
         $filters['per_page'] = (int) $source['per_page'];
+    }
+    if (isset($source['hanya_task_2']) && !is_array($source['hanya_task_2'])) {
+        $task2Only = trim((string) $source['hanya_task_2']);
+        if (!in_array($task2Only, ['0', '1'], true)) {
+            $errors[] = 'Filter Hanya Task 2 Terisi tidak valid.';
+        } else {
+            $filters['hanya_task_2'] = (int) $task2Only;
+        }
     }
 
     if (!aptd_wt25_is_valid_date($filters['tanggal_awal'])) {
@@ -158,6 +167,9 @@ function aptd_wt25_fetch_base_rows($conn, array $filters)
         $where[] = 'rp.kd_dokter = ?';
         $types .= 's';
         $params[] = $filters['kd_dokter'];
+    }
+    if ($filters['hanya_task_2'] === 1) {
+        $where[] = 't2.waktu IS NOT NULL';
     }
 
     $sql = "
