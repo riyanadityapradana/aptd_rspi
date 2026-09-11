@@ -69,6 +69,9 @@ function aptd_get_routes()
         'kode_penyakit_ab_ranap' => 'page/t_klinis/t_kode_penyakit/rawat_inap/kode_penyakit_ab_ranap.php',
         'export_kode_penyakit_ab_ranap' => 'page/t_klinis/t_kode_penyakit/rawat_inap/export_kode_penyakit_ab_ranap.php',
         'diagnosa_awal_sementara_ranap' => 'page/t_klinis/diagnosa_awal_sementara_ranap.php',
+        'rekap_pasien_prmrj' => 'page/t_klinis/rekap_pasien_prmrj.php',
+        'rekap_pasien_prmrj_detail' => 'page/t_klinis/rekap_pasien_prmrj_detail.php',
+        'export_rekap_pasien_prmrj_pdf' => 'page/t_klinis/export_rekap_pasien_prmrj_pdf.php',
 
         'top_10_dokter_pasien' => 'page/t_non_klinis/umum/top_10_dokter_pasien.php',
         'indikator_rawat_inap' => 'page/t_non_klinis/indikator_rawat_inap.php',
@@ -105,6 +108,7 @@ function aptd_get_access_map()
             '10_penyakit_ralan', '10_penyakit_ralan_perpoli', '10_penyakit_ugd_ponek', 'export_10_penyakit_ugd_ponek', 'laporan_bulanan_hais', 'export_laporan_bulanan_hais', '10_penyakit_bedah_ralan', '10_penyakit_non_bedah_ralan',
             '10_penyakit_ranap', '10_penyakit_bedah_ranap', '10_penyakit_non_bedah_ranap',
             'data_pasien_kode_penyakit_bedah_ralan', 'data_pasien_kode_penyakit_non_bedah_ralan', 'data_pasien_kode_penyakit_bedah_ranap', 'data_pasien_kode_penyakit_non_bedah_ranap', 'kode_penyakit_ab_ranap', 'export_kode_penyakit_ab_ranap', 'export_kode_penyakit',
+            'rekap_pasien_prmrj', 'rekap_pasien_prmrj_detail', 'export_rekap_pasien_prmrj_pdf',
             'top_10_dokter_pasien', 'indikator_rawat_inap', 'bor_rawat_inap', 'los_klinis_rawat_inap', 'toi_rawat_inap', 'bto_rawat_inap', 'readme_indikator_rawat_inap', 'rekap_tindakan_operasi', 'rekap_tindakan_lab', 'rekap_tindakan_radiologi', 'pasien_rujukan_masuk_keluar', 'kunjungan_wilayah_visual', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap', 'laporan_keuangan_ralan', 'export_laporan_keuangan_ralan',
         ],
         'kepegawaian' => [

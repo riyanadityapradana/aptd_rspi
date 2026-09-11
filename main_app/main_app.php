@@ -173,6 +173,7 @@ $menuDataKlinis = [
         ['page' => '10_penyakit_ralan_perpoli', 'label' => '10 Besar Penyakit Rawat Jalan Perpoli'],
         ['page' => '10_penyakit_ugd_ponek', 'label' => '10 Penyakit Terbanyak UGD & Ponek'],
         ['page' => 'laporan_bulanan_hais', 'label' => 'Laporan Bulanan Data HAIs'],
+        ['page' => 'rekap_pasien_prmrj', 'label' => 'Rekap Pasien PRMRJ'],
     ],
 ];
 
