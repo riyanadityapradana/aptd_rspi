@@ -179,7 +179,7 @@ $menuDataKlinis = [
 
 $menuDataNonKlinis = [
     [
-        ['page' => 'rekap_resep_fornas_non_fornas', 'label' => 'Rekap Resep Fornas, Non-Fornas dan Non For RSPI'],
+        ['page' => 'rekap_resep_fornas_non_fornas', 'label' => 'Rekap Item Obat Formularium'],
         ['page' => 'diare_data', 'label' => 'Data Pasien Diagnosa Diare'],
         ['page' => 'top_10_dokter_pasien', 'label' => 'Top 10 Dokter Paling Banyak Pasien'],
         ['page' => 'pasien_rujukan_masuk_keluar', 'label' => 'Pasien Rujukan Masuk / Keluar'],

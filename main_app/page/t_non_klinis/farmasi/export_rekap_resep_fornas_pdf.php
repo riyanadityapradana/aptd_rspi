@@ -30,7 +30,7 @@ if (!$period['valid']) {
 try {
     $report = aptd_fornas_fetch_report($mysqli, $period['tanggal_awal'], $period['tanggal_akhir']);
 } catch (Throwable $exception) {
-    error_log('AR-163 Export PDF Rekap Resep: ' . $exception->getMessage());
+    error_log('AR-178 Export PDF Rekap Item Formularium: ' . $exception->getMessage());
     http_response_code(500);
     exit('PDF belum dapat dibuat.');
 }
@@ -213,7 +213,7 @@ function aptd_fornas_pdf_report_rows(array $report, array $dimensions)
         ];
     }
 
-    $denominator = (int) $report['total_terklasifikasi'];
+    $denominator = (int) $report['total_item'];
     $percentages = [];
     foreach ($dimensions['formularium'] as $formularium) {
         $percentages[] = $denominator > 0
@@ -241,7 +241,7 @@ function aptd_fornas_pdf_draw_table_header($image, array $columns, $margin, $tab
     $subHeight = 24;
     $fullHeight = $topHeight + $subHeight;
     $x = $margin;
-    $topLabels = ['Jenis Rawat', 'Kategori Resep', 'Jenis Bayar'];
+    $topLabels = ['Jenis Rawat', 'Jenis Item', 'Jenis Bayar'];
 
     foreach ($topLabels as $index => $label) {
         aptd_fornas_pdf_draw_rect($image, $x, $tableY, $columns[$index], $fullHeight, $colors['line'], $colors['dark'], $scale);
@@ -261,7 +261,7 @@ function aptd_fornas_pdf_draw_table_header($image, array $columns, $margin, $tab
     }
 
     aptd_fornas_pdf_draw_rect($image, $x, $tableY, $columns[6], $fullHeight, $colors['line'], $colors['dark'], $scale);
-    aptd_fornas_pdf_draw_cell_text($image, 'Total Terklasifikasi', $x, $tableY, $columns[6], $fullHeight, 8, $colors['white'], true, 'center', $scale);
+    aptd_fornas_pdf_draw_cell_text($image, 'Total Item', $x, $tableY, $columns[6], $fullHeight, 8, $colors['white'], true, 'center', $scale);
 
     return $fullHeight;
 }
@@ -394,7 +394,7 @@ function aptd_fornas_pdf_build(array $report, array $dimensions, array $period, 
 
         aptd_fornas_pdf_draw_text(
             $image,
-            'Rekap Resep Fornas, Non-Fornas dan Non For RSPI',
+            'Rekap Item Obat Formularium',
             $margin,
             24,
             12,
@@ -405,7 +405,7 @@ function aptd_fornas_pdf_build(array $report, array $dimensions, array $period, 
         );
         aptd_fornas_pdf_draw_text(
             $image,
-            'Periode: ' . $period['tanggal_awal'] . ' s.d. ' . $period['tanggal_akhir'],
+            'Periode: ' . $period['tanggal_awal'] . ' s.d. ' . $period['tanggal_akhir'] . ' | Satuan: baris item obat (qty/jml diabaikan)',
             $margin,
             43,
             9,
@@ -463,7 +463,7 @@ $dimensions = aptd_fornas_dimensions();
 $wita = new DateTimeZone('Asia/Makassar');
 $downloadedAt = new DateTimeImmutable('now', $wita);
 $pdf = aptd_fornas_pdf_build($report, $dimensions, $period, $downloadedAt->format('Y-m-d H:i:s'));
-$filename = 'rekap_resep_formularium_' . $period['tanggal_awal'] . '_' . $period['tanggal_akhir'] . '_' . $downloadedAt->format('Ymd_His') . '.pdf';
+$filename = 'rekap_item_formularium_' . $period['tanggal_awal'] . '_' . $period['tanggal_akhir'] . '_' . $downloadedAt->format('Ymd_His') . '.pdf';
 
 while (ob_get_level() > 0) {
     ob_end_clean();
