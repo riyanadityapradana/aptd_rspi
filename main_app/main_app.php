@@ -119,7 +119,6 @@ $menuKunjunganRalan = [
         ['page' => 'indikator_waktu_tunggu_poli_task_2_5', 'label' => 'Indikator Waktu Tunggu Poli (Task ID 2-5)'],
     ],
     [
-        ['page' => 'kunjungan_data_berdasarkanusia_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Berdasarkan Usia'],
         ['page' => 'kunjungan_data_kecamatan_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Berdasarkan Kecamatan'],
     ],
 ];
@@ -163,6 +162,7 @@ $menuPenyakit = [
 $menuGizi = [
     [
         ['page' => 'adime_gizi', 'label' => 'Monitoring ADIME Gizi Rawat Inap'],
+        ['page' => 'kunjungan_data_berdasarkanusia_ralan', 'label' => 'Kunjungan Pasien Rawat Jalan Berdasarkan Usia'],
         ['page' => 'kunjungan_usia_ranap_gizi', 'label' => 'Kunjungan Rawat Inap Berdasarkan Usia'],
     ],
 ];
