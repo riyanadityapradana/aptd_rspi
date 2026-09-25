@@ -4,11 +4,11 @@ require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php'
 
 $conn = $mysqli;
 
-$filter_tgl_awal = isset($_POST['tgl_awal']) ? trim((string) $_POST['tgl_awal']) : date('Y-m-01');
-$filter_tgl_akhir = isset($_POST['tgl_akhir']) ? trim((string) $_POST['tgl_akhir']) : date('Y-m-d');
-$filter_stts = isset($_POST['stts']) ? trim((string) $_POST['stts']) : 'semua';
-$filter_usia = isset($_POST['usia']) ? trim((string) $_POST['usia']) : 'semua';
-$filter_jenis_bayar = isset($_POST['jenis_bayar']) ? trim((string) $_POST['jenis_bayar']) : 'semua';
+$filter_tgl_awal = isset($_REQUEST['tgl_awal']) ? trim((string) $_REQUEST['tgl_awal']) : date('Y-m-01');
+$filter_tgl_akhir = isset($_REQUEST['tgl_akhir']) ? trim((string) $_REQUEST['tgl_akhir']) : date('Y-m-d');
+$filter_stts = isset($_REQUEST['stts']) ? trim((string) $_REQUEST['stts']) : 'semua';
+$filter_usia = isset($_REQUEST['usia']) ? trim((string) $_REQUEST['usia']) : 'semua';
+$filter_jenis_bayar = isset($_REQUEST['jenis_bayar']) ? trim((string) $_REQUEST['jenis_bayar']) : 'semua';
 
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $filter_tgl_awal)) {
     $filter_tgl_awal = date('Y-m-01');

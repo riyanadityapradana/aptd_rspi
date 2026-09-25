@@ -12,6 +12,25 @@ $page = isset($_GET['page']) && $_GET['page'] !== '' ? $_GET['page'] : 'beranda'
 $namaLogin = isset($_SESSION['nama_lengkap']) ? $_SESSION['nama_lengkap'] : 'Pengguna';
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '-';
 
+if (strpos($page, 'export_') === 0) {
+    $routes = aptd_get_routes();
+
+    if (!isset($routes[$page])) {
+        http_response_code(404);
+        echo 'Halaman export yang diminta tidak ditemukan.';
+        exit;
+    }
+
+    if (!aptd_can_access($levelLogin, $page)) {
+        http_response_code(403);
+        echo 'Anda tidak memiliki hak akses ke export ini.';
+        exit;
+    }
+
+    require_once($routes[$page]);
+    exit;
+}
+
 function canAccessPage($pageName)
 {
     global $levelLogin;

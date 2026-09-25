@@ -275,38 +275,15 @@ $(document).ready(function(){
 
     // Export to Excel
     $('#btnExport').on('click', function(){
-        var formData = new FormData();
-        formData.append('tgl_awal', $('#tgl_awal').val());
-        formData.append('tgl_akhir', $('#tgl_akhir').val());
-        formData.append('stts', $('#stts').val());
-        formData.append('usia', $('#usia').val());
-        formData.append('jenis_bayar', $('#jenis_bayar').val());
-        formData.append('export', '1');
+        var params = new URLSearchParams();
+        params.append('page', 'export_kunjungan_usia');
+        params.append('tgl_awal', $('#tgl_awal').val());
+        params.append('tgl_akhir', $('#tgl_akhir').val());
+        params.append('stts', $('#stts').val());
+        params.append('usia', $('#usia').val());
+        params.append('jenis_bayar', $('#jenis_bayar').val());
 
-        $.ajax({
-            type: 'POST',
-            url: 'main_app.php?page=export_kunjungan_usia',
-            data: formData,
-            processData: false,
-            contentType: false,
-            xhrFields: {
-                responseType: 'blob'
-            },
-            success: function(data, status, xhr){
-                var filename = 'Kunjungan_Berdasarkan_Usia_' + new Date().toISOString().split('T')[0] + '.xlsx';
-                var link = document.createElement('a');
-                var url = URL.createObjectURL(data);
-                link.href = url;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            },
-            error: function(){
-                alert('Gagal export data');
-            }
-        });
+        window.location.href = 'main_app.php?' + params.toString();
     });
 });
 </script>
