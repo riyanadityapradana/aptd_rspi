@@ -849,7 +849,7 @@ function aptd_keu_ralan_fetch_rows(
             rp.no_rawat,
             rp.no_rkm_medis,
             ps.nm_pasien,
-            pl.kd_poli,
+            rp.kd_poli,
             pl.nm_poli,
             d.nm_dokter,
             COALESCE(s.nm_sps, '') AS nm_sps,
@@ -909,7 +909,7 @@ function aptd_keu_ralan_fetch_rows(
             rp.no_rawat,
             rp.no_rkm_medis,
             ps.nm_pasien,
-            pl.kd_poli,
+            rp.kd_poli,
             pl.nm_poli,
             d.nm_dokter,
             s.nm_sps,
@@ -1485,6 +1485,10 @@ function aptd_keu_ralan_calculate_doctor_fee($claimUsed, array $facts)
         if (!empty($facts['operation_has_phaco'])) {
             $result['jd_prosedur'] = round($claimUsed * 0.24, 2);
             $result['jd_rule'] = 'Operasi Phaco 24%';
+        } elseif (isset($facts['kd_poli']) && trim((string) $facts['kd_poli']) === 'U0073') {
+            // AR-180: operasi mata selain Phaco/Pacho memakai tarif JD 19%.
+            $result['jd_prosedur'] = round($claimUsed * 0.19, 2);
+            $result['jd_rule'] = 'Operasi Poli U0073 Non-Phaco/Pacho 19%';
         } elseif (!empty($facts['operation_has_partus_kuret'])) {
             $result['jd_prosedur'] = round($claimUsed * 0.19, 2);
             $result['jd_rule'] = 'Operasi Partus/Kuret 19%';
@@ -1564,6 +1568,7 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
         $factsByNoRawat[$noRawat] = [
             'specialist_name' => isset($row['nm_sps']) ? (string) $row['nm_sps'] : '',
             'poli_name' => isset($row['nm_poli']) ? (string) $row['nm_poli'] : '',
+            'kd_poli' => isset($row['kd_poli']) ? (string) $row['kd_poli'] : '',
             'has_hd' => 0,
             'has_physiotherapy' => 0,
             'has_poli' => 0,
@@ -1769,6 +1774,7 @@ function aptd_keu_ralan_apply_doctor_fees(mysqli $mysqli, array &$rows)
                    END) AS operation_has_partus,
                    MAX(CASE
                        WHEN LOWER(COALESCE(po.nm_perawatan, '')) LIKE '%phaco%'
+                         OR LOWER(COALESCE(po.nm_perawatan, '')) LIKE '%pacho%'
                        THEN 1 ELSE 0
                    END) AS operation_has_phaco,
                    MAX(CASE
