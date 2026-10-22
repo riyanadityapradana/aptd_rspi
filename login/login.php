@@ -1,5 +1,7 @@
 ﻿<?php
 session_start();
+require_once __DIR__ . '/login_security.php';
+aptd_login_no_cache();
 
 if (isset($_SESSION['login_aptd_rspi']) && $_SESSION['login_aptd_rspi'] === true) {
     header('Location: ../main_app/main_app.php?page=beranda');
@@ -26,6 +28,19 @@ unset(
     $_SESSION['register_old'],
     $_SESSION['register_open_modal']
 );
+
+$jedaLogin = 0;
+$captchaId = '';
+$pengamananTersedia = true;
+$csrfToken = aptd_login_csrf_token();
+try {
+    $jedaLogin = aptd_login_wait();
+    $captchaId = aptd_login_create_captcha();
+} catch (Throwable $e) {
+    error_log('APTD login security: ' . $e->getMessage());
+    $pengamananTersedia = false;
+    $pesan = 'Pengamanan login sedang tidak tersedia. Silakan hubungi administrator.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -298,6 +313,37 @@ unset(
             box-shadow: 0 22px 36px rgba(37, 120, 191, 0.3);
         }
 
+        .btn-login:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .captcha-image {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--blue-300);
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .captcha-help {
+            display: block;
+            margin: 8px 0;
+            color: #55718e;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .captcha-refresh {
+            display: inline-block;
+            margin-bottom: 10px;
+            color: var(--blue-700);
+            font-weight: 600;
+        }
+
         .login-footer {
             margin-top: 18px;
             font-size: 13px;
@@ -428,7 +474,9 @@ unset(
                         <?php if ($pesanSuksesRegister !== ''): ?>
                             <div class="alert alert-success" role="alert"><?php echo htmlspecialchars($pesanSuksesRegister, ENT_QUOTES, 'UTF-8'); ?></div>
                         <?php endif; ?>
-                        <form action="proses_login.php" method="post" autocomplete="off">
+                        <form action="proses_login.php" method="post" autocomplete="off" id="loginForm">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                            <input type="hidden" name="captcha_id" value="<?php echo htmlspecialchars($captchaId, ENT_QUOTES, 'UTF-8'); ?>">
                             <div class="form-group">
                                 <label for="username">Username</label>
                                 <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" value="<?php echo htmlspecialchars($usernameTerakhir, ENT_QUOTES, 'UTF-8'); ?>" required>
@@ -451,7 +499,21 @@ unset(
                                     </button>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-login">Masuk ke Aplikasi</button>
+                            <?php if ($pengamananTersedia): ?>
+                            <div class="form-group">
+                                <label for="captcha">Kode CAPTCHA</label>
+                                <img class="captcha-image" src="captcha.php?id=<?php echo rawurlencode($captchaId); ?>" width="220" height="70" alt="Gambar kode CAPTCHA. Ketik lima karakter yang terlihat di gambar.">
+                                <a class="captcha-refresh" href="login.php" id="refreshCaptcha">Ganti kode CAPTCHA</a>
+                                <input type="text" class="form-control" id="captcha" name="captcha" placeholder="Masukkan 5 karakter pada gambar" maxlength="5" minlength="5" autocapitalize="characters" spellcheck="false" aria-describedby="captchaHelp" required>
+                                <small class="captcha-help" id="captchaHelp">Huruf besar/kecil sama. Kode berlaku 5 menit dan hanya dapat digunakan sekali.</small>
+                            </div>
+                            <?php endif; ?>
+                            <p class="alert alert-warning" id="loginCooldown" role="status" aria-live="polite" <?php echo $jedaLogin > 0 ? '' : 'hidden'; ?>>
+                                Silakan tunggu <strong id="loginSeconds"><?php echo (int) $jedaLogin; ?></strong> detik sebelum mencoba lagi.
+                            </p>
+                            <button type="submit" class="btn btn-login" id="loginButton" <?php echo (!$pengamananTersedia || $jedaLogin > 0) ? 'disabled' : ''; ?>>Masuk ke Aplikasi</button>
+                            <small class="captcha-help">Setiap percobaan login yang gagal dikenai jeda 30 detik.</small>
+                            <noscript><p class="captcha-help">Setelah 30 detik, muat ulang halaman untuk mencoba login kembali.</p></noscript>
                         </form>
                         <div class="login-actions">
                             <!-- <button type="button" class="btn-link-action" data-toggle="modal" data-target="#modalBuatAkun">Buat Account</button> -->
@@ -525,6 +587,71 @@ unset(
     <script src="../assets/assets-admin/js/popper.min.js"></script>
     <script src="../assets/assets-admin/js/bootstrap.min.js"></script>
     <script>
+        (function () {
+            var form = document.getElementById('loginForm');
+            var button = document.getElementById('loginButton');
+            var notice = document.getElementById('loginCooldown');
+            var seconds = document.getElementById('loginSeconds');
+            var remaining = <?php echo (int) $jedaLogin; ?>;
+            var available = <?php echo $pengamananTersedia ? 'true' : 'false'; ?>;
+            var deadline = Date.now() + remaining * 1000;
+
+            if (remaining > 0) {
+                var timer = setInterval(function () {
+                    remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+                    seconds.textContent = remaining;
+                    if (remaining === 0) {
+                        clearInterval(timer);
+                        notice.hidden = true;
+                        button.disabled = !available;
+                    }
+                }, 250);
+            }
+
+            form.addEventListener('submit', function (event) {
+                if (!available || remaining > 0) {
+                    event.preventDefault();
+                    return;
+                }
+                button.disabled = true;
+                button.textContent = 'Memeriksa...';
+            });
+
+            var refresh = document.getElementById('refreshCaptcha');
+            if (refresh) {
+                refresh.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    // Ambil form baru tanpa menghapus username/password yang sedang diketik.
+                    refresh.textContent = 'Memuat kode...';
+                    fetch('login.php', { cache: 'no-store', credentials: 'same-origin' })
+                        .then(function (response) {
+                            if (!response.ok) { throw new Error('CAPTCHA unavailable'); }
+                            return response.text();
+                        })
+                        .then(function (html) {
+                            var page = new DOMParser().parseFromString(html, 'text/html');
+                            var nextId = page.querySelector('input[name="captcha_id"]');
+                            var nextImage = page.querySelector('.captcha-image');
+                            if (!nextId || !nextImage) { throw new Error('CAPTCHA unavailable'); }
+                            form.querySelector('input[name="captcha_id"]').value = nextId.value;
+                            form.querySelector('.captcha-image').src = nextImage.getAttribute('src');
+                            form.querySelector('input[name="csrf_token"]').value = page.querySelector('input[name="csrf_token"]').value;
+                            document.getElementById('captcha').value = '';
+                            document.getElementById('captcha').focus();
+                        })
+                        .catch(function () {
+                            window.location.href = 'login.php';
+                        })
+                        .finally(function () { refresh.textContent = 'Ganti kode CAPTCHA'; });
+                });
+            }
+
+            // Kembali dari riwayat browser harus mengambil status jeda terbaru.
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted) { window.location.reload(); }
+            });
+        })();
+
         $(function () {
             $('#togglePassword').on('click', function () {
                 var $password = $('#password');

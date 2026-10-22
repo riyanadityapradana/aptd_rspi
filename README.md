@@ -22,6 +22,16 @@ Aplikasi ini memakai alur sederhana seperti berikut:
    - daftar route page
    - hak akses tiap level user
 
+## CAPTCHA dan pembatasan login
+
+Form `login/login.php` menggunakan CAPTCHA gambar lokal (5 karakter, tidak peka huruf besar/kecil, berlaku 5 menit, sekali pakai) dan token CSRF. Tautan **Ganti kode CAPTCHA** mengambil kode baru tanpa menghapus username/password yang sedang diketik.
+
+Setelah CAPTCHA atau username/password salah, IP koneksi tersebut harus menunggu **30 detik**. Hitung mundur menonaktifkan tombol login; pemeriksaan server tetap menolak POST langsung selama jeda. Muat ulang, ganti sesi/browser, ganti username, atau ganti CAPTCHA tidak menghapus jeda. Percobaan selama jeda tidak memperpanjangnya. IP yang sama (termasuk pengguna di belakang NAT/proxy yang sama) berbagi jeda; header `X-Forwarded-For` tidak dipercaya. Form dengan token CSRF tidak valid ditolak sebelum pemeriksaan login. Login berhasil membersihkan reservasi percobaannya dan memperbarui waktu login seperti sebelumnya.
+
+Memerlukan ekstensi PHP **GD** dan **PDO SQLite**, serta izin tulis akun Apache pada `storage/login-security/`. File `attempts.sqlite` dibuat otomatis dan hanya berisi hash IP, batas waktu jeda, serta token reservasi; tabel `tb_users` tidak diubah. Direktori dilindungi `.htaccess` (`Require all denied`); jika memakai server selain Apache, blokir akses HTTP ke direktori ini pada konfigurasi server. Bila penyimpanan/ekstensi pengamanan tidak tersedia, login ditolak dengan pesan umum dan rincian dicatat ke log PHP.
+
+Uji regresi tanpa mengakses database/pengguna asli: `C:\xampp\php\php.exe tests/login_security_test.php`.
+
 ## Struktur folder utama
 
 - `config/`
