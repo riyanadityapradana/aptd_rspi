@@ -198,6 +198,7 @@ $menuDataKlinis = [
 
 $menuDataNonKlinis = [
     [
+        ['page' => 'data_vaksinasi_haji', 'label' => 'Data Vaksinasi Haji'],
         ['page' => 'rekap_resep_fornas_non_fornas', 'label' => 'Rekap Item Obat Formularium'],
         ['page' => 'diare_data', 'label' => 'Data Pasien Diagnosa Diare'],
         ['page' => 'top_10_dokter_pasien', 'label' => 'Top 10 Dokter Paling Banyak Pasien'],

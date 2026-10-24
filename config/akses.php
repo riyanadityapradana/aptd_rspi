@@ -11,6 +11,8 @@ function aptd_get_routes()
         'export_kunjungan_usia_ranap_gizi' => 'page/t_gizi/export_kunjungan_usia_ranap_gizi.php',
         'rekap_resep_fornas_non_fornas' => 'page/t_non_klinis/farmasi/rekap_resep_fornas_non_fornas.php',
         'export_rekap_resep_fornas_pdf' => 'page/t_non_klinis/farmasi/export_rekap_resep_fornas_pdf.php',
+        'data_vaksinasi_haji' => 'page/t_non_klinis/vaksinasi/data_vaksinasi_haji.php',
+        'export_vaksinasi_haji_pdf' => 'page/t_non_klinis/vaksinasi/export_vaksinasi_haji_pdf.php',
 
         'kunjungan_data_ralan' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_ralan.php',
         'kunjungan_data_perpoli' => 'page/t_kunjungan/rawat_jalan/kunjungan_data_perpoli.php',
@@ -127,8 +129,8 @@ function aptd_get_access_map()
         ],
         'users' => ['beranda'],
         'rekammedis' => ['beranda', 'rl32_ranap', 'rl34_pengunjung', 'input_data_claim'],
-        'keuangan' => ['beranda', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap', 'laporan_keuangan_ralan', 'export_laporan_keuangan_ralan', 'input_data_claim'],
-        'moneta' => ['beranda', 'top_10_dokter_pasien', 'kunjungan_wilayah_visual'],
+        'keuangan' => ['beranda', 'laporan_keuangan_ranap', 'export_laporan_keuangan_ranap', 'laporan_keuangan_ralan', 'export_laporan_keuangan_ralan', 'input_data_claim', 'data_vaksinasi_haji', 'export_vaksinasi_haji_pdf'],
+        'moneta' => ['beranda', 'top_10_dokter_pasien', 'kunjungan_wilayah_visual', 'data_vaksinasi_haji', 'export_vaksinasi_haji_pdf'],
         'gizi' => ['beranda', 'adime_gizi', 'export_adime_gizi', 'kunjungan_usia_ranap_gizi', 'export_kunjungan_usia_ranap_gizi', 'kunjungan_data_berdasarkanusia_ralan', 'export_kunjungan_usia'],
         'farmasi' => ['beranda', 'kode_penyakit_ab_ranap', 'export_kode_penyakit_ab_ranap', 'rekap_resep_fornas_non_fornas', 'export_rekap_resep_fornas_pdf'],
         'pemasaran' => ['beranda', 'kunjungan_kecamatan_mingguan_ralan', 'kunjungan_kecamatan_mingguan_ranap'],
@@ -145,6 +147,8 @@ function aptd_can_access($level, $page)
     $accessMap = aptd_get_access_map();
     $routes = aptd_get_routes();
     $restrictedPageRoles = [
+        'data_vaksinasi_haji' => ['admin', 'keuangan', 'moneta'],
+        'export_vaksinasi_haji_pdf' => ['admin', 'keuangan', 'moneta'],
         'rekap_resep_fornas_non_fornas' => ['admin', 'farmasi'],
         'export_rekap_resep_fornas_pdf' => ['admin', 'farmasi'],
     ];
