@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/laporan_keuangan_ralan_schema.php';
 require_once dirname(__DIR__) . '/report_helper.php';
 
 function aptd_keu_ralan_is_valid_date($value)
@@ -182,26 +183,6 @@ function aptd_keu_ralan_validate_apotek_upload(array $file, $requireUploadedFile
         'extension' => $extension,
         'size' => $fileSize,
     ];
-}
-
-function aptd_keu_ralan_ensure_apotek_manual_schema(mysqli $mysqli)
-{
-    static $ready = false;
-    if ($ready) {
-        return;
-    }
-
-    $sql = "CREATE TABLE IF NOT EXISTS klaim_apotek_online_manual (
-        no_sep VARCHAR(40) NOT NULL,
-        nominal_klaim DECIMAL(16,2) NOT NULL DEFAULT 0.00,
-        tanggal_input TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        user_input VARCHAR(100) NOT NULL,
-        PRIMARY KEY (no_sep)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
-    if (!$mysqli->query($sql)) {
-        throw new RuntimeException('Tabel klaim apotek online tidak dapat disiapkan: ' . $mysqli->error);
-    }
-    $ready = true;
 }
 
 function aptd_keu_ralan_normalize_apotek_nominal($value)
@@ -566,132 +547,6 @@ function aptd_keu_ralan_import_apotek_excel(mysqli $mysqli, $filePath, $username
     ];
 }
 
-function aptd_keu_ralan_cache_fields()
-{
-    $decimal = 'DECIMAL(16,2) NOT NULL DEFAULT 0';
-    $integer = 'INT NOT NULL DEFAULT 0';
-    $text = 'TEXT NULL';
-
-    return [
-        'jd_pemeriksaan' => ['column' => 'calc_jd_pemeriksaan', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'jd_prosedur' => ['column' => 'calc_jd_prosedur', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'jd_dokter_anestesi' => ['column' => 'calc_jd_dokter_anestesi', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'jd_dokter_anak' => ['column' => 'calc_jd_dokter_anak', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'jd_hd' => ['column' => 'calc_jd_hd', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'jd_usg' => ['column' => 'calc_jd_usg', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'jd_rontgen' => ['column' => 'calc_jd_rontgen', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'jd_lab' => ['column' => 'calc_jd_lab', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'jd_pa' => ['column' => 'calc_jd_pa', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'bhp_lab_pk' => ['column' => 'calc_bhp_lab_pk', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'bhp_lab_pa' => ['column' => 'calc_bhp_lab_pa', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'bhp_rad_usg' => ['column' => 'calc_bhp_rad_usg', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'bhp_rontgen' => ['column' => 'calc_bhp_rontgen', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'jasa_karyawan' => ['column' => 'calc_jasa_karyawan', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'biaya_bhp' => ['column' => 'calc_biaya_bhp', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'biaya_obat' => ['column' => 'calc_biaya_obat', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'biaya_ekg' => ['column' => 'calc_biaya_ekg', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'biaya_darah' => ['column' => 'calc_biaya_darah', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'makan_jumlah' => ['column' => 'calc_makan_jumlah', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'makan_harga' => ['column' => 'calc_makan_harga', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'makan_kali' => ['column' => 'calc_makan_kali', 'definition' => $integer, 'kind' => 'integer', 'default' => 0],
-        'biaya_fototheraphy' => ['column' => 'calc_biaya_fototheraphy', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'biaya_oksigen' => ['column' => 'calc_biaya_oksigen', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'biaya_spirometri' => ['column' => 'calc_biaya_spirometri', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'total' => ['column' => 'calc_total', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'margin' => ['column' => 'calc_margin', 'definition' => $decimal, 'kind' => 'decimal', 'default' => 0],
-        'keterangan_darah' => ['column' => 'calc_keterangan_darah', 'definition' => $integer, 'kind' => 'integer', 'default' => 0],
-        'keterangan_albumin' => ['column' => 'calc_keterangan_albumin', 'definition' => $integer, 'kind' => 'integer', 'default' => 0],
-        'keterangan_tindakan' => ['column' => 'calc_keterangan_tindakan', 'definition' => $text, 'kind' => 'text', 'default' => ''],
-        'jd_rule' => ['column' => 'rule_jd', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'jd_anestesi_rule' => ['column' => 'rule_jd_anestesi', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'jd_anak_rule' => ['column' => 'rule_jd_anak', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'jd_usg_rule' => ['column' => 'rule_jd_usg', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'jd_rontgen_rule' => ['column' => 'rule_jd_rontgen', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'jd_lab_rule' => ['column' => 'rule_jd_lab', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'jd_pa_rule' => ['column' => 'rule_jd_pa', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'bhp_lab_pk_rule' => ['column' => 'rule_bhp_lab_pk', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'bhp_lab_pa_rule' => ['column' => 'rule_bhp_lab_pa', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'bhp_rad_usg_rule' => ['column' => 'rule_bhp_rad_usg', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'bhp_rontgen_rule' => ['column' => 'rule_bhp_rontgen', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'biaya_bhp_rule' => ['column' => 'rule_biaya_bhp', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'biaya_obat_rule' => ['column' => 'rule_biaya_obat', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'biaya_ekg_rule' => ['column' => 'rule_biaya_ekg', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'biaya_darah_rule' => ['column' => 'rule_biaya_darah', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'makan_rule' => ['column' => 'rule_makan', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'biaya_oksigen_rule' => ['column' => 'rule_biaya_oksigen', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'biaya_spirometri_rule' => ['column' => 'rule_biaya_spirometri', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'total_rule' => ['column' => 'rule_total', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-        'margin_rule' => ['column' => 'rule_margin', 'definition' => $text, 'kind' => 'text', 'default' => 'Belum dihitung'],
-    ];
-}
-
-function aptd_keu_ralan_ensure_cache_schema(mysqli $mysqli)
-{
-    static $ready = false;
-    if ($ready) {
-        return;
-    }
-
-    $columnSql = [
-        'no_rawat VARCHAR(20) NOT NULL',
-        'claim_used DECIMAL(16,2) NOT NULL DEFAULT 0',
-        "claim_source VARCHAR(30) NOT NULL DEFAULT 'Belum Ada'",
-        'claim_actual_snapshot DECIMAL(16,2) NOT NULL DEFAULT 0',
-        'claim_history_snapshot DECIMAL(16,2) NOT NULL DEFAULT 0',
-        'claim_apotek_snapshot DECIMAL(16,2) NOT NULL DEFAULT 0',
-        'claim_history_no_rawat VARCHAR(20) NULL',
-        'claim_diagnosis_code VARCHAR(20) NULL',
-        'calculated_at DATETIME NULL',
-        'calculated_by VARCHAR(50) NULL',
-        'updated_at DATETIME NULL',
-    ];
-    foreach (aptd_keu_ralan_cache_fields() as $field) {
-        $columnSql[] = $field['column'] . ' ' . $field['definition'];
-    }
-
-    $createSql = "CREATE TABLE IF NOT EXISTS lap_keuangan_bpjs_ralan ("
-        . implode(', ', $columnSql)
-        . ', PRIMARY KEY (no_rawat)'
-        . ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
-    if (!$mysqli->query($createSql)) {
-        throw new RuntimeException('Tabel cache keuangan Ralan tidak dapat dibuat: ' . $mysqli->error);
-    }
-
-    $existing = [];
-    $result = $mysqli->query('SHOW COLUMNS FROM lap_keuangan_bpjs_ralan');
-    if (!$result) {
-        throw new RuntimeException('Struktur tabel cache keuangan Ralan tidak dapat dibaca: ' . $mysqli->error);
-    }
-    while ($column = $result->fetch_assoc()) {
-        $existing[$column['Field']] = true;
-    }
-
-    $definitions = [
-        'claim_used' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
-        'claim_source' => "VARCHAR(30) NOT NULL DEFAULT 'Belum Ada'",
-        'claim_actual_snapshot' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
-        'claim_history_snapshot' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
-        'claim_apotek_snapshot' => 'DECIMAL(16,2) NOT NULL DEFAULT 0',
-        'claim_history_no_rawat' => 'VARCHAR(20) NULL',
-        'claim_diagnosis_code' => 'VARCHAR(20) NULL',
-        'calculated_at' => 'DATETIME NULL',
-        'calculated_by' => 'VARCHAR(50) NULL',
-        'updated_at' => 'DATETIME NULL',
-    ];
-    foreach (aptd_keu_ralan_cache_fields() as $field) {
-        $definitions[$field['column']] = $field['definition'];
-    }
-    foreach ($definitions as $column => $definition) {
-        if (!isset($existing[$column])) {
-            if (!$mysqli->query("ALTER TABLE lap_keuangan_bpjs_ralan ADD COLUMN $column $definition")) {
-                throw new RuntimeException('Kolom cache ' . $column . ' tidak dapat dibuat: ' . $mysqli->error);
-            }
-        }
-    }
-
-    $ready = true;
-}
-
 function aptd_keu_ralan_cache_select_sql()
 {
     $select = '';
@@ -920,7 +775,8 @@ function aptd_keu_ralan_fetch_rows(
         $limitSql";
 
     $stmt = null;
-    for ($attempt = 0; $attempt < 2; $attempt++) {
+    $maxAttempts = 3;
+    for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
         try {
             $stmt = $mysqli->prepare($sql);
             if (!$stmt) {
@@ -938,7 +794,11 @@ function aptd_keu_ralan_fetch_rows(
             $stmt = null;
             $needsReprepare = (int) $exception->getCode() === 1615
                 || stripos($exception->getMessage(), 're-prepared') !== false;
-            if ($attempt === 0 && $needsReprepare) {
+            if ($needsReprepare && $attempt + 1 < $maxAttempts) {
+                // Retry hanya SELECT ini; aksi penyimpanan tidak diulang otomatis.
+                error_log('Query laporan Ralan perlu disiapkan ulang (1615), percobaan '
+                    . ($attempt + 1) . '/' . $maxAttempts . '.');
+                usleep(100000 * ($attempt + 1));
                 continue;
             }
             throw new RuntimeException(
@@ -2187,6 +2047,8 @@ function aptd_keu_ralan_calculate_daily_batch(
         ];
     }
 
+    aptd_keu_ralan_ensure_cache_schema($mysqli);
+    aptd_keu_ralan_ensure_apotek_manual_schema($mysqli);
     $total = aptd_keu_ralan_count_rows($mysqli, $visitDate, $visitDate);
     $rows = aptd_keu_ralan_fetch_rows(
         $mysqli,

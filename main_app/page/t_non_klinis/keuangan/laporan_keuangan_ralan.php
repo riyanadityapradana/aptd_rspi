@@ -275,7 +275,7 @@ function aptd_keu_ralan_datatable_response(mysqli $mysqli)
             'recordsTotal' => 0,
             'recordsFiltered' => 0,
             'data' => [],
-            'error' => 'Data laporan belum dapat dimuat.',
+            'error' => aptd_keu_ralan_schema_user_message($exception, 'Data laporan belum dapat dimuat.'),
         ]);
     }
 }
@@ -322,7 +322,7 @@ function aptd_keu_ralan_bulk_daily_response(mysqli $mysqli)
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'message' => 'Kalkulasi massal belum dapat diselesaikan. Silakan coba kembali.',
+            'message' => aptd_keu_ralan_schema_user_message($exception, 'Kalkulasi massal belum dapat diselesaikan. Silakan coba kembali.'),
         ]);
     }
 }
@@ -386,7 +386,7 @@ function aptd_keu_ralan_import_apotek_response(mysqli $mysqli)
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'message' => 'Import klaim apotek belum dapat diselesaikan. Periksa format berkas lalu coba kembali.',
+            'message' => aptd_keu_ralan_schema_user_message($exception, 'Import klaim apotek belum dapat diselesaikan. Periksa format berkas lalu coba kembali.'),
         ]);
     }
 }
@@ -419,24 +419,35 @@ if ($isReportRowAction) {
         $saveMessage = ['success' => false, 'message' => $filterMessage];
     } elseif (!$canCalculateKeuangan) {
         $saveMessage = ['success' => false, 'message' => 'Level Anda tidak memiliki akses untuk menjalankan aksi keuangan.'];
-    } elseif (isset($_POST['use_history_claim']) && $_POST['use_history_claim'] === '1') {
-        $saveMessage = aptd_keu_ralan_use_history_claim(
-            $mysqli,
-            isset($_POST['history_no_rawat']) ? $_POST['history_no_rawat'] : '',
-            $startDate,
-            $endDate,
-            $kdPoli,
-            isset($_SESSION['username']) ? $_SESSION['username'] : ''
-        );
     } else {
-        $saveMessage = aptd_keu_ralan_calculate_claim(
-            $mysqli,
-            isset($_POST['calculate_no_rawat']) ? $_POST['calculate_no_rawat'] : '',
-            $startDate,
-            $endDate,
-            $kdPoli,
-            isset($_SESSION['username']) ? $_SESSION['username'] : ''
-        );
+        try {
+            if (isset($_POST['use_history_claim']) && $_POST['use_history_claim'] === '1') {
+                $saveMessage = aptd_keu_ralan_use_history_claim(
+                    $mysqli,
+                    isset($_POST['history_no_rawat']) ? $_POST['history_no_rawat'] : '',
+                    $startDate,
+                    $endDate,
+                    $kdPoli,
+                    isset($_SESSION['username']) ? $_SESSION['username'] : ''
+                );
+            } else {
+                $saveMessage = aptd_keu_ralan_calculate_claim(
+                    $mysqli,
+                    isset($_POST['calculate_no_rawat']) ? $_POST['calculate_no_rawat'] : '',
+                    $startDate,
+                    $endDate,
+                    $kdPoli,
+                    isset($_SESSION['username']) ? $_SESSION['username'] : ''
+                );
+            }
+        } catch (Throwable $exception) {
+            error_log('Aksi keuangan Ralan gagal [' . $exception->getCode() . ']: '
+                . $exception->getMessage());
+            $saveMessage = [
+                'success' => false,
+                'message' => aptd_keu_ralan_schema_user_message($exception, 'Proses belum dapat diselesaikan. Silakan muat ulang laporan dan periksa status data sebelum mencoba kembali.'),
+            ];
+        }
     }
 
     $_SESSION['keu_ralan_flash'] = $saveMessage;
@@ -466,9 +477,10 @@ $queryMessage = '';
 $summary = aptd_keu_ralan_summary([]);
 if ($filterValid) {
     try {
+        aptd_keu_ralan_ensure_apotek_manual_schema($mysqli);
         $summary = aptd_keu_ralan_fetch_summary($mysqli, $startDate, $endDate, $kdPoli);
     } catch (Throwable $exception) {
-        $queryMessage = 'Data laporan belum dapat dimuat. Silakan coba kembali atau hubungi administrator.';
+        $queryMessage = aptd_keu_ralan_schema_user_message($exception, 'Data laporan belum dapat dimuat. Silakan coba kembali atau hubungi administrator.');
         error_log($exception->getMessage());
     }
 }

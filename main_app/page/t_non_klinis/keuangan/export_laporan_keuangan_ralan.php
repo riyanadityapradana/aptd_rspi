@@ -29,10 +29,10 @@ foreach (aptd_keu_ralan_fetch_poli($mysqli) as $option) {
 try {
     $rows = aptd_keu_ralan_fetch_rows($mysqli, $startDate, $endDate, $kdPoli);
     $xlsx = aptd_keu_ralan_build_xlsx($rows, $startDate, $endDate, $poliLabel);
-} catch (RuntimeException $exception) {
+} catch (Throwable $exception) {
     error_log($exception->getMessage());
     http_response_code(500);
-    exit('Data laporan belum dapat diexport. Silakan coba kembali atau hubungi administrator.');
+    exit(aptd_keu_ralan_schema_user_message($exception, 'Data laporan belum dapat diexport. Silakan coba kembali atau hubungi administrator.'));
 }
 
 $filename = 'laporan_keuangan_rawat_jalan_bpjs_' . str_replace('-', '', $startDate) . '_' . str_replace('-', '', $endDate) . '.xlsx';
