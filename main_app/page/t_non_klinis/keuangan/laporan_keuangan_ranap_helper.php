@@ -1294,6 +1294,26 @@ function aptd_keu_ranap_save_manual(mysqli $mysqli, $noRawat, $claim, $jdOperato
     return ['success' => true, 'message' => 'Data claim dan JD Operator berhasil disimpan.'];
 }
 
+function aptd_keu_ranap_reset_calculation(mysqli $mysqli, $noRawat)
+{
+    $noRawat = trim((string) $noRawat);
+    if ($noRawat === '') {
+        return ['success' => false, 'message' => 'No rawat tidak boleh kosong.'];
+    }
+
+    $stmt = $mysqli->prepare('DELETE FROM lap_keuangan_bpjs WHERE no_rawat = ?');
+    $stmt->bind_param('s', $noRawat);
+    $stmt->execute();
+    $deletedRows = $stmt->affected_rows;
+    $stmt->close();
+
+    if ($deletedRows <= 0) {
+        return ['success' => false, 'message' => 'Data kalkulasi untuk ' . $noRawat . ' tidak ditemukan.'];
+    }
+
+    return ['success' => true, 'message' => 'Kalkulasi untuk ' . $noRawat . ' berhasil direset.'];
+}
+
 function aptd_keu_ranap_save_claim(mysqli $mysqli, $noRawat, $claim, $allowClaimUpdate = true)
 {
     aptd_keu_ranap_ensure_cache_schema($mysqli);

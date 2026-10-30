@@ -8,8 +8,13 @@ $saveMessage = null;
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
 $canEditClaim = in_array($levelLogin, ['admin', 'rekammedis', 'keuangan'], true);
 $canCalculateKeuangan = in_array($levelLogin, ['admin', 'keuangan'], true);
+if (empty($_SESSION['keu_ranap_csrf'])) {
+    $_SESSION['keu_ranap_csrf'] = bin2hex(random_bytes(32));
+}
+$keuRanapCsrf = $_SESSION['keu_ranap_csrf'];
 $isReportRowAction = (isset($_POST['calculate_keu_row']) && $_POST['calculate_keu_row'] === '1')
     || (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1')
+    || (isset($_POST['reset_keu_calculation']) && $_POST['reset_keu_calculation'] === '1')
     || (isset($_POST['use_history_claim']) && $_POST['use_history_claim'] === '1');
 if ($isReportRowAction) {
     $reportPage = isset($_POST['report_page']) ? max(0, (int) $_POST['report_page']) : 0;
@@ -17,6 +22,25 @@ if ($isReportRowAction) {
     $reportPage = 0;
 } else {
     $reportPage = isset($_GET['report_page']) ? max(0, (int) $_GET['report_page']) : 0;
+}
+
+if (isset($_POST['reset_keu_calculation']) && $_POST['reset_keu_calculation'] === '1') {
+    $submittedCsrf = isset($_POST['keu_ranap_csrf']) ? (string) $_POST['keu_ranap_csrf'] : '';
+    if (!$canCalculateKeuangan) {
+        $saveMessage = ['success' => false, 'message' => 'Level Anda tidak memiliki akses untuk mereset kalkulasi keuangan.'];
+    } elseif ($submittedCsrf === '' || !hash_equals($keuRanapCsrf, $submittedCsrf)) {
+        $saveMessage = ['success' => false, 'message' => 'Permintaan reset tidak valid. Silakan muat ulang halaman dan coba lagi.'];
+    } else {
+        $saveMessage = aptd_keu_ranap_reset_calculation(
+            $mysqli,
+            isset($_POST['manual_no_rawat']) ? $_POST['manual_no_rawat'] : ''
+        );
+    }
+    $_SESSION['keu_ranap_flash'] = $saveMessage;
+    $redirectUrl = 'main_app.php?page=laporan_keuangan_ranap&' . $filterQuery . '&report_page=' . rawurlencode($reportPage);
+    echo '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>';
+    echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '"></noscript>';
+    return;
 }
 
 if (isset($_POST['save_keu_manual']) && $_POST['save_keu_manual'] === '1') {
@@ -473,6 +497,7 @@ ob_start(); ?>
         <div class="modal-dialog" role="document">
             <form method="post" class="modal-content">
                 <input type="hidden" name="save_keu_manual" value="1">
+                <input type="hidden" name="keu_ranap_csrf" value="<?php echo htmlspecialchars($keuRanapCsrf, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="start_date" value="<?php echo htmlspecialchars($startDate, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="end_date" value="<?php echo htmlspecialchars($endDate, ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="filter_by" value="<?php echo htmlspecialchars($filterBy, ENT_QUOTES, 'UTF-8'); ?>">
@@ -498,6 +523,13 @@ ob_start(); ?>
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <?php if ($canCalculateKeuangan): ?>
+                        <button type="button"
+                                class="btn btn-outline-danger btn-sm mr-auto"
+                                id="resetKeuCalculation">
+                            Reset Kalkulasi
+                        </button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary btn-sm">Simpan</button>
                 </div>
@@ -580,6 +612,27 @@ ob_start(); ?>
                     $('#manual_no_rawat').val(button.data('no-rawat') || '');
                     $('#manual_claim').val(button.data('claim') || 0);
                     $('#manual_jd_operator').val(button.data('jd-operator') || 0);
+                });
+
+                $('#resetKeuCalculation').on('click', function() {
+                    syncReportPage();
+                    var noRawat = $('#manual_no_rawat').val() || '';
+                    if (!noRawat) {
+                        window.alert('No rawat tidak boleh kosong.');
+                        return;
+                    }
+                    if (!window.confirm('Apakah Anda yakin ingin mereset kalkulasi untuk nomor rawat ' + noRawat + '? Data yang tersimpan akan dihapus permanen.')) {
+                        return;
+                    }
+
+                    var form = $('#modalKeuManual form');
+                    form.find('input[name="save_keu_manual"]').remove();
+                    $('<input>', {
+                        type: 'hidden',
+                        name: 'reset_keu_calculation',
+                        value: '1'
+                    }).appendTo(form);
+                    form.get(0).submit();
                 });
 
                 $('.keu-action-cell form, #modalKeuManual form').on('submit', syncReportPage);
