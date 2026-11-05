@@ -1158,14 +1158,22 @@ function aptd_keu_ranap_fetch_report_rows(mysqli $mysqli, $startDate, $endDate, 
                 MAX(NULLIF(reg_dpjp.nm_dokter, ''))
             ) AS dpjp,
             GROUP_CONCAT(DISTINCT ki.kd_kamar ORDER BY ki.tgl_masuk, ki.jam_masuk SEPARATOR ', ') AS kamar,
-            DATEDIFF(
-                MAX(CASE
+            CASE
+                WHEN MAX(CASE
                     WHEN ki.stts_pulang <> '-'
                      AND ki.stts_pulang <> 'Pindah Kamar'
                     THEN NULLIF(ki.tgl_keluar, '0000-00-00')
-                END),
-                MAX(NULLIF(bs.tglsep, '0000-00-00'))
-            ) AS lama_dirawat,
+                END) IS NULL
+                THEN DATEDIFF(CURRENT_DATE(), MAX(NULLIF(rp.tgl_registrasi, '0000-00-00')))
+                ELSE DATEDIFF(
+                    MAX(CASE
+                        WHEN ki.stts_pulang <> '-'
+                         AND ki.stts_pulang <> 'Pindah Kamar'
+                        THEN NULLIF(ki.tgl_keluar, '0000-00-00')
+                    END),
+                    MAX(NULLIF(bs.tglsep, '0000-00-00'))
+                )
+            END AS lama_dirawat,
             MAX(IFNULL(bs.nmdiagnosaawal, '')) AS diagnosa_sep,
             $claimSelectSql AS claim,
             COALESCE(manual.jum_claim, 0) AS manual_claim,
