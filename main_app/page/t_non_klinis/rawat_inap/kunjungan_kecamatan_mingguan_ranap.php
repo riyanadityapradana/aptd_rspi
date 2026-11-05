@@ -12,7 +12,7 @@ $rows = $report['rows'];
 $totals = $report['totals'];
 $weekColumnCount = count($weeks) * count($paymentLabels);
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
-$isAdmin = strtolower(trim($levelLogin)) === 'admin';
+$isAdmin = strtolower(trim($levelLogin)) === 'admin' || aptd_has_extra_menu('kunjungan_kecamatan_mingguan_ranap');
 $exportExcelAction = 'page/t_non_klinis/rawat_inap/export_kunjungan_kecamatan_mingguan_ranap_excel.php';
 $exportPdfAction = 'page/t_non_klinis/rawat_inap/export_kunjungan_kecamatan_mingguan_ranap_pdf.php';
 ?>

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/menu.php';
+require_once __DIR__ . '/user_access.php';
 function aptd_get_routes()
 {
     return [
@@ -142,7 +144,7 @@ function aptd_get_access_map()
     return $accessMap;
 }
 
-function aptd_can_access($level, $page)
+function aptd_role_can_access($level, $page)
 {
     $accessMap = aptd_get_access_map();
     $routes = aptd_get_routes();
@@ -180,4 +182,22 @@ function aptd_can_access($level, $page)
     }
 
     return in_array('*', $accessMap[$level], true) || in_array($page, $accessMap[$level], true);
+}
+
+function aptd_can_access($level, $page)
+{
+    $user = aptd_access_current_user();
+    if ($user !== null) {
+        if (!$user['valid']) {
+            return false;
+        }
+        $level = $user['level'];
+    }
+    if (aptd_role_can_access($level, $page)) {
+        return true;
+    }
+    if ($page === 'users_admin' || !isset(aptd_get_routes()[$page]) || $user === null) {
+        return false;
+    }
+    return in_array($page, aptd_extra_access_pages($user['menus']), true);
 }

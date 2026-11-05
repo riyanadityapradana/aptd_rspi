@@ -4,6 +4,13 @@ require_once dirname(dirname(dirname(dirname(__DIR__)))) . '/config/koneksi.php'
 $conn = $mysqli;
 
 $mode = isset($_POST['mode']) ? trim((string) $_POST['mode']) : 'ralan_non_bedah';
+$allowedPages = aptd_direct_report_pages('page/t_klinis/t_kode_penyakit/export_kode_penyakit.php', ['mode' => $mode]);
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+if (empty($_SESSION['login_aptd_rspi']) || $_SESSION['login_aptd_rspi'] !== true || empty($allowedPages)
+    || !aptd_can_access(isset($_SESSION['level']) ? $_SESSION['level'] : '', $allowedPages[0])) {
+    http_response_code(403);
+    exit('Anda tidak memiliki hak akses ke ekspor penyakit ini.');
+}
 $tgl_awal = isset($_POST['tgl_awal']) && $_POST['tgl_awal'] !== '' ? $_POST['tgl_awal'] : date('Y-m-01');
 $tgl_akhir = isset($_POST['tgl_akhir']) && $_POST['tgl_akhir'] !== '' ? $_POST['tgl_akhir'] : date('Y-m-d');
 $kode_penyakit = isset($_POST['kode_penyakit']) ? strtoupper(trim((string) $_POST['kode_penyakit'])) : '';

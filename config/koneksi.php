@@ -48,3 +48,6 @@ try {
 // Set zona waktu default
 date_default_timezone_set(getenv('TIMEZONE') ?: 'Asia/Makassar');
 
+require_once __DIR__ . '/akses.php';
+aptd_guard_direct_report_request();
+

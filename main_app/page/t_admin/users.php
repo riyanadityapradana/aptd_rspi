@@ -1,5 +1,18 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+require_once dirname(__DIR__, 3) . '/config/akses.php';
+if (empty($_SESSION['login_aptd_rspi']) || $_SESSION['login_aptd_rspi'] !== true
+    || !aptd_can_access(isset($_SESSION['level']) ? $_SESSION['level'] : '', 'users_admin')) {
+    http_response_code(403);
+    exit('Hanya admin yang dapat mengelola user dan akses.');
+}
 require_once dirname(dirname(dirname(__DIR__))) . '/config/koneksi.php';
+require_once __DIR__ . '/users_helper.php';
+if (empty($_SESSION['user_admin_csrf'])) {
+    $_SESSION['user_admin_csrf'] = bin2hex(random_bytes(32));
+}
 
 $allowedLevels = ['admin', 'manajemen', 'kepegawaian', 'medis', 'non medis', 'users', 'rekammedis', 'gizi', 'moneta', 'keuangan', 'pemasaran', 'direktur', 'farmasi', 'perawat'];
 $levelLabels = [
@@ -51,80 +64,18 @@ function aptd_admin_user_last_login($tglLog, $jamLog)
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = isset($_POST['action']) ? $_POST['action'] : '';
-    $id = isset($_POST['id_users']) ? (int) $_POST['id_users'] : 0;
-    $nama = isset($_POST['nama_lengkap']) ? trim($_POST['nama_lengkap']) : '';
-    $username = isset($_POST['username']) ? trim($_POST['username']) : '';
-    $password = isset($_POST['password']) ? trim($_POST['password']) : '';
-    $jabatan = isset($_POST['jabatan']) ? trim($_POST['jabatan']) : '';
-    $level = isset($_POST['level']) ? trim($_POST['level']) : '';
-
-    if ($action === 'delete') {
-        if ($id <= 0) {
-            $error = 'User tidak valid.';
-        } elseif ($id === $currentUserId) {
-            $error = 'User yang sedang login tidak boleh dihapus.';
-        } else {
-            $stmt = $mysqli->prepare('DELETE FROM tb_users WHERE id_users = ?');
-            $stmt->bind_param('i', $id);
-            $stmt->execute();
-            $stmt->close();
-            $message = 'User berhasil dihapus.';
-        }
-    } elseif ($nama === '' || $username === '' || $jabatan === '' || $level === '') {
-        $error = 'Nama, username, jabatan, dan level wajib diisi.';
-    } elseif (!in_array($level, $allowedLevels, true)) {
-        $error = 'Level user tidak valid.';
-    } elseif (strlen($username) < 4) {
-        $error = 'Username minimal 4 karakter.';
-    } else {
-        $check = $mysqli->prepare('SELECT id_users FROM tb_users WHERE username = ? AND id_users <> ? LIMIT 1');
-        $check->bind_param('si', $username, $id);
-        $check->execute();
-        $check->store_result();
-        if ($check->num_rows > 0) {
-            $error = 'Username sudah digunakan user lain.';
-        }
-        $check->close();
-
-        if ($error === '') {
-            if ($action === 'create') {
-                if (strlen($password) < 6) {
-                    $error = 'Password user baru minimal 6 karakter.';
-                } else {
-                    $passwordMd5 = md5($password);
-                    $tglLog = date('Y-m-d H:i:s');
-                    $jamLog = date('H:i:s');
-                    $stmt = $mysqli->prepare('INSERT INTO tb_users (nama_lengkap, username, password, jabatan, level, tgl_log, jam_log) VALUES (?, ?, ?, ?, ?, ?, ?)');
-                    $stmt->bind_param('sssssss', $nama, $username, $passwordMd5, $jabatan, $level, $tglLog, $jamLog);
-                    $stmt->execute();
-                    $stmt->close();
-                    $message = 'User baru berhasil ditambahkan.';
-                }
-            } elseif ($action === 'update' && $id > 0) {
-                if ($password !== '' && strlen($password) < 6) {
-                    $error = 'Password minimal 6 karakter.';
-                } elseif ($password !== '') {
-                    $passwordMd5 = md5($password);
-                    $stmt = $mysqli->prepare('UPDATE tb_users SET nama_lengkap = ?, username = ?, password = ?, jabatan = ?, level = ? WHERE id_users = ?');
-                    $stmt->bind_param('sssssi', $nama, $username, $passwordMd5, $jabatan, $level, $id);
-                    $stmt->execute();
-                    $stmt->close();
-                    $message = 'User berhasil diperbarui.';
-                } else {
-                    $stmt = $mysqli->prepare('UPDATE tb_users SET nama_lengkap = ?, username = ?, jabatan = ?, level = ? WHERE id_users = ?');
-                    $stmt->bind_param('ssssi', $nama, $username, $jabatan, $level, $id);
-                    $stmt->execute();
-                    $stmt->close();
-                    $message = 'User berhasil diperbarui.';
-                }
-            }
-        }
+    try {
+        $message = aptd_admin_write_user($mysqli, $_POST, $currentUserId, $allowedLevels);
+    } catch (InvalidArgumentException $exception) {
+        $error = $exception->getMessage();
+    } catch (Throwable $exception) {
+        error_log('APTD simpan user: ' . $exception->getMessage());
+        $error = 'User belum dapat disimpan. Silakan coba kembali.';
     }
 }
 
 $users = [];
-$result = $mysqli->query('SELECT id_users, nama_lengkap, username, jabatan, level, tgl_log, jam_log FROM tb_users ORDER BY id_users ASC');
+$result = $mysqli->query('SELECT id_users, nama_lengkap, username, jabatan, level, tgl_log, jam_log, akses_menu FROM tb_users ORDER BY id_users ASC');
 while ($row = $result->fetch_assoc()) {
     $users[] = $row;
 }
@@ -168,6 +119,14 @@ while ($row = $result->fetch_assoc()) {
     .user-modal label{color:#344f70;font-size:12px;font-weight:800}
     .user-modal .form-control{height:38px;border-color:#cbd8e6;border-radius:6px;font-size:13px}
     .user-modal .modal-footer{border-top:1px solid #e2e8f0}
+    .user-modal .modal-dialog{max-width:620px}
+    .user-modal .modal-body{max-height:calc(100vh - 180px);overflow-y:auto}
+    .user-modal .user-extra-access{height:auto;min-height:96px}
+    .user-modal .select2-selection--multiple{min-height:38px;border-color:#cbd8e6;font-size:13px}
+    .user-modal .select2-selection__choice{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+    .user-modal .select2-search__field{max-width:100%}
+    .user-access-summary{font-size:12px;color:#607899;margin-top:6px}
+    .user-access-cell{font-size:12px;white-space:nowrap}
     @media(max-width:767.98px){
         .user-admin-page{padding-top:12px}.user-admin-head{display:block}.user-add-btn{width:100%;margin-top:14px}
         .user-admin-title:after{display:none}.user-search-bar{align-items:stretch;flex-wrap:wrap;padding:13px}.user-search-wrap{width:100%}.user-count{margin-left:0}
@@ -216,17 +175,19 @@ while ($row = $result->fetch_assoc()) {
                         <th>Username</th>
                         <th>Jabatan</th>
                         <th style="width:120px">Level</th>
+                        <th>Akses</th>
                         <th style="width:175px">Login Terakhir</th>
                         <th style="width:145px">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($users)): ?>
-                        <tr><td colspan="7" class="user-empty">Belum ada data user.</td></tr>
+                        <tr><td colspan="8" class="user-empty">Belum ada data user.</td></tr>
                     <?php else: ?>
                         <?php foreach ($users as $index => $user): ?>
                             <?php
                             $isCurrentUser = (int) $user['id_users'] === $currentUserId;
+                            $extraMenus = aptd_decode_extra_menus($user['akses_menu']);
                             $levelClass = in_array($user['level'], ['admin', 'moneta', 'direktur', 'keuangan', 'rekammedis', 'pemasaran', 'perawat'], true)
                                 ? 'level-' . $user['level']
                                 : 'level-default';
@@ -244,6 +205,7 @@ while ($row = $result->fetch_assoc()) {
                                         <?php echo htmlspecialchars(aptd_admin_user_level_label($user['level'], $levelLabels), ENT_QUOTES, 'UTF-8'); ?>
                                     </span>
                                 </td>
+                                <td class="user-access-cell"><?php echo $user['level'] === 'admin' ? 'Semua menu' : 'Bawaan level' . (count($extraMenus) ? ' + ' . count($extraMenus) . ' menu' : ''); ?></td>
                                 <td><?php echo htmlspecialchars(aptd_admin_user_last_login($user['tgl_log'], $user['jam_log']), ENT_QUOTES, 'UTF-8'); ?></td>
                                 <td>
                                     <div class="user-actions">
@@ -255,11 +217,13 @@ while ($row = $result->fetch_assoc()) {
                                                 data-nama="<?php echo htmlspecialchars($user['nama_lengkap'], ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-username="<?php echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8'); ?>"
                                                 data-jabatan="<?php echo htmlspecialchars($user['jabatan'], ENT_QUOTES, 'UTF-8'); ?>"
-                                                data-level="<?php echo htmlspecialchars($user['level'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                data-level="<?php echo htmlspecialchars($user['level'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                data-menus="<?php echo htmlspecialchars(json_encode($extraMenus), ENT_QUOTES, 'UTF-8'); ?>">
                                             <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>
                                             Edit
                                         </button>
                                         <form method="post" style="margin:0" onsubmit="return confirm('Hapus user ini?');">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['user_admin_csrf'], ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="id_users" value="<?php echo (int) $user['id_users']; ?>">
                                             <button type="submit" class="user-action-btn user-delete-btn" <?php echo $isCurrentUser ? 'disabled' : ''; ?>>
@@ -280,6 +244,7 @@ while ($row = $result->fetch_assoc()) {
     <div class="modal fade user-modal" id="modalTambahUser" tabindex="-1" role="dialog" aria-labelledby="modalTambahUserLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <form method="post" class="modal-content">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['user_admin_csrf'], ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="action" value="create">
                 <div class="modal-header">
                     <h2 class="modal-title" id="modalTambahUserLabel">Tambah User</h2>
@@ -298,6 +263,7 @@ while ($row = $result->fetch_assoc()) {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php aptd_admin_render_access_select('createAccess'); ?>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
@@ -310,6 +276,7 @@ while ($row = $result->fetch_assoc()) {
     <div class="modal fade user-modal" id="modalEditUser" tabindex="-1" role="dialog" aria-labelledby="modalEditUserLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <form method="post" class="modal-content">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['user_admin_csrf'], ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="id_users" id="editUserId">
                 <div class="modal-header">
@@ -329,6 +296,7 @@ while ($row = $result->fetch_assoc()) {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php aptd_admin_render_access_select('editAccess'); ?>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
@@ -364,6 +332,40 @@ while ($row = $result->fetch_assoc()) {
             searchInput.addEventListener('input', filterUsers);
         }
 
+        var roleMenus = <?php
+            $roleMenus = [];
+            foreach ($allowedLevels as $role) {
+                $roleMenus[$role] = [];
+                foreach (aptd_extra_menu_catalog() as $menu => $item) {
+                    if (aptd_role_can_access($role, $menu)) { $roleMenus[$role][] = $menu; }
+                }
+            }
+            echo json_encode($roleMenus, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        ?>;
+        function updateAccessSummary(prefix) {
+            var level = document.getElementById(prefix + 'Level').value;
+            var select = document.getElementById(prefix + 'Access');
+            var base = roleMenus[level] || [];
+            var extra = Array.prototype.filter.call(select.options, function(option) {
+                return option.selected && base.indexOf(option.value) === -1;
+            }).length;
+            document.getElementById(prefix + 'AccessSummary').textContent = level === 'admin'
+                ? 'Bawaan level: semua menu'
+                : 'Bawaan level: ' + base.length + ' menu | Tambahan: ' + extra + ' menu';
+        }
+        ['create', 'edit'].forEach(function(prefix) {
+            document.getElementById(prefix + 'Level').addEventListener('change', function() { updateAccessSummary(prefix); });
+            document.getElementById(prefix + 'Access').addEventListener('change', function() { updateAccessSummary(prefix); });
+            updateAccessSummary(prefix);
+        });
+
+        function setExtraMenus(prefix, menus) {
+            var select = document.getElementById(prefix + 'Access');
+            Array.prototype.forEach.call(select.options, function(option) { option.selected = menus.indexOf(option.value) !== -1; });
+            if (window.jQuery && jQuery.fn.select2) { jQuery(select).trigger('change'); }
+            updateAccessSummary(prefix);
+        }
+
         Array.prototype.forEach.call(document.querySelectorAll('.user-edit-btn'), function(button) {
             button.addEventListener('click', function() {
                 document.getElementById('editUserId').value = button.getAttribute('data-id') || '';
@@ -372,7 +374,38 @@ while ($row = $result->fetch_assoc()) {
                 document.getElementById('editJabatan').value = button.getAttribute('data-jabatan') || '';
                 document.getElementById('editLevel').value = button.getAttribute('data-level') || '';
                 document.getElementById('editPassword').value = '';
+                setExtraMenus('edit', JSON.parse(button.getAttribute('data-menus') || '[]'));
             });
+        });
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.jQuery && jQuery.fn.select2) {
+                jQuery('.user-extra-access').each(function() {
+                    jQuery(this).select2({width: '100%', placeholder: 'Pilih menu tambahan', closeOnSelect: false, dropdownParent: jQuery(this).closest('.modal')});
+                    jQuery(this).on('change', function() { updateAccessSummary(this.id === 'createAccess' ? 'create' : 'edit'); });
+                });
+            }
+            var submitted = <?php
+                $submitted = null;
+                if ($error !== '' && in_array(aptd_admin_post_string($_POST, 'action'), ['create', 'update'], true)) {
+                    $submitted = [];
+                    foreach (['action', 'id_users', 'nama_lengkap', 'username', 'jabatan', 'level'] as $key) {
+                        $submitted[$key] = aptd_admin_post_string($_POST, $key);
+                    }
+                    $submitted['akses_menu'] = isset($_POST['akses_menu']) && is_array($_POST['akses_menu'])
+                        ? array_values(array_filter($_POST['akses_menu'], 'is_string')) : [];
+                }
+                echo json_encode($submitted, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE);
+            ?>;
+            if (submitted && window.jQuery) {
+                var prefix = submitted.action === 'create' ? 'create' : 'edit';
+                ['Nama', 'Username', 'Jabatan', 'Level'].forEach(function(field) {
+                    var key = field === 'Nama' ? 'nama_lengkap' : field.toLowerCase();
+                    document.getElementById(prefix + field).value = submitted[key];
+                });
+                if (prefix === 'edit') { document.getElementById('editUserId').value = submitted.id_users; }
+                setExtraMenus(prefix, submitted.akses_menu);
+                jQuery(prefix === 'create' ? '#modalTambahUser' : '#modalEditUser').modal('show');
+            }
         });
     })();
 </script>

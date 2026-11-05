@@ -14,10 +14,10 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 $levelLogin = isset($_SESSION['level']) ? $_SESSION['level'] : '';
-$isAdmin = strtolower(trim($levelLogin)) === 'admin';
+$isAdmin = strtolower(trim($levelLogin)) === 'admin' || aptd_has_extra_menu('kunjungan_kecamatan_mingguan_ranap');
 if (!isset($_SESSION['login_aptd_rspi']) || $_SESSION['login_aptd_rspi'] !== true || !$isAdmin) {
     http_response_code(403);
-    exit('Export Excel hanya tersedia untuk admin.');
+    exit('Anda tidak memiliki hak akses export Excel.');
 }
 
 if (ob_get_length()) {
