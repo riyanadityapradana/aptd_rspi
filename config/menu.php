@@ -75,6 +75,7 @@ $menuDataKlinis = [
         ['page' => '10_penyakit_ugd_ponek', 'label' => '10 Penyakit Terbanyak UGD & Ponek'],
         ['page' => 'laporan_bulanan_hais', 'label' => 'Laporan Bulanan Data HAIs'],
         ['page' => 'rekap_pasien_prmrj', 'label' => 'Rekap Pasien PRMRJ'],
+        ['page' => 'rekap_ranap_operasi', 'label' => 'Rekap Pasien Rawat Inap dengan Tindakan Operasi'],
     ],
 ];
 

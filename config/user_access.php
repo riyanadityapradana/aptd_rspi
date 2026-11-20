@@ -48,6 +48,7 @@ function aptd_extra_menu_dependencies()
         '10_penyakit_ugd_ponek' => ['export_10_penyakit_ugd_ponek'],
         'laporan_bulanan_hais' => ['export_laporan_bulanan_hais'],
         'rekap_pasien_prmrj' => ['rekap_pasien_prmrj_detail', 'export_rekap_pasien_prmrj_pdf'],
+        'rekap_ranap_operasi' => ['export_rekap_ranap_operasi'],
         'data_pasien_kode_penyakit_bedah_ralan' => ['export_kode_penyakit'],
         'data_pasien_kode_penyakit_non_bedah_ralan' => ['export_kode_penyakit'],
         'data_pasien_kode_penyakit_bedah_ranap' => ['export_kode_penyakit'],
